@@ -8,12 +8,13 @@ JSON or canonical transcripts. Source is public; crates.io publication stays dis
 
 ## Unreleased
 
-- Rewrite the root README around the video-to-transcript agent workflow, with
-  transcription, resume and chapter examples before implementation details.
-  Preserve the existing badges and distinguish agent-generated summaries from
-  the CLI's transcript output. Clarify that GigaSTT supports multilingual models
-  while this adapter currently fixes the Russian e2e_rnnt model.
-  Documentation only; runtime behavior is unchanged.
+## 0.10.1 — 2026-10-31
+
+- Provide a Linux x86_64 GNU binary archive with executable identity, project and
+  third-party license notices. Binary installation is the README default;
+  source builds remain supported. Release checksums have a detached GPG signature.
+- Document glibc 2.39 as the binary requirement. This packaging release does not
+  change transcription, checkpoint formats or experimental security boundaries.
 
 ## 0.10.0 — 2026-10-30
 

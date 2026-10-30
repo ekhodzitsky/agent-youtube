@@ -2,7 +2,7 @@
 
 YouTube transcripts for AI agents.
 
-[![Source version: 0.10.0](docs/assets/version.svg)](Cargo.toml)
+[![Source version: 0.10.1](docs/assets/version.svg)](Cargo.toml)
 [![License: MIT](docs/assets/license.svg)](LICENSE)
 [![CI: disabled](docs/assets/ci.svg)](.github/workflows/check.yml)
 [![Minimum Rust for source builds: 1.94](docs/assets/msrv.svg)](docs/verification.md#badge-sources)
@@ -72,19 +72,24 @@ another download or recognition run.
 
 ## Install
 
-Linux x86_64 GNU, Git and Rust **1.94+**. The example downloads about **234.8 MiB**
-of pinned model/runtime files from Hugging Face and GitHub. Allow extra disk space
-for the extracted runtime, caches and jobs. YouTube access needs network connectivity;
-recognition runs locally, with no paid transcription service or user API key.
+Linux x86_64 GNU with **glibc 2.39+**. No Rust toolchain is needed for the
+binary release. Download and verify the [signed release](docs/installation.md#binary-release),
+then extract it:
 
 ```sh
-git clone https://github.com/ekhodzitsky/agent-youtube.git
-cd agent-youtube
-cargo install --path . --locked
-agent-youtube setup --model-variant ml_ctc
-agent-youtube transcribe 'https://www.youtube.com/watch?v=jNQXAC9IVRw' \
+tar -xzf agent-youtube-0.10.1-x86_64-unknown-linux-gnu.tar.gz
+cd agent-youtube-0.10.1
+./agent-youtube setup --model-variant ml_ctc
+./agent-youtube transcribe 'https://www.youtube.com/watch?v=jNQXAC9IVRw' \
   --work-dir runs/first-job
 ```
+
+[Download Linux binary](https://github.com/ekhodzitsky/agent-youtube/releases/tag/v0.10.1).
+Optionally install the executable into a directory on PATH for the examples above.
+Setup downloads about **234.8 MiB** of pinned model/runtime files. Allow extra disk
+space for extraction, caches and jobs. Recognition is local; no paid transcription
+service or user API key is required. [Build from source](docs/installation.md#build-from-source)
+with Rust 1.94+ if your system does not match the binary requirements.
 
 Setup downloads and verifies the selected model and GigaSTT automatically.
 Repeat the same setup command after an interruption; verified files are reused.

@@ -3,6 +3,8 @@ import importlib.util
 import io
 from pathlib import Path
 import tarfile
+import tempfile
+import json
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -58,3 +60,33 @@ class ReleaseTests(unittest.TestCase):
             with self.subTest(key=key):
                 with self.assertRaises(ValueError):
                     RELEASE.validate_identity({**producer, key: value}, '1.0.0', 'a' * 40)
+
+    def test_binary_archive_is_complete_deterministic_and_has_no_local_manifest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'agent-youtube').write_bytes(b'executable')
+            (root / 'LICENSE').write_text('license')
+            (root / 'NOTICE').write_text('notice')
+            (root / 'notices').mkdir()
+            (root / 'notices' / 'THIRD_PARTY_NOTICES.txt').write_text('third parties')
+            producer = {'version': '1.0.0', 'revision': 'a' * 40, 'source_dirty': False}
+            RELEASE.binary_archive(root, '1.0.0', producer)
+            output = root / 'agent-youtube-1.0.0-x86_64-unknown-linux-gnu.tar.gz'
+            first = output.read_bytes()
+            RELEASE.binary_archive(root, '1.0.0', producer)
+            self.assertEqual(first, output.read_bytes())
+            with tarfile.open(output) as archive:
+                prefix = 'agent-youtube-1.0.0/'
+                names = {m.name.removeprefix(prefix) for m in archive}
+                self.assertEqual(names, {'agent-youtube', 'LICENSE', 'NOTICE',
+                                       'producer.json', 'notices/THIRD_PARTY_NOTICES.txt'})
+                self.assertEqual(archive.getmember(prefix + 'agent-youtube').mode, 0o755)
+                self.assertEqual(json.load(archive.extractfile(prefix + 'producer.json')), producer)
+
+    def test_linux_binary_archive_rejects_wrong_architecture(self):
+        header = b'\x7fELF\x02\x01\x01\x00' + b'\x00' * 10 + b'\x3e\x00'
+        RELEASE.validate_binary_header(header)
+        for invalid in [b'script', header[:18] + b'\xb7\x00',
+                        header[:4] + b'\x01' + header[5:]]:
+            with self.assertRaises(ValueError):
+                RELEASE.validate_binary_header(invalid)

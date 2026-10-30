@@ -2,11 +2,59 @@
 
 [Documentation index](README.md) · [Project overview](../README.md)
 
-Moved from the root README on 2026-10-27. Commands assume the repository root.
+Moved from the root README on 2026-10-27. Source-build commands assume the repository root.
 Historical verification statements retain their original dates and scope; they are
 not new measurements of the current version.
 
-## Install
+## Binary release
+
+The prebuilt archive targets Linux x86_64 GNU with glibc **2.39 or newer**,
+libgcc_s and libm. It is not a static or musl build. Other platforms and older
+glibc systems need a source build and separate qualification. GigaSTT additionally
+loads native ONNX libraries; see its [requirements](https://github.com/ekhodzitsky/gigastt).
+No Rust, Cargo, Python or Git is needed to run the archive.
+
+Download the archive, checksum file, signature and public key from the
+[versioned release](https://github.com/ekhodzitsky/agent-youtube/releases/tag/v0.10.1).
+For example, using curl and GnuPG as installation tools:
+
+```sh
+base=https://github.com/ekhodzitsky/agent-youtube/releases/download/v0.10.1
+curl -fLO "$base/agent-youtube-0.10.1-x86_64-unknown-linux-gnu.tar.gz"
+curl -fLO "$base/SHA256SUMS"
+curl -fLO "$base/SHA256SUMS.asc"
+curl -fLO "$base/release-signing-key.asc"
+gpg --show-keys --with-fingerprint release-signing-key.asc
+```
+
+Check the key fingerprint against an independently trusted record of the
+maintainer key before importing. The release uses the existing owner key:
+**A230 007D A524 E68F 89D2 F829 ADD5 69E3 8E7A 4CE1**.
+This page and a key downloaded from the same GitHub account are not independent
+identity verification. A valid signature detects changed bytes; it does not
+establish source safety, YouTube availability or production-security approval.
+
+```sh
+gpg --import release-signing-key.asc
+gpg --verify SHA256SUMS.asc SHA256SUMS
+sha256sum --check --ignore-missing SHA256SUMS
+tar -xzf agent-youtube-0.10.1-x86_64-unknown-linux-gnu.tar.gz
+cd agent-youtube-0.10.1
+./agent-youtube --version
+./agent-youtube setup --model-variant ml_ctc
+./agent-youtube transcribe 'https://www.youtube.com/watch?v=jNQXAC9IVRw' \
+  --work-dir runs/first-job
+```
+
+Stop if signature or checksum verification fails. The checksum command skips
+undownloaded assets but must report the downloaded archive as OK. The archive
+contains LICENSE, NOTICE, third-party texts and producer.json with the exact
+source revision and executable digest. Models and GigaSTT are downloaded separately
+by setup. To use the command without `./`, install only the executable into a
+PATH directory; keep its notices with the distribution. Runtime and job directories
+are relative to your working directory unless explicitly configured.
+
+## Build from source
 
 Build with Rust **1.94+**. The current quick start uses **GigaSTT 2.22.0**
 and the GigaAM v3 e2e_rnnt INT8 models. Historical 2.21.0 measurements retain
@@ -30,7 +78,7 @@ local patches are in [vendor/README.md](../vendor/README.md).
 
 ### Managed Linux setup
 
-Run from the project directory. No separate recognizer or model installation is
+Run from a writable working directory. No separate recognizer or model installation is
 needed for the normal online path:
 
 ```sh

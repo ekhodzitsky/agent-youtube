@@ -12,7 +12,7 @@ commit the completed changes to main, then build the committed executable:
 ```sh
 cargo build --release --locked
 target/release/agent-youtube --version
-python3 tools/prepare_release.py --output runs/releases/0.7.0 \
+python3 tools/prepare_release.py --output runs/releases/0.10.1 \
   --binary target/release/agent-youtube
 ```
 
@@ -44,8 +44,8 @@ compatibility, not just the version string. A new build is a different executabl
 An annotated version tag designates a source commit;
 its message is an artifact designation, not a security approval or availability SLA.
 The local release.json supplies actual source/binary digests. Do not move an existing
-version tag; use a new patch version after further changes. Crates.io publication
-and release artifact uploads are not enabled. Pushing a
+version tag; use a new patch version after further changes. Crates.io publication remains disabled. Public binary release uploads require
+the owner's explicit authorization. Pushing a
 source tag is separate from uploading a release bundle and does not run the
 manual-only workflow; hosted Actions remain disabled.
 
@@ -64,3 +64,25 @@ labels are sanitized summaries, not byte-identical exports or new measurements.
 Original recognizer JSON and canonical transcripts remain unchanged and local.
 Git ref replacement cannot promise erasure of previously public provider caches
 or copies held by other people. No original private Git object is published.
+
+
+## Authorized public binary publication
+
+The preparer also produces a versioned x86_64 GNU binary tar.gz containing the
+executable, producer identity, LICENSE, NOTICE and exact locked dependency notices.
+Keep the local release.json private; its local-only flag describes preparation,
+not a publishable release manifest. Upload only the reviewed source/binary archives,
+SHA256SUMS, detached signature and public key. Never upload the whole output directory.
+
+After owner authorization, build from a clean committed tagged source, review ELF
+architecture and required glibc versions, and qualify the extracted binary in an
+isolated runtime without a Rust toolchain. Sign SHA256SUMS using the existing owner
+GPG key, verify the signature in a separate keyring, then create the release with
+explicit asset paths using gh. Do not use a wildcard or GitHub Actions. Redownload
+the published assets and verify bytes and signature. Document any host-library reuse
+in the isolated test; it is not evidence for all Linux distributions.
+
+The existing owner signing fingerprint is
+A230007DA524E68F89D2F829ADD569E38E7A4CE1. Only its public key is tracked in
+[release-signing-key.asc](release-signing-key.asc); private key material stays outside
+the repository. [Installation](installation.md#binary-release) explains trust limits.

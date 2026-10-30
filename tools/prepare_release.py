@@ -60,6 +60,32 @@ def git(*args):
     return subprocess.check_output(['git', *args], cwd=ROOT)
 
 
+def validate_binary_header(header):
+    if (len(header) < 20 or header[:7] != b'\x7fELF\x02\x01\x01'
+            or header[18:20] != b'\x3e\x00'):
+        raise ValueError('binary archive requires a little-endian x86_64 ELF executable')
+
+
+def binary_archive(output, version, producer):
+    """Package only reviewed runtime distribution files with stable metadata."""
+    destination = output / f'agent-youtube-{version}-x86_64-unknown-linux-gnu.tar.gz'
+    files = {name: (output / name).read_bytes() for name in ['agent-youtube', 'LICENSE', 'NOTICE']}
+    files['producer.json'] = (json.dumps(producer, indent=2) + '\n').encode()
+    for path in sorted((output / 'notices').rglob('*')):
+        if path.is_file():
+            files[path.relative_to(output).as_posix()] = path.read_bytes()
+    with destination.open('wb') as stream:
+        with gzip.GzipFile(fileobj=stream, mode='wb', filename='', mtime=0) as compressed:
+            with tarfile.open(fileobj=compressed, mode='w|') as archive:
+                for name, data in sorted(files.items()):
+                    entry = tarfile.TarInfo(f'agent-youtube-{version}/{name}')
+                    entry.mode = 0o755 if name == 'agent-youtube' else 0o644
+                    entry.size = len(data)
+                    archive.addfile(entry, io.BytesIO(data))
+    destination.chmod(0o600)
+    return destination
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
@@ -86,6 +112,8 @@ def main():
             parser.error('source bundle is missing a required fork/license')
     producer = None
     if args.binary:
+        with args.binary.open('rb') as stream:
+            validate_binary_header(stream.read(20))
         response = json.loads(subprocess.check_output(
             [str(args.binary.resolve()), '--version'], timeout=30))
         if response.get('ok') is not True or response.get('command') != 'version':
@@ -108,12 +136,15 @@ def main():
                     '--output', str(output/'notices')], check=True, cwd=ROOT,
                    stdout=subprocess.DEVNULL)
     shutil.copyfile(ROOT/'LICENSE', output/'LICENSE')
+    shutil.copyfile(ROOT/'NOTICE', output/'NOTICE')
     if args.binary:
         destination = output/'agent-youtube'
         shutil.copyfile(args.binary, destination)
         destination.chmod(0o700)
         if sha(destination) != producer['binary_sha256']:
             raise ValueError('binary changed while copying; incomplete release preserved')
+    if producer:
+        binary_archive(output, version, producer)
     files = {p.relative_to(output).as_posix(): sha(p) for p in sorted(output.rglob('*')) if p.is_file()}
     manifest = {'schema_version': 1, 'version': version, 'revision': revision,
                 'private': True, 'source_archive': source.name, 'producer': producer,
