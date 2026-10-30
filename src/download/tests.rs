@@ -3702,7 +3702,34 @@ fn prepared_alternate_clients_bind_bootstrap_headers_and_private_leases() {
 #[cfg(unix)]
 #[test]
 fn attestation_failure_recovers_through_a_compatible_direct_client_but_cooldown_stops() {
-    for code in ["youtube_attestation_failed", "youtube_rate_limited"] {
+    for (code, status, retry_after, seconds, recovers) in [
+        ("youtube_attestation_failed", None, None, None, true),
+        ("youtube_http_error", Some(403), None, None, true),
+        ("youtube_http_error", Some(401), None, None, false),
+        ("youtube_rate_limited", Some(429), None, Some(60), false),
+        (
+            "youtube_rate_limited",
+            Some(403),
+            Some("120"),
+            Some(120),
+            false,
+        ),
+        (
+            "youtube_http_error",
+            Some(403),
+            Some("unparsed"),
+            None,
+            false,
+        ),
+        ("youtube_http_error", Some(403), None, Some(120), false),
+        (
+            "youtube_attestation_failed",
+            None,
+            Some("120"),
+            Some(120),
+            false,
+        ),
+    ] {
         let players = Arc::new(AtomicUsize::new(0));
         let seen = players.clone();
         let server = Server::new(move |request, origin| {
@@ -3722,20 +3749,26 @@ fn attestation_failure_recovers_through_a_compatible_direct_client_but_cooldown_
         seed_source_lease(&server, Some(WebClient::Mweb));
         let before = fs::read(suffix(&server.prefix(), ".json")).unwrap();
         let downloader = server.downloader();
-        *downloader.runtime.lock().unwrap() = Some(crate::web::Worker::failure_fixture(code));
+        let failure = crate::protocol::failure_details(
+            code,
+            Some(code == "youtube_rate_limited"),
+            "private-attestation-response",
+            serde_json::json!({"http_status":status,"retry_after":retry_after,"retry_after_seconds":seconds}),
+        );
+        *downloader.runtime.lock().unwrap() =
+            Some(crate::web::Worker::failure_fixture(failure.as_ref()));
         let result = downloader.download(ID, &server.prefix(), &AtomicBool::new(false));
-        if code == "youtube_attestation_failed" {
+        if recovers {
             assert_eq!(fs::read(result.unwrap()).unwrap(), [9; 4]);
             assert_eq!(players.load(Ordering::SeqCst), 1);
         } else {
-            assert_eq!(
-                result
-                    .unwrap_err()
-                    .downcast_ref::<crate::protocol::Failure>()
-                    .unwrap()
-                    .code,
-                code
-            );
+            let error = result.unwrap_err();
+            let failure = error.downcast_ref::<crate::protocol::Failure>().unwrap();
+            assert_eq!(failure.code, code);
+            assert_eq!(failure.http_status(), status);
+            assert_eq!(failure.retry_after(), retry_after);
+            assert_eq!(failure.retry_after_seconds(), seconds);
+            assert!(!error.to_string().contains("private-attestation"));
             assert_eq!(players.load(Ordering::SeqCst), 0);
             // Preparation may renew the same receipt, but it cannot alter media.
             let after: Receipt =
@@ -3746,6 +3779,63 @@ fn attestation_failure_recovers_through_a_compatible_direct_client_but_cooldown_
             assert_eq!(fs::read(suffix(&server.prefix(), ".m4a")).unwrap(), [9, 9]);
         }
         assert!(downloader.runtime.lock().unwrap().is_none());
+    }
+}
+
+#[test]
+#[cfg(unix)]
+fn attestation_http_refusal_preserves_media_when_alternate_identity_or_prefix_differs() {
+    for changed_track in [false, true] {
+        let reads = Arc::new(AtomicUsize::new(0));
+        let seen = reads.clone();
+        let server = Server::new(move |request, origin| {
+            if request.path.starts_with("/watch") {
+                return Reply::bytes(br#"ytcfg.set({"STS":20746,"INNERTUBE_CONTEXT":{"client":{"visitorData":"fresh-visitor"}}});"#.to_vec());
+            }
+            if request.path.starts_with("/youtubei/") {
+                let mut value = player(origin, 4);
+                let format = &mut value["streamingData"]["adaptiveFormats"][0];
+                format["url"] = format!("{origin}/new?expire=4102444800").into();
+                if changed_track {
+                    format["audioTrack"] =
+                        serde_json::json!({"id":"en.0","displayName":"English (original)"});
+                }
+                return Reply::bytes(serde_json::to_vec(&value).unwrap());
+            }
+            assert!(request.path.starts_with("/new?"));
+            seen.fetch_add(1, Ordering::SeqCst);
+            range(&request, &[8; 4])
+        });
+        let prior = seed_source_lease(&server, Some(WebClient::Mweb));
+        let downloader = server.downloader();
+        let failure = crate::protocol::failure_details(
+            "youtube_http_error",
+            Some(false),
+            "private-attestation-response",
+            serde_json::json!({"http_status":403}),
+        );
+        *downloader.runtime.lock().unwrap() =
+            Some(crate::web::Worker::failure_fixture(failure.as_ref()));
+        let error = downloader
+            .download(ID, &server.prefix(), &AtomicBool::new(false))
+            .unwrap_err();
+        assert_eq!(
+            error
+                .downcast_ref::<crate::protocol::Failure>()
+                .unwrap()
+                .code,
+            if changed_track {
+                "download_audio_track_changed"
+            } else {
+                "download_source_mismatch"
+            }
+        );
+        assert_eq!(reads.load(Ordering::SeqCst), usize::from(!changed_track));
+        let after: Receipt =
+            serde_json::from_slice(&fs::read(suffix(&server.prefix(), ".json")).unwrap()).unwrap();
+        assert_eq!(after.progress.digest, prior.progress.digest);
+        assert_eq!(after.web_client, prior.web_client);
+        assert_eq!(fs::read(suffix(&server.prefix(), ".m4a")).unwrap(), [9, 9]);
     }
 }
 

@@ -13,7 +13,8 @@ use std::{
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 const REQUEST_KEY: &str = "O43z0dpjhgX20SCx4KAo";
-// Public protocol identifier distributed by BgUtils, not a user credential.
+// API key publicly distributed in YouTube player code and BgUtils.
+// See vendor/botguard/README.md for first-party provenance and scope limits.
 const PUBLIC_API_KEY: &str = "AIzaSyDyT5W0Jh49F30Pqqtyfdf7pDLFKLJoAnw";
 const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.10 Safari/605.1.1";
 const LIMIT: u64 = 8 * 1024 * 1024;

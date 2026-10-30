@@ -7,10 +7,15 @@ pub(super) fn client_failure(error: &(dyn std::error::Error + 'static)) -> bool 
     error
         .downcast_ref::<protocol::Failure>()
         .is_some_and(|failure| {
-            matches!(
-                failure.code,
-                "youtube_attestation_failed" | "youtube_player_challenge_failed"
-            )
+            // Called only for Web preparation/token refresh. A denied runtime
+            // request may leave a compatible client usable; cooldowns still win.
+            failure.retry_after().is_none()
+                && failure.retry_after_seconds().is_none()
+                && (matches!(
+                    failure.code,
+                    "youtube_attestation_failed" | "youtube_player_challenge_failed"
+                ) || (failure.code == "youtube_http_error"
+                    && failure.http_status() == Some(403)))
         })
 }
 

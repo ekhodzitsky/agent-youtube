@@ -7,7 +7,8 @@ use sha2::{Digest, Sha256};
 use std::time::{Duration, Instant};
 
 const REQUEST_KEY: &str = "O43z0dpjhgX20SCx4KAo";
-// Public protocol identifier distributed by BgUtils, not a user credential.
+// API key publicly distributed in YouTube player code and BgUtils.
+// See vendor/botguard/README.md for first-party provenance and scope limits.
 const PUBLIC_API_KEY: &str = "AIzaSyDyT5W0Jh49F30Pqqtyfdf7pDLFKLJoAnw";
 
 #[derive(Default)]

@@ -46,6 +46,11 @@ For an external agent, make decisions from structured fields rather than `messag
 | `interrupted`, or process death without complete JSON | Query status; resume only when the job is idle and indicates resume |
 | Unknown code or `retryable: null` | Preserve data and inspect the failure; do not loop blindly |
 
+Starting with 0.8.2, HTTP403 during Web preparation or token refresh can select
+another compatible client when no cooldown is present. Audio identity and the
+retained prefix must still match. HTTP429 and server Retry-After guidance stop
+switching; a source refusal does not permit bypassing a cooldown.
+
 `retryable: true` describes recovery potential, not permission for immediate or endless
 retry. Status is a snapshot: another process can acquire the lock before resume, so
 handle `work_directory_busy` on every invocation. If a recognizer survived parent

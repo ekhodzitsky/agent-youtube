@@ -2445,7 +2445,7 @@ dependencies = [
 
 [[package]]
 name = "agent-youtube"
-version = "0.8.1"
+version = "0.8.2"
 dependencies = [
  "bandlimit",
  "base64",

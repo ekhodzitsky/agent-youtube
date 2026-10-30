@@ -145,18 +145,17 @@ impl Worker {
     }
 
     #[cfg(all(test, unix))]
-    pub(crate) fn failure_fixture(code: &'static str) -> Self {
+    pub(crate) fn failure_fixture(error: &(dyn std::error::Error + 'static)) -> Self {
         let (mut worker, _) = Self::idle_fixture();
         let (sender, responses) = mpsc::channel();
         worker.responses = responses;
-        let error = crate::protocol::failure(code, Some(true), "fixture failure");
         sender
             .send(Ok(Response {
                 token: vec![],
                 expires_in: 0,
                 solution: String::new(),
                 failed: true,
-                failure: Some(WorkerFailure::capture(error.as_ref(), true)),
+                failure: Some(WorkerFailure::capture(error, true)),
             }))
             .unwrap();
         worker

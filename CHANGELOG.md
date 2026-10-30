@@ -8,6 +8,16 @@ JSON or canonical transcripts. Source is public; crates.io publication stays dis
 
 ## Unreleased
 
+## 0.8.2 — 2026-10-30
+
+- Recover from Web preparation/token-refresh HTTP403 through an available
+  compatible client instead of immediately aborting. Preserve Retry-After/429
+  cooldowns, audio identity and prefix verification, and retained partial media.
+  Add a failing-before/passing-after regression and incompatible-source checks.
+- Document the BotGuard API key as publicly distributed by YouTube, with
+  first-party provenance and explicit limits; do not change or conceal its value.
+  No dependency, JSON/checkpoint schema or job migration changes.
+
 ## 0.8.1 — 2026-10-30
 
 - Report chapter watch-request failures as metadata failures without claiming

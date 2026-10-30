@@ -1,4 +1,4 @@
-# Current readiness and support — 0.8.1
+# Current readiness and support — 0.8.2
 
 This is the current decision entry point. Dated qualification reports are evidence
 for their exact source, binary, model, network and scenario; they are not silently
@@ -26,6 +26,13 @@ upgraded to new-release measurements. See the [changelog](../CHANGELOG.md).
 | Scheduling | New CLI job waits budgeted at 3600 seconds; active work excluded; old saved policies inherited | Overall one-hour runtime cap, an always-on daemon or coordination across unrelated users/hosts |
 
 ## Current fixes and evidence
+
+0.8.2 recovers from HTTP403 during Web preparation/token refresh by trying a
+compatible client when no server cooldown is present. Loopback regressions cover
+successful prefix-verified resume, retained media on track/prefix mismatch, and
+no switching on HTTP429 or Retry-After. This fixes a reproduced local failure;
+it is not a new live-download success measurement. The public BotGuard API key
+has [first-party provenance](../vendor/botguard/README.md#public-client-api-key).
 
 0.8.1 corrects the inherited media-retention wording for metadata-only request
 failures, preserving transport/TLS error codes and retry guidance. A repeated
