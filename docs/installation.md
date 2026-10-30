@@ -109,6 +109,11 @@ installation, model replacement or old transcript rewrite is required.
 
 ### Models
 
+The GigaSTT engine also supports Russian, English, Kazakh, Kyrgyz and Uzbek through
+`ml_ctc` / `ml_ctc_large`; see its [model selection](https://github.com/ekhodzitsky/gigastt#choose-a-model).
+This adapter currently fixes the model and has no `--model-variant` option.
+Replacing the model directory alone does not enable multilingual recognition.
+
 This version selects **GigaAM v3 `e2e_rnnt` INT8** explicitly. It supplies punctuation
 and casing without a separate punctuation model. Four nonempty readable files must
 exist in `~/.gigastt/models` or your `--model-dir`:

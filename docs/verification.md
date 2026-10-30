@@ -10,7 +10,31 @@ license is now present at the root, CI is dispatch-only and hosted Actions are
 disabled. Crates.io publication stays disabled. Sections below preserve dated
 reviews, including superseded privacy/license findings; see current readiness.
 
-## README v1 acceptance — 0.8.1, 2026-10-30
+## Current README presentation — 0.8.2, 2026-10-30
+
+The root now follows ryf's concise input/output introduction and example-first
+structure. The first screen identifies YouTube transcripts for AI agents, local
+recognition, and the current adapter's model restriction. Summaries and reasoning
+are explicitly downstream agent work. English prose and the four existing badges
+are retained. Examples use the current transcribe/export/status/resume/chapters
+commands; the displayed chapter entry is an exact excerpt of the retained live
+result, not a fabricated transcript.
+
+GigaSTT supports multilingual models (Russian, English, Kazakh, Kyrgyz, Uzbek).
+The adapter hardcodes e2e_rnnt and language ru; the root and installation guide
+now identify this as an integration limitation. Upstream model documentation
+and the three comparison source READMEs were rechecked on 2026-10-30.
+
+Purpose, hook, alternatives and constraints pass editorial/source review.
+The chapter quick start remains the complete model-free first-run path; the main
+transcription example links to the full model/runtime provisioning sequence.
+Commands were checked against current CLI help and source, not rerun as a fresh
+install or live ASR session. Markdown was rendered for structural review and
+links checked locally; no reader study establishes a measured five-second
+comprehension result. Historical recovery results and missing coverage/current
+benchmarks remain unchanged; benchmark and badge acceptance is still partial.
+
+## Historical README v1 acceptance — 0.8.1, 2026-10-30
 
 The current root adapts agent-dev-kb docs/readme-v1/{README,template}.md at
 revision d92256be2cb2c92c686bd5c1de2341a61ba1a0cb. The opening describes only

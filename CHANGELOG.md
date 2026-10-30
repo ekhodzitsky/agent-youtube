@@ -8,6 +8,13 @@ JSON or canonical transcripts. Source is public; crates.io publication stays dis
 
 ## Unreleased
 
+- Rewrite the root README around the video-to-transcript agent workflow, with
+  transcription, resume and chapter examples before implementation details.
+  Preserve the existing badges and distinguish agent-generated summaries from
+  the CLI's transcript output. Clarify that GigaSTT supports multilingual models
+  while this adapter currently fixes the Russian e2e_rnnt model.
+  Documentation only; runtime behavior is unchanged.
+
 ## 0.8.2 — 2026-10-30
 
 - Recover from Web preparation/token-refresh HTTP403 through an available
