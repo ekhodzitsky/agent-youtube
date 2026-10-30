@@ -68,7 +68,8 @@ No speaker turns or word alignments are inferred. The projection streams one ASR
 chunk at a time, and still grows with recording length; use metadata mode for a
 bounded response and read artifact paths as needed.
 
-`recognizer_language` is configuration; `source_language: null` means undetected.
+`recognizer_language` is configuration (`ru` for e2e_rnnt, `mul` for either
+multilingual CTC model since 0.9.0); `source_language: null` means undetected.
 `accuracy: "unverified"`, `timing: "asr_estimates"` and
 `content_trust: "untrusted_source"` travel with the normal response. New runs retain
 `coverage.json`, bound to the exact canonical transcript SHA-256, with contiguous

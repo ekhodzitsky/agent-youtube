@@ -69,7 +69,7 @@ Arguments never pass through a shell.
 
 Accepted URL forms are HTTPS `youtube.com/watch?v=ID`, `/shorts/ID`, `/live/ID`
 and `youtu.be/ID`. Playlist/search/arbitrary-host inputs are rejected. Tracking and
-playlist parameters are discarded. `recognizer_language` is configured as `ru`; `source_language` is null, meaning
+playlist parameters are discarded. `recognizer_language` is `ru` for e2e_rnnt and `mul` for ml_ctc/ml_ctc_large; `source_language` is null, meaning
 undetected; this version does not detect whether the spoken language is Russian.
 
 

@@ -111,10 +111,11 @@ installation, model replacement or old transcript rewrite is required.
 
 The GigaSTT engine also supports Russian, English, Kazakh, Kyrgyz and Uzbek through
 `ml_ctc` / `ml_ctc_large`; see its [model selection](https://github.com/ekhodzitsky/gigastt#choose-a-model).
-This adapter currently fixes the model and has no `--model-variant` option.
-Replacing the model directory alone does not enable multilingual recognition.
+Select the model explicitly with `--model-variant`; setup stores the selection
+and transcribe/doctor inherit it from a prepared runtime. Resume uses the saved
+job selection. Use a new runtime/work directory to change model identity.
 
-This version selects **GigaAM v3 `e2e_rnnt` INT8** explicitly. It supplies punctuation
+The default is **GigaAM v3 `e2e_rnnt` INT8**. It supplies punctuation
 and casing without a separate punctuation model. Four nonempty readable files must
 exist in `~/.gigastt/models` or your `--model-dir`:
 
@@ -158,3 +159,45 @@ directory for a different set; never overwrite models used by unfinished jobs.
 The public release encoder SHA-256 is `16805903b102d8b27bb0253de044f25e33a8a5bf07fce0c4da4ac1a5a7544091`.
 Older measurements used encoder `cf51b300...`; those are distinct model identities.
 [Current first-run qualification and support](readiness.md) separates their evidence.
+
+## Multilingual models
+
+GigaSTT 2.22.0 supports these INT8 bundles. Download models into an owned directory
+using an explicitly installed GigaSTT 2.22.0 executable (see the manual installation
+above); its model download is separate from agent-youtube runtime setup.
+
+| Variant | Required files | Model bytes |
+| --- | --- | ---: |
+| ml_ctc | multilingual_ctc.int8.onnx, multilingual_vocab.txt | 224,762,597 |
+| ml_ctc_large | multilingual_large_ctc.int8.onnx, multilingual_vocab.txt | 591,645,175 |
+
+Both support Russian, English, Kazakh, Kyrgyz and Uzbek; output has no built-in
+punctuation/casing/ITN. Accuracy depends on the language and recording. Models are
+provisioned from the upstream Hugging Face repositories and verified against the
+[pinned GigaSTT model hashes](https://github.com/ekhodzitsky/gigastt/blob/v2.22.0/crates/gigastt-core/src/model/variant.rs).
+Disk size is not a RAM requirement. Allow runtime, inference and job storage.
+
+```sh
+./tools-local/gigastt-2.22.0/gigastt download --model-variant ml_ctc \
+  --model-dir models/ml_ctc --skip-diarization
+python3 tools/check_models.py --model-dir models/ml_ctc --model-variant ml_ctc
+agent-youtube setup --runtime-dir tools-local/ml_ctc-runtime \
+  --model-dir "$PWD/models/ml_ctc" --model-variant ml_ctc
+agent-youtube doctor --runtime-dir tools-local/ml_ctc-runtime
+agent-youtube transcribe 'https://www.youtube.com/watch?v=jNQXAC9IVRw' \
+  --runtime-dir tools-local/ml_ctc-runtime --work-dir runs/english
+```
+
+Substitute ml_ctc_large in the three model selections/directories to use the large
+model. With explicit `--gigastt`, pass `--model-dir` and `--model-variant` on the
+transcribe/doctor command. A variant that conflicts with a prepared runtime is
+rejected; runtime manifests remain immutable. The executable pins remain 2.22.0.
+
+JSON uses recognizer_language=mul for either multilingual model and ru for the
+Russian model. This is configured model scope, not detected speech language;
+source_language remains null. Old jobs and runtime manifests without a variant
+retain e2e_rnnt. Existing raw ASR JSON and transcripts are never rewritten.
+Rust Options literals now require model_variant (ModelVariant::default() preserves
+the original model). Job/checkpoint schema versions remain unchanged; the new
+selection field defaults when reading older state. Older binaries may reject new
+state, so keep the producing binary for unfinished jobs.

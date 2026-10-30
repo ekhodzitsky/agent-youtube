@@ -17,6 +17,15 @@ retrieval or competitor inference trial is claimed. The root comparison concerns
 obtaining recording text. The new local chapters command separately extracts
 author-description timestamps without ASR and is not caption retrieval.
 
+## Model selection update — 0.9.0
+
+The current adapter supports e2e_rnnt (Russian) and ml_ctc/ml_ctc_large (Russian,
+English, Kazakh, Kyrgyz, Uzbek), with no source-language identification. Required
+files are variant-specific, and resume binds the selected model. The table below
+retains its named 0.3.12 baseline; its Russian-only row does not describe 0.9.0.
+Whisper remains relevant for additional languages and model choices.
+[Current model provisioning](installation.md#multilingual-models).
+
 ## Why these alternatives
 
 An agent needs either existing text or new recognition from audio. The two
@@ -34,7 +43,7 @@ a composition, not a claim that yt-dlp itself transcribes audio.
 
 Choose captions when existing subtitles meet the task: they avoid local inference
 and model setup. Choose a Whisper workflow when language or model choice matters
-more than this project's integrated Russian job contract. Choose agent-youtube when
+beyond this project's selected GigaSTT models. Choose agent-youtube when
 durable recognition, exact retained outputs, and typed agent responses are central.
 No approach guarantees access to every YouTube URL.
 

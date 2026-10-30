@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only SHA-256 check for the documented GigaAM model release (not inference)."""
+"""Read-only SHA-256 check for the selected pinned GigaAM bundle (not inference)."""
 import argparse
 import hashlib
 import json
@@ -10,6 +10,19 @@ EXPECTED = {
     'v3_e2e_rnnt_decoder.onnx': '7b0a16d67fd2cb37061decc93c69e364a9ab27afee3c57495d55b1c974cf7231',
     'v3_e2e_rnnt_joint.onnx': '602ff7017a93311aad34df1437c8d7f49911353c13d6eae7a6ee7b041339465c',
     'v3_e2e_rnnt_vocab.txt': '39abae20e692998290c574e606f11a9edef2902a1995463fcff63d1490cf22b7',
+}
+
+
+VARIANTS = {
+    'e2e_rnnt': EXPECTED,
+    'ml_ctc': {
+        'multilingual_ctc.int8.onnx': 'e08e27ae5669b39f0c378fae101bbbb9a80505f74f9b66719c309bf5b894a480',
+        'multilingual_vocab.txt': '4d130287892e1099fedfb3f93c4b4cf8a263151158801680b28977d1be4133f4',
+    },
+    'ml_ctc_large': {
+        'multilingual_large_ctc.int8.onnx': 'b2ad9c38fc04197ba758105d33f7404fd13d977958722e0f49e3f3e22521f1c6',
+        'multilingual_vocab.txt': '4d130287892e1099fedfb3f93c4b4cf8a263151158801680b28977d1be4133f4',
+    },
 }
 
 
@@ -30,13 +43,15 @@ def verify(directory, expected=EXPECTED):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--model-dir', type=Path, required=True)
+    parser.add_argument("--model-variant", choices=VARIANTS, default="e2e_rnnt")
     args = parser.parse_args()
     try:
-        hashes = verify(args.model_dir)
+        hashes = verify(args.model_dir, VARIANTS[args.model_variant])
     except (OSError, ValueError) as error:
         print(json.dumps({'ok': False, 'error': str(error)}))
         return 1
-    print(json.dumps({'ok': True, 'release': 'models-v3-2026-10-09',
+    print(json.dumps({'ok': True, 'release': 'models-v3-2026-10-09' if args.model_variant == 'e2e_rnnt' else None,
+                      'model_variant': args.model_variant,
                       'sha256': hashes, 'inference': 'not_checked'}))
     return 0
 

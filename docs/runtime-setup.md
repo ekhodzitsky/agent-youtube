@@ -44,12 +44,13 @@ Prepare a new root to select another model configuration.
 
 ## Models and readiness
 
-Setup requires the four readable nonempty e2e_rnnt files listed in
-[installation](installation.md). It records their actual SHA-256 fingerprints;
+Setup requires readable nonempty files for the selected --model-variant:
+the four e2e_rnnt files by default, or the encoder and vocabulary for ml_ctc /
+ml_ctc_large. See [installation](installation.md#multilingual-models).
+It records the model variant and actual SHA-256 fingerprints;
 it does not fetch models, change files or assume all identically named releases
-are equivalent. The qualified local encoder differs from the encoder in the
-GitHub model-release checksum list, so silently replacing it would change saved
-job identity. Subsequent managed selection verifies the recorded bytes.
+are equivalent. Historical qualification used different encoder bytes from the
+GitHub model release; replacing models changes saved job identity. Subsequent managed selection verifies the recorded bytes.
 
 Successful setup proves file integrity and preparation, not ONNX compatibility,
 model loading, speech accuracy or YouTube access. Those checks are explicitly

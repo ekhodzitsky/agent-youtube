@@ -62,6 +62,7 @@ fn trial(
             url: "https://youtu.be/a2hbJlPxj4M".into(),
             work_dir: root.into(),
             model_dir: model_dir.into(),
+            model_variant: Default::default(),
             gigastt: gigastt.into(),
             chunk_seconds: if mode == "full" { 600 } else { 10 },
             boundary_window_ms: if mode == "quiet" { 1000 } else { 0 },

@@ -2,7 +2,7 @@
 
 YouTube transcripts for AI agents.
 
-[![Source version: 0.8.2](docs/assets/version.svg)](Cargo.toml)
+[![Source version: 0.9.0](docs/assets/version.svg)](Cargo.toml)
 [![License: MIT](docs/assets/license.svg)](LICENSE)
 [![CI: disabled](docs/assets/ci.svg)](.github/workflows/check.yml)
 [![Minimum Rust for source builds: 1.94](docs/assets/msrv.svg)](docs/verification.md#badge-sources)
@@ -12,8 +12,8 @@ search or analyze. This CLI downloads the audio, transcribes it **locally with
 GigaSTT**, and returns JSON. Interrupted jobs can resume. Your agent handles
 summarization and analysis.
 
-The current integration selects GigaSTT's Russian `e2e_rnnt` model;
-[its multilingual models are not yet selectable here](#language-support).
+Choose Russian recognition or a multilingual model for English, Russian,
+Kazakh, Kyrgyz and Uzbek. [Models and setup](#language-support).
 
 ## Examples
 
@@ -86,16 +86,16 @@ Check for `ok: true` and `result.status: "available"`. No matching published
 entries produces `not_found`; access failures produce an error.
 
 For transcription, [set up GigaSTT 2.22.0 and the four model files](docs/installation.md#models)
-(**311.84 MiB**, plus runtime and job storage), then use the first example.
+(**311.84 MiB** for the default model, plus runtime and job storage), then use the first example.
 No paid transcription service is required.
 
 ## Compared with
 
 | Tool | Text comes from | Choose it for |
 |---|---|---|
-| **agent-youtube** | Audio transcribed locally with GigaSTT (`e2e_rnnt`) | JSON job control, checkpoints and saved transcript artifacts |
+| **agent-youtube** | Audio transcribed locally with GigaSTT | JSON job control, checkpoints and saved transcript artifacts |
 | **youtube-transcript-api** | Existing manual or automatic captions | Text retrieval without speech recognition |
-| **yt-dlp + Whisper** | Audio transcribed locally with multilingual ASR | Broader language and model choice |
+| **yt-dlp + Whisper** | Audio transcribed locally with multilingual ASR | Additional languages and model choices |
 
 Whisper also runs locally; yt-dlp already resumes downloads.
 [Comparison and sources](docs/comparison.md). No measured claim of superior
@@ -103,24 +103,29 @@ recognition accuracy or YouTube access.
 
 ## Recovery evidence
 
-Linux, development build **0.3.10**, GigaSTT **2.21.0**, GigaAM v3 INT8,
-2026-10-28. Success means validated job completion:
+Linux, **0.9.0 development build**, GigaSTT **2.22.0**, 2026-10-30.
+Complete cached recordings served locally; real recognition, cancellation after
+the first ASR result, then resume in a new process:
 
-| Recording / scenario | Decoded audio | Completed jobs |
+| Recording / model | Decoded audio | Completed jobs |
 |---|---:|---:|
-| Uninterrupted | 52.965 s | 1 / 1 |
-| SIGKILL, then resume; 30 s chunks | 1,053.838 s | 1 / 1 |
+| English / ml_ctc | 19.064 s | 1 / 1 |
+| Russian / ml_ctc_large | 52.988 s | 1 / 1 |
 
-The interrupted job recovered its saved prefix. These are historical checks,
-not a representative success rate or current-release accuracy benchmark.
-[Results and reproduction](docs/benchmarks.md#job-recovery-qualification).
+Both preserved the first exact ASR result and published validated transcripts.
+These checks measure recovery, not word accuracy or fresh YouTube access;
+both separate live acquisition attempts failed with a transport error.
+[Method and reproduction](docs/verification.md#multilingual-integration-qualification--090-2026-10-30).
+[Earlier recovery results](docs/benchmarks.md#job-recovery-qualification).
 
 ## Language support
 
 [GigaSTT](https://github.com/ekhodzitsky/gigastt#choose-a-model) supports Russian,
 English, Kazakh, Kyrgyz and Uzbek through `ml_ctc` / `ml_ctc_large`.
-**agent-youtube currently fixes `e2e_rnnt` (Russian).** Model selection is not exposed
-by this CLI; this is an integration limitation, not a limitation of GigaSTT.
+Select `--model-variant ml_ctc` or `--model-variant ml_ctc_large` during
+[setup or transcription](docs/installation.md#multilingual-models).
+The default `e2e_rnnt` recognizes Russian with punctuation and casing; CTC models
+return bare multilingual text. The source language is not detected.
 Author-description chapters work across languages.
 
 ## Scope

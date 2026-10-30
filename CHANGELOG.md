@@ -15,6 +15,21 @@ JSON or canonical transcripts. Source is public; crates.io publication stays dis
   while this adapter currently fixes the Russian e2e_rnnt model.
   Documentation only; runtime behavior is unchanged.
 
+## 0.9.0 — 2026-10-30
+
+- Add --model-variant e2e_rnnt|ml_ctc|ml_ctc_large to setup, doctor and transcribe.
+  Prepared runtimes and saved jobs retain the selected model; file checks and
+  fingerprints use the correct encoder/vocabulary or RNN-T bundle.
+- Refuse changed models before checkpoint recovery or cleanup, including completed
+  jobs. Missing selection in old jobs/runtime state defaults to e2e_rnnt. Exact
+  ASR JSON and saved transcripts remain unchanged.
+- Report recognizer_language=mul for multilingual models, ru for e2e_rnnt;
+  source_language remains null. CTC output has no added punctuation/ITN.
+- Rust embedding change: Options literals require model_variant. Use
+  ModelVariant::default() for the existing Russian model. Older binaries may
+  reject the new state fields; retain producing binaries for unfinished jobs.
+  No new runtime dependencies. Model provisioning/checksum helper covers CTC.
+
 ## 0.8.2 — 2026-10-30
 
 - Recover from Web preparation/token-refresh HTTP403 through an available

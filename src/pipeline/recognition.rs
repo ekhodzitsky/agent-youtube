@@ -198,7 +198,7 @@ impl Pipeline {
             "json",
             "--offline",
             "--model-variant",
-            "e2e_rnnt",
+            self.options.model_variant.as_str(),
             "--punctuation",
             "off",
             "--itn",

@@ -10,6 +10,7 @@ fn setup_result_serializer_matches_the_machine_contract() {
     let selected = Selection {
         gigastt: root.join(BINARY),
         model_dir: root.join("models"),
+        model_variant: Default::default(),
     };
     let documents = [false, true].map(|reused| {
         serde_json::json!({
@@ -49,14 +50,21 @@ fn setup_rejects_foreign_directories_and_bad_archives_without_manifest() {
     let root = temp();
     let model_dir = root.join("models");
     fs::create_dir(&model_dir).unwrap();
-    for name in pipeline::MODEL_FILES {
+    for name in crate::pipeline::MODEL_FILES {
         fs::write(model_dir.join(name), b"fixture").unwrap();
     }
     let foreign = root.join("foreign");
     fs::create_dir(&foreign).unwrap();
     fs::write(foreign.join("keep"), b"unchanged").unwrap();
     let cancelled = AtomicBool::new(false);
-    let error = setup(&foreign, Some(model_dir.clone()), None, &cancelled).unwrap_err();
+    let error = setup(
+        &foreign,
+        Some(model_dir.clone()),
+        None,
+        Default::default(),
+        &cancelled,
+    )
+    .unwrap_err();
     assert_eq!(
         error.downcast_ref::<protocol::Failure>().unwrap().code,
         "setup_directory_not_owned"
@@ -65,7 +73,14 @@ fn setup_rejects_foreign_directories_and_bad_archives_without_manifest() {
     let bad = root.join("bad.tar.gz");
     fs::write(&bad, b"not a release").unwrap();
     let target = root.join("runtime");
-    let error = setup(&target, Some(model_dir), Some(bad), &cancelled).unwrap_err();
+    let error = setup(
+        &target,
+        Some(model_dir),
+        Some(bad),
+        Default::default(),
+        &cancelled,
+    )
+    .unwrap_err();
     assert_eq!(
         error.downcast_ref::<protocol::Failure>().unwrap().code,
         "setup_archive_invalid"
@@ -88,5 +103,23 @@ fn linked_runtime_and_manifest_are_not_followed() {
     symlink(root.join("secret"), actual.join("runtime.json")).unwrap();
     assert!(select(&actual, true).is_err());
     assert_eq!(fs::read(root.join("secret")).unwrap(), b"private fixture");
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn multilingual_preflight_hashes_only_the_selected_bundle_and_detects_changes() {
+    let root = temp();
+    for model in [ModelVariant::MlCtc, ModelVariant::MlCtcLarge] {
+        for name in model.files() {
+            fs::write(root.join(name), b"model").unwrap();
+        }
+        let hashes = models(&root, model).unwrap();
+        assert_eq!(hashes.len(), 2);
+        assert!(hashes.contains_key(model.files()[0]));
+        fs::write(root.join(model.files()[0]), b"changed").unwrap();
+        assert_ne!(models(&root, model).unwrap(), hashes);
+        fs::remove_file(root.join(model.files()[0])).unwrap();
+        assert!(models(&root, model).is_err());
+    }
     fs::remove_dir_all(root).unwrap();
 }

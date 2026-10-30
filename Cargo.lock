@@ -44,6 +44,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "agent-youtube"
+version = "0.9.0"
+dependencies = [
+ "bandlimit",
+ "base64",
+ "boa_ast",
+ "boa_engine",
+ "boa_interner",
+ "boa_parser",
+ "boa_runtime",
+ "crypto-bigint",
+ "ctrlc",
+ "flate2",
+ "getrandom 0.4.3",
+ "httpdate",
+ "libc",
+ "p256",
+ "p384",
+ "pkcs1",
+ "rustls",
+ "rustls-rustcrypto",
+ "ryf",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "syom",
+ "tar",
+ "ureq",
+ "x25519-dalek",
+ "zeroize",
+]
+
+[[package]]
 name = "aligned-vec"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2441,39 +2474,6 @@ dependencies = [
  "quote",
  "syn 3.0.9",
  "synstructure",
-]
-
-[[package]]
-name = "agent-youtube"
-version = "0.8.2"
-dependencies = [
- "bandlimit",
- "base64",
- "boa_ast",
- "boa_engine",
- "boa_interner",
- "boa_parser",
- "boa_runtime",
- "crypto-bigint",
- "ctrlc",
- "flate2",
- "getrandom 0.4.3",
- "httpdate",
- "libc",
- "p256",
- "p384",
- "pkcs1",
- "rustls",
- "rustls-rustcrypto",
- "ryf",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "syom",
- "tar",
- "ureq",
- "x25519-dalek",
- "zeroize",
 ]
 
 [[package]]

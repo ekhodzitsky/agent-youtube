@@ -1,3 +1,5 @@
+mod model;
+pub use model::ModelVariant;
 mod publication;
 mod recognition;
 use crate::{
@@ -35,6 +37,8 @@ pub struct Options {
     pub url: String,
     pub work_dir: PathBuf,
     pub model_dir: PathBuf,
+    #[serde(default)]
+    pub model_variant: ModelVariant,
     pub gigastt: PathBuf,
     pub chunk_seconds: u32,
     pub boundary_window_ms: u32,
@@ -303,19 +307,25 @@ impl Pipeline {
         self.model_paths()?;
         crate::protocol::progress(
             "preflight",
-            "models: e2e_rnnt encoder, decoder, joint and vocabulary available",
+            format!(
+                "models: {} required files available",
+                self.options.model_variant.as_str()
+            ),
             serde_json::json!({}),
         );
         Ok(gigastt_version)
     }
     fn model_paths(&self) -> Result<Vec<(&'static str, PathBuf)>> {
-        MODEL_FILES
-            .into_iter()
+        self.options
+            .model_variant
+            .files()
+            .iter()
+            .copied()
             .map(|name| {
                 let path = self.options.model_dir.join(name);
                 if !path.is_file() || fs::metadata(&path)?.len() == 0 {
                     return Err(format!(
-                        "missing e2e_rnnt model {}; see README model installation",
+                        "missing selected model file {}; see README model installation",
                         path.display()
                     )
                     .into());
@@ -356,6 +366,7 @@ impl Pipeline {
             url,
             model_dir: fs::canonicalize(&self.options.model_dir)?,
             model_fingerprint,
+            model_variant: self.options.model_variant,
             gigastt_version: version,
             gigastt_binary: storage::digest(&resolve_executable(&self.options.gigastt)?)?,
             chunk_seconds: self.options.chunk_seconds,
@@ -750,6 +761,7 @@ impl Pipeline {
         let mut run_lock = storage::Lock::acquire(&self.options.work_dir)?;
         let id = video_id(&self.options.url)?;
         let url = format!("https://www.youtube.com/watch?v={id}");
+        Checkpoint::validate_model(&self.options.work_dir, self.options.model_variant)?;
         let finished = Checkpoint::finished(&self.options.work_dir, &url)?;
         if finished.is_none() {
             Checkpoint::validate_backend(&self.options.work_dir, &self.media_backend())?;
@@ -845,13 +857,13 @@ impl Pipeline {
                     .or_else(|| metadata["title"].as_str())
                     .map(str::to_owned),
             },
-            language: "ru".into(),
+            language: self.options.model_variant.recognizer_language().into(),
             duration: last_start as f64 / rate as f64
                 + (audio.frames - last_start) as f64 / rate as f64,
             engine: Engine {
                 name: "gigastt".into(),
                 version,
-                model_variant: "e2e_rnnt".into(),
+                model_variant: self.options.model_variant.as_str().into(),
             },
             segments: Vec::new(),
         };

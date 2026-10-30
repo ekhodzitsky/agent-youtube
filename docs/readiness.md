@@ -1,4 +1,4 @@
-# Current readiness and support — 0.8.2
+# Current readiness and support — 0.9.0
 
 This is the current decision entry point. Dated qualification reports are evidence
 for their exact source, binary, model, network and scenario; they are not silently
@@ -19,13 +19,23 @@ upgraded to new-release measurements. See the [changelog](../CHANGELOG.md).
 | Transcription input | One completed accessible YouTube recording, audio-only AAC/MP4, unique original track when metadata exists | Playlists, live recording, captions, WebM/Opus-only, DRM, account/age/region authorization |
 | Metadata | Author-description timestamp/title lines from one accessible completed recording; no media selection or ASR | Automatic chapters, linked/prose timestamps and title-before-time forms |
 | Output | One result JSON; stderr JSONL; canonical transcript and exact raw ASR; compact/metadata/full modes and offline exports | Word accuracy, source-language detection, diarization or complete recognition of every utterance |
-| Runtime | Local pinned GigaSTT 2.22.0, GigaAM v3 e2e_rnnt INT8; syom/bandlimit/ryf media path | Entire ASR stack being pure Rust: ONNX Runtime has native components |
+| Runtime | Local pinned GigaSTT 2.22.0, GigaAM v3 e2e_rnnt or multilingual CTC INT8; syom/bandlimit/ryf media path | Entire ASR stack being pure Rust: ONNX Runtime has native components |
 | Platform | Linux x86_64 GNU on the tested host/network; local filesystem with locks/hard links/fsync | macOS Web/Windows/other architectures, all Linux distributions/filesystems/proxies/CDNs |
 | Duration | No fixed recording-duration/file-size cap; disk-streamed media and bounded chunks | Infinite resources: index/checkpoint metadata, retained disk, integer/filesystem and per-JSON-unit limits remain |
 | Recovery | Typed temporary acquisition failures, source/token refresh, compatible-prefix proof, durable retry state and explicit process resume | Resurrecting deleted/inaccessible bytes, bypassing authorization or restarting a dead process without an agent |
 | Scheduling | New CLI job waits budgeted at 3600 seconds; active work excluded; old saved policies inherited | Overall one-hour runtime cap, an always-on daemon or coordination across unrelated users/hosts |
 
 ## Current fixes and evidence
+
+0.9.0 adds explicit e2e_rnnt, ml_ctc and ml_ctc_large selection, variant-specific
+model fingerprints and safe refusal on model changes. CTC models support Russian,
+English, Kazakh, Kyrgyz and Uzbek. JSON describes configured model scope; language
+detection is not performed. Real GigaSTT runs on complete cached English
+(19.063625 s, ml_ctc) and Russian (52.9879375 s, ml_ctc_large) recordings passed
+cancellation/new-process resume with exact first-result preservation and validated
+publication. Two separate fresh YouTube attempts failed with http_transport.
+[Qualification scope](verification.md#multilingual-integration-qualification--090-2026-10-30).
+[Provisioning and compatibility](installation.md#multilingual-models).
 
 0.8.2 recovers from HTTP403 during Web preparation/token refresh by trying a
 compatible client when no server cooldown is present. Loopback regressions cover

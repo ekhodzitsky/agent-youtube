@@ -1380,6 +1380,14 @@
                 "youtube_access"
               ],
               "additionalProperties": false
+            },
+            "model_variant": {
+              "type": "string",
+              "enum": [
+                "e2e_rnnt",
+                "ml_ctc",
+                "ml_ctc_large"
+              ]
             }
           },
           "required": [

@@ -17,7 +17,7 @@ use std::{
     },
 };
 
-const HELP: &str = "agent-youtube — JSON-only local Russian YouTube transcription
+const HELP: &str = "agent-youtube — JSON-only local YouTube transcription
 
 Usage:
   agent-youtube chapters URL
@@ -32,7 +32,8 @@ Usage:
 Options:
   --retry-window-seconds N    automatic recovery wait budget (default 3600; 0 disables)
   --response compact|metadata|full  transcribe response (default compact, schema2; full preserves schema1)
-  --model-dir DIR             e2e_rnnt INT8 models (default ~/.gigastt/models)
+  --model-variant NAME        e2e_rnnt (default), ml_ctc or ml_ctc_large
+  --model-dir DIR             selected INT8 model files (default ~/.gigastt/models)
   --runtime-dir DIR           prepared runtime (default tools-local/runtime if present)
   --gigastt PATH              explicit recognizer; bypasses managed discovery; gigastt with offline JSON batch support (2.22.0 verified)
   --chunk-seconds N           checkpoint interval, 10..600 (default 300)
@@ -91,6 +92,7 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
             if ![
                 "--work-dir",
                 "--model-dir",
+                "--model-variant",
                 "--runtime-dir",
                 "--archive",
                 "--gigastt",
@@ -137,8 +139,9 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
             let root = take_path(&mut flags, "--runtime-dir", crate::runtime::DEFAULT_ROOT);
             let models = flags.remove("--model-dir").map(PathBuf::from);
             let archive = flags.remove("--archive").map(PathBuf::from);
+            let variant = take_model_variant(&mut flags)?.unwrap_or_default();
             reject_remaining(&flags)?;
-            let result = crate::runtime::setup(&root, models, archive, &cancelled)
+            let result = crate::runtime::setup(&root, models, archive, variant, &cancelled)
                 .map_err(|e| context(e, "setup_failed"))?;
             protocol::success(command, result)?;
         }
@@ -244,6 +247,15 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
             } else {
                 None
             };
+            let requested_variant = take_model_variant(&mut flags)?;
+            if let (Some(requested), Some(selected)) = (requested_variant, &managed)
+                && requested != selected.model_variant
+            {
+                return Err("prepared runtime selects a different model variant; use another --runtime-dir or explicit --gigastt".into());
+            }
+            let model_variant = requested_variant
+                .or_else(|| managed.as_ref().map(|s| s.model_variant))
+                .unwrap_or_default();
             let gigastt = explicit_gigastt
                 .or_else(|| managed.as_ref().map(|s| s.gigastt.clone()))
                 .unwrap_or_else(|| PathBuf::from("gigastt"));
@@ -273,6 +285,7 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
                 url,
                 work_dir,
                 model_dir,
+                model_variant,
                 chunk_seconds,
                 asr_timeout_seconds: flags
                     .remove("--asr-timeout-seconds")
@@ -303,7 +316,7 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
                     .map_err(|e| context(e, "dependency_failed"))?;
                 protocol::success(
                     "doctor",
-                    serde_json::json!({"gigastt_version":version,"model_variant":"e2e_rnnt","verified":false,"preflight_passed":true,
+                    serde_json::json!({"gigastt_version":version,"model_variant":model_variant,"verified":false,"preflight_passed":true,
                         "checks":{"executable_runs":true,"required_flags_present":true,"model_files_readable":true,
                             "model_load":"not_checked","inference":"not_checked","youtube_access":"not_checked"}}),
                 )?;
@@ -425,4 +438,17 @@ fn transcribe(
     }
     writeln!(out, "}}}}")?;
     Ok(())
+}
+
+fn take_model_variant(
+    flags: &mut BTreeMap<String, OsString>,
+) -> Result<Option<crate::pipeline::ModelVariant>> {
+    flags
+        .remove("--model-variant")
+        .map(|v| {
+            v.to_str()
+                .ok_or_else(|| "model variant must be UTF-8".into())
+                .and_then(str::parse)
+        })
+        .transpose()
 }

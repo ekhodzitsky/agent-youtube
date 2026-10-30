@@ -1,5 +1,5 @@
 //! Explicit, versioned local recognizer preparation. Discovery never installs.
-use crate::{Result, pipeline, protocol, storage};
+use crate::{Result, pipeline::ModelVariant, protocol, storage};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -24,12 +24,15 @@ struct Manifest {
     platform: String,
     executable_sha256: String,
     model_dir: PathBuf,
+    #[serde(default)]
+    model_variant: ModelVariant,
     model_fingerprint: BTreeMap<String, String>,
 }
 
 pub(crate) struct Selection {
     pub gigastt: PathBuf,
     pub model_dir: PathBuf,
+    pub model_variant: ModelVariant,
 }
 
 fn failure(code: &'static str, message: &'static str) -> Box<dyn std::error::Error + Send + Sync> {
@@ -55,8 +58,9 @@ fn platform() -> Result<()> {
     Ok(())
 }
 
-fn models(dir: &Path) -> Result<BTreeMap<String, String>> {
-    pipeline::MODEL_FILES
+fn models(dir: &Path, variant: ModelVariant) -> Result<BTreeMap<String, String>> {
+    variant
+        .files()
         .iter()
         .map(|name| {
             let path = dir.join(name);
@@ -107,13 +111,14 @@ fn load(root: &Path) -> Result<Selection> {
         }
     }
     if storage::digest(&binary)? != BINARY_SHA
-        || models(&manifest.model_dir)? != manifest.model_fingerprint
+        || models(&manifest.model_dir, manifest.model_variant)? != manifest.model_fingerprint
     {
         return Err("managed executable or models changed".into());
     }
     Ok(Selection {
         gigastt: binary,
         model_dir: manifest.model_dir,
+        model_variant: manifest.model_variant,
     })
 }
 
@@ -137,6 +142,7 @@ pub(crate) fn setup(
     root: &Path,
     model_dir: Option<PathBuf>,
     archive: Option<PathBuf>,
+    model_variant: ModelVariant,
     cancelled: &AtomicBool,
 ) -> Result<serde_json::Value> {
     platform()?;
@@ -150,6 +156,12 @@ pub(crate) fn setup(
     // An existing manifest is immutable: repeated setup validates it without updates.
     if root.join("runtime.json").try_exists()? {
         let selected = select(root, true)?.ok_or("missing runtime")?;
+        if selected.model_variant != model_variant {
+            return Err(failure(
+                "setup_config_mismatch",
+                "existing runtime selects a different model variant; use a new runtime directory",
+            ));
+        }
         if let Some(path) = model_dir
             && fs::canonicalize(path)? != selected.model_dir
         {
@@ -165,10 +177,10 @@ pub(crate) fn setup(
         .ok_or_else(|| {
             failure(
                 "setup_models_invalid",
-                "specify --model-dir with the four e2e_rnnt INT8 model files",
+                "specify --model-dir with the selected INT8 model files",
             )
         })?;
-    let model_fingerprint = models(&model_dir).map_err(|_| failure("setup_models_invalid", "required e2e_rnnt model files must be readable nonempty regular files; provision models explicitly"))?;
+    let model_fingerprint = models(&model_dir, model_variant).map_err(|_| failure("setup_models_invalid", "required selected model files must be readable nonempty regular files; provision models explicitly"))?;
     let model_dir = fs::canonicalize(model_dir)?;
     if root.try_exists()? {
         let metadata = fs::symlink_metadata(root)?;
@@ -197,7 +209,7 @@ pub(crate) fn setup(
     // Recheck after locking: another setup may have finished in the meantime.
     if root.join("runtime.json").try_exists()? {
         let selected = select(root, true)?.ok_or("missing runtime")?;
-        if selected.model_dir != model_dir {
+        if selected.model_dir != model_dir || selected.model_variant != model_variant {
             return Err(failure(
                 "setup_config_mismatch",
                 "existing runtime selects different models; use a new runtime directory",
@@ -206,7 +218,7 @@ pub(crate) fn setup(
         return Ok(result(root, &selected, true));
     }
     install::install(root, archive.as_deref(), cancelled)?;
-    if models(&model_dir)? != model_fingerprint {
+    if models(&model_dir, model_variant)? != model_fingerprint {
         return Err(failure(
             "setup_models_invalid",
             "model content changed during installation; runtime manifest was not published",
@@ -219,6 +231,7 @@ pub(crate) fn setup(
         executable_sha256: BINARY_SHA.into(),
         model_dir,
         model_fingerprint,
+        model_variant,
     };
     if cancelled.load(Ordering::SeqCst) {
         return Err(protocol::failure(
@@ -237,7 +250,7 @@ pub(crate) fn setup(
 }
 
 fn result(root: &Path, selected: &Selection, reused: bool) -> serde_json::Value {
-    serde_json::json!({"runtime_dir":root,"gigastt":selected.gigastt,"gigastt_version":VERSION,"model_dir":selected.model_dir,
+    serde_json::json!({"runtime_dir":root,"gigastt":selected.gigastt,"gigastt_version":VERSION,"model_dir":selected.model_dir,"model_variant":selected.model_variant,
         "reused":reused,"checks":{"executable_sha256":true,"model_files_sha256":true,"model_load":"not_checked","inference":"not_checked","youtube_access":"not_checked"}})
 }
 

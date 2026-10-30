@@ -3573,3 +3573,237 @@ fn incompatible_backend_refuses_before_preflight_or_saved_job_mutation() {
     fs::write(path, original).unwrap();
     success(fixture.run());
 }
+
+#[test]
+fn multilingual_models_are_selected_recorded_and_bound_to_resume() {
+    for variant in ["ml_ctc", "ml_ctc_large"] {
+        let fixture = Fixture::new();
+        for name in [
+            "multilingual_ctc.int8.onnx",
+            "multilingual_large_ctc.int8.onnx",
+            "multilingual_vocab.txt",
+        ] {
+            fs::write(
+                fixture.root.join("models").join(name),
+                b"fixture multilingual model",
+            )
+            .unwrap();
+        }
+        let failed = fixture
+            .run_command(URL)
+            .args(["--model-variant", variant])
+            .env("FAKE_FAIL_CHUNK", "000001")
+            .output()
+            .unwrap();
+        assert!(!failed.status.success());
+        let raw = fs::read(fixture.path("raw/000000.json")).unwrap();
+        let state = fs::read(fixture.path("state.json")).unwrap();
+        let changed = fixture
+            .run_command(URL)
+            .args(["--model-variant", "e2e_rnnt"])
+            .output()
+            .unwrap();
+        assert!(!changed.status.success());
+        assert_eq!(fs::read(fixture.path("state.json")).unwrap(), state);
+        let output = fixture
+            .run_command(URL)
+            .args(["--model-variant", variant])
+            .output()
+            .unwrap();
+        assert_eq!(fs::read(fixture.path("raw/000000.json")).unwrap(), raw);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+        let value: serde_json::Value = String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .find_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+            .unwrap();
+        assert_eq!(
+            value["result"]["transcript"]["engine"]["model_variant"],
+            variant
+        );
+        assert_eq!(value["result"]["transcript"]["recognizer_language"], "mul");
+        assert!(value["result"]["transcript"]["source_language"].is_null());
+        let calls = fixture.calls("gigastt", "transcribe-batch");
+        assert!(calls.iter().any(|call| {
+            call["args"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|v| v == variant)
+        }));
+        let before = fs::read(fixture.path("transcript.json")).unwrap();
+        let output = fixture
+            .run_command(URL)
+            .args(["--model-variant", "e2e_rnnt"])
+            .output()
+            .unwrap();
+        assert!(!output.status.success());
+        assert_eq!(fs::read(fixture.path("transcript.json")).unwrap(), before);
+        let output = Command::new(env!("CARGO_BIN_EXE_agent-youtube"))
+            .args(["resume", "--work-dir"])
+            .arg(fixture.path(""))
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+        let value: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(
+            value["result"]["transcript"]["engine"]["model_variant"],
+            variant
+        );
+        contract::validate(&[value]);
+    }
+}
+
+#[test]
+#[ignore = "opt-in complete cached real recordings, real multilingual models and cancellation/resume"]
+fn research_multilingual_recordings_resume_with_real_gigastt() {
+    use std::time::{Duration, Instant};
+    let base = PathBuf::from(std::env::var_os("AGENT_YOUTUBE_MULTILINGUAL_PROBE").unwrap());
+    assert!(!base.exists());
+    assert!(
+        base.parent().unwrap().canonicalize().unwrap().starts_with(
+            std::env::current_dir()
+                .unwrap()
+                .join("runs")
+                .canonicalize()
+                .unwrap()
+        )
+    );
+    fs::create_dir(&base).unwrap();
+    let models = PathBuf::from(std::env::var_os("AGENT_YOUTUBE_MULTILINGUAL_MODELS").unwrap())
+        .canonicalize()
+        .unwrap();
+    let engine = PathBuf::from(std::env::var_os("AGENT_YOUTUBE_MULTILINGUAL_ENGINE").unwrap())
+        .canonicalize()
+        .unwrap();
+    let mut reports = Vec::new();
+    for (label, variant, id, duration, env) in [
+        (
+            "english",
+            "ml_ctc",
+            "jNQXAC9IVRw",
+            "19",
+            "AGENT_YOUTUBE_MULTILINGUAL_ENGLISH",
+        ),
+        (
+            "russian",
+            "ml_ctc_large",
+            "of4B3aw7MXo",
+            "53",
+            "AGENT_YOUTUBE_MULTILINGUAL_RUSSIAN",
+        ),
+    ] {
+        let source = PathBuf::from(std::env::var_os(env).unwrap());
+        let fixture = Fixture::at(base.join(label), true);
+        fs::copy(&source, fixture.root.join("input.m4a")).unwrap();
+        let arguments = vec![
+            "transcribe".to_owned(),
+            format!("https://www.youtube.com/watch?v={id}"),
+            "--work-dir".into(),
+            fixture.path("").to_str().unwrap().into(),
+            "--gigastt".into(),
+            engine.to_str().unwrap().into(),
+            "--model-dir".into(),
+            models.to_str().unwrap().into(),
+            "--model-variant".into(),
+            variant.into(),
+            "--chunk-seconds".into(),
+            "10".into(),
+            "--encoder-threads".into(),
+            "2".into(),
+            "--retry-window-seconds".into(),
+            "0".into(),
+            "--response".into(),
+            "metadata".into(),
+        ];
+        let mut child = Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "pipeline_cli_fixture", "--nocapture"])
+            .env("AGENT_YOUTUBE_TEST_ROOT", &fixture.root)
+            .env(
+                "AGENT_YOUTUBE_TEST_ARGS",
+                serde_json::to_string(&arguments).unwrap(),
+            )
+            .env("FAKE_VIDEO_ID", id)
+            .env("FAKE_DURATION", duration)
+            .stdout(fs::File::create(fixture.root.join("initial.stdout")).unwrap())
+            .stderr(fs::File::create(fixture.root.join("initial.stderr")).unwrap())
+            .spawn()
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(180);
+        let first = loop {
+            let candidate = fs::read_dir(fixture.path(""))
+                .unwrap_or_else(|_| fs::read_dir(&fixture.root).unwrap())
+                .filter_map(Result::ok)
+                .map(|e| e.path())
+                .filter(|p| {
+                    p.file_name()
+                        .unwrap()
+                        .to_string_lossy()
+                        .starts_with("batch.")
+                })
+                .map(|p| p.join("output/000000.json"))
+                .find(|p| p.exists());
+            if let Some(path) = candidate
+                && let Ok(bytes) = fs::read(&path)
+                && serde_json::from_slice::<serde_json::Value>(&bytes).is_ok()
+            {
+                break bytes;
+            }
+            assert!(
+                child.try_wait().unwrap().is_none(),
+                "initial run ended before interruption; inspect retained probe"
+            );
+            assert!(
+                Instant::now() < deadline,
+                "multilingual recognition timed out; inspect retained probe"
+            );
+            std::thread::sleep(Duration::from_millis(5));
+        };
+        // The owned fixture installs the same cancellation handler as the CLI.
+        assert_eq!(unsafe { libc::kill(child.id() as i32, libc::SIGINT) }, 0);
+        let status = child.wait().unwrap();
+        assert!(!status.success());
+        let output = Command::new(env!("CARGO_BIN_EXE_agent-youtube"))
+            .args(["resume", "--work-dir"])
+            .arg(fixture.path(""))
+            .args(["--response", "metadata"])
+            .output()
+            .unwrap();
+        fs::write(fixture.root.join("resume.stdout"), &output.stdout).unwrap();
+        fs::write(fixture.root.join("resume.stderr"), &output.stderr).unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+        assert_eq!(fs::read(fixture.path("raw/000000.json")).unwrap(), first);
+        let transcript: agent_youtube::transcript::Transcript =
+            serde_json::from_slice(&fs::read(fixture.path("transcript.json")).unwrap()).unwrap();
+        transcript.validate().unwrap();
+        assert_eq!(transcript.engine.model_variant, variant);
+        assert_eq!(transcript.language, "mul");
+        assert!(
+            transcript
+                .segments
+                .iter()
+                .any(|s| !s.text.trim().is_empty())
+        );
+        assert!(!fixture.path("media/source.audio").exists());
+        reports.push(serde_json::json!({"label":label,"model_variant":variant,"video_id":id,"duration_seconds":transcript.duration,
+            "input_sha256":agent_youtube::storage::digest(&source).unwrap(),"complete_recording":true,
+            "controlled_loopback_acquisition":true,"fresh_youtube_download":false,"real_gigastt":true,
+            "interrupted":true,"resumed":true,"first_raw_preserved":true,"transcript_validated":true,"cleanup_complete":true}));
+        fs::write(
+            base.join("report.json"),
+            serde_json::to_vec_pretty(&reports).unwrap(),
+        )
+        .unwrap();
+    }
+}

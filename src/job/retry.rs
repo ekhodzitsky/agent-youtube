@@ -392,6 +392,7 @@ mod tests {
             url: "https://youtu.be/a2hbJlPxj4M".into(),
             work_dir: root.clone(),
             model_dir: root.join("models"),
+            model_variant: Default::default(),
             gigastt: "gigastt".into(),
             chunk_seconds: 300,
             boundary_window_ms: 0,

@@ -10,7 +10,42 @@ license is now present at the root, CI is dispatch-only and hosted Actions are
 disabled. Crates.io publication stays disabled. Sections below preserve dated
 reviews, including superseded privacy/license findings; see current readiness.
 
-## Current README presentation — 0.8.2, 2026-10-30
+## Multilingual integration qualification — 0.9.0, 2026-10-30
+
+GigaSTT stays pinned to 2.22.0. Setup, doctor and transcribe now select e2e_rnnt,
+ml_ctc or ml_ctc_large. Runtime manifests and checkpoints bind the model; old
+missing fields default to e2e_rnnt. A changed model is rejected before recovery,
+including completed jobs. Prepared-runtime selection is inherited when omitted;
+an explicit conflicting variant is rejected. A Rust Options literal must add
+model_variant, which is why the source version increments to 0.9.0.
+
+The model provisioning helper checks the multilingual file hashes from the pinned
+upstream source. It does not download models. JSON reports model scope as mul or
+ru and source_language as null, without claiming language detection.
+
+| Complete recording | Selected model | Decoded audio | Interruption / new-process resume |
+| --- | --- | ---: | --- |
+| jNQXAC9IVRw, English | ml_ctc | 19.063625 s | Validated; first raw ASR result preserved |
+| of4B3aw7MXo, Russian | ml_ctc_large | 52.9879375 s | Validated; first raw ASR result preserved |
+
+These are complete previously retained YouTube recordings served by the loopback
+fixture, with the real pinned GigaSTT executable and model files. Cancellation
+was requested after the first valid batch result; the production CLI resumed in
+a new process, preserved that exact result, published a validated transcript and
+cleaned owned media. They establish integration and recovery for those recordings,
+not recognition accuracy or a fresh YouTube availability rate. Both separate live
+acquisition attempts on the current network failed with retryable http_transport
+after their internal retries; their job data remains private for resume.
+
+Reproduction: opt-in research_multilingual_recordings_resume_with_real_gigastt
+in tests/pipeline.rs, with AGENT_YOUTUBE_MULTILINGUAL_PROBE pointing to a new owned
+runs subdirectory, AGENT_YOUTUBE_MULTILINGUAL_MODELS/ENGINE selecting the models
+and pinned executable, and AGENT_YOUTUBE_MULTILINGUAL_ENGLISH/RUSSIAN selecting
+complete recordings for the two video IDs above. Use cargo test --locked --test
+pipeline research_multilingual_recordings_resume_with_real_gigastt -- --exact
+--ignored --nocapture. No raw recording or transcript belongs in Git.
+
+## Historical README presentation — 0.8.2, 2026-10-30
 
 The root now follows ryf's concise input/output introduction and example-first
 structure. The first screen identifies YouTube transcripts for AI agents, local
@@ -71,7 +106,7 @@ or a hosted test run. SVG labels make no third-party requests.
 
 | Badge | Source and meaning |
 | --- | --- |
-| Source 0.8.2 | Cargo.toml package version; crates.io publication is disabled |
+| Source 0.9.0 | Cargo.toml package version; crates.io publication is disabled |
 | License MIT | Root LICENSE; dependencies and model terms remain separate |
 | CI disabled | GitHub Actions disabled by owner instruction; workflow remains dispatch-only |
 | Minimum Rust 1.94 for source builds | Manifest rust-version; prior local MSRV qualification, not a passing hosted 0.8.0 claim |

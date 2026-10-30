@@ -14,6 +14,7 @@ fn fixture(frames: u64) -> (PathBuf, Pipeline, Checkpoint, audio::Wav) {
             url: "https://youtu.be/a2hbJlPxj4M".into(),
             work_dir: root.clone(),
             model_dir: root.join("models"),
+            model_variant: Default::default(),
             gigastt: "/bin/false".into(),
             chunk_seconds: 10,
             boundary_window_ms: 0,
@@ -30,6 +31,7 @@ fn fixture(frames: u64) -> (PathBuf, Pipeline, Checkpoint, audio::Wav) {
         Config {
             url: pipeline.options.url.clone(),
             model_dir: root.join("models"),
+            model_variant: Default::default(),
             model_fingerprint: BTreeMap::new(),
             gigastt_version: "fixture".into(),
             gigastt_binary: "fixture".into(),
@@ -377,4 +379,27 @@ fn url_validation_normalizes_only_video_urls() {
     ] {
         assert!(video_id(url).is_err(), "{url}");
     }
+}
+
+#[cfg(unix)]
+#[test]
+fn legacy_invocation_and_checkpoint_model_selection_defaults_to_e2e() {
+    let (root, pipeline, checkpoint, _) = fixture(160000);
+    let mut options = serde_json::to_value(&pipeline.options).unwrap();
+    options.as_object_mut().unwrap().remove("model_variant");
+    let legacy: Options = serde_json::from_value(options).unwrap();
+    assert_eq!(legacy.model_variant, ModelVariant::E2eRnnt);
+    let state = root.join("state.json");
+    drop(checkpoint);
+    let mut value: serde_json::Value = serde_json::from_slice(&fs::read(&state).unwrap()).unwrap();
+    value["config"]
+        .as_object_mut()
+        .unwrap()
+        .remove("model_variant");
+    fs::write(&state, serde_json::to_vec(&value).unwrap()).unwrap();
+    Checkpoint::validate_model(&root, ModelVariant::E2eRnnt).unwrap();
+    let before = fs::read(&state).unwrap();
+    assert!(Checkpoint::validate_model(&root, ModelVariant::MlCtc).is_err());
+    assert_eq!(fs::read(&state).unwrap(), before);
+    fs::remove_dir_all(root).unwrap();
 }

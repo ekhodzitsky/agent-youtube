@@ -638,6 +638,7 @@ fn saved_resume_ignores_broken_default_runtime() {
         work_dir: job.clone(),
         gigastt: "/bin/false".into(),
         model_dir: fixture.0.join("models"),
+        model_variant: Default::default(),
         chunk_seconds: 30,
         asr_timeout_seconds: 30,
         boundary_window_ms: 0,
