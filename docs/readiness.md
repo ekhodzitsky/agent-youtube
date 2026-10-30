@@ -1,4 +1,4 @@
-# Current readiness and support — 0.10.0
+# Current readiness and support — 0.10.1
 
 This is the current decision entry point. Dated qualification reports are evidence
 for their exact source, binary, model, network and scenario; they are not silently

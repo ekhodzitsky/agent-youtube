@@ -191,7 +191,7 @@ or a hosted test run. SVG labels make no third-party requests.
 
 | Badge | Source and meaning |
 | --- | --- |
-| Source 0.10.0 | Cargo.toml package version; crates.io publication is disabled |
+| Source 0.10.1 | Cargo.toml package version; crates.io publication is disabled |
 | License MIT | Root LICENSE; dependencies and model terms remain separate |
 | CI disabled | GitHub Actions disabled by owner instruction; workflow remains dispatch-only |
 | Minimum Rust 1.94 for source builds | Manifest rust-version; prior local MSRV qualification, not a passing hosted 0.8.0 claim |
