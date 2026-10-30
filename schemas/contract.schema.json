@@ -1388,6 +1388,16 @@
                 "ml_ctc",
                 "ml_ctc_large"
               ]
+            },
+            "state": {
+              "const": "ready"
+            },
+            "next_action": {
+              "const": "transcribe"
+            },
+            "download_bundle_bytes": {
+              "type": "integer",
+              "minimum": 0
             }
           },
           "required": [

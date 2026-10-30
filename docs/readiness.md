@@ -1,4 +1,4 @@
-# Current readiness and support — 0.9.1
+# Current readiness and support — 0.10.0
 
 This is the current decision entry point. Dated qualification reports are evidence
 for their exact source, binary, model, network and scenario; they are not silently
@@ -26,6 +26,12 @@ upgraded to new-release measurements. See the [changelog](../CHANGELOG.md).
 | Scheduling | New CLI job waits budgeted at 3600 seconds; active work excluded; old saved policies inherited | Overall one-hour runtime cap, an always-on daemon or coordination across unrelated users/hosts |
 
 ## Current fixes and evidence
+
+0.10.0 adds automatic pinned model/runtime provisioning, durable transfer resume,
+explicit offline mode and structured setup progress. An empty-root ml_ctc network
+installation survived SIGKILL, resumed with verified asset hashes, passed offline
+reuse/doctor and completed a fresh 19.063625-second transcription.
+[Qualification and limits](verification.md#automatic-setup-qualification--0100-2026-10-30).
 
 0.9.1 corrects a five-second total HTTP-body deadline that aborted progressing
 responses. The body budget is now 30 seconds, within the existing 45-second

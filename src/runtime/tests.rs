@@ -62,6 +62,7 @@ fn setup_rejects_foreign_directories_and_bad_archives_without_manifest() {
         Some(model_dir.clone()),
         None,
         Default::default(),
+        false,
         &cancelled,
     )
     .unwrap_err();
@@ -78,6 +79,7 @@ fn setup_rejects_foreign_directories_and_bad_archives_without_manifest() {
         Some(model_dir),
         Some(bad),
         Default::default(),
+        false,
         &cancelled,
     )
     .unwrap_err();

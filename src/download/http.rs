@@ -382,7 +382,7 @@ pub(super) fn rate_limited(
         serde_json::json!({"retry_after_seconds":seconds,"retry_after":retry_after}),
     )
 }
-fn retry_seconds(retry_after: Option<&str>, now: std::time::SystemTime) -> Option<u64> {
+pub(crate) fn retry_seconds(retry_after: Option<&str>, now: std::time::SystemTime) -> Option<u64> {
     match retry_after {
         Some(value) => value
             .parse::<u64>()

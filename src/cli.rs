@@ -25,7 +25,7 @@ Usage:
   agent-youtube status --work-dir DIR
   agent-youtube resume --work-dir DIR [--response compact|metadata|full]
   agent-youtube cancel --work-dir DIR
-  agent-youtube setup [--runtime-dir DIR] [--model-dir DIR] [--archive FILE]
+  agent-youtube setup [--model-variant NAME] [--runtime-dir DIR] [--model-dir DIR] [--archive FILE] [--offline]
   agent-youtube doctor [--work-dir DIR] [tool/model options]
   agent-youtube export TRANSCRIPT.json --format json|md|txt|srt|vtt --output FILE [--force]
 
@@ -74,6 +74,7 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
     let mut positional = Vec::new();
     let mut flags = BTreeMap::new();
     let mut force = false;
+    let mut offline = false;
     let mut iter = args[1..].iter();
     while let Some(arg) = iter.next() {
         if arg == "--" {
@@ -82,6 +83,11 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
         } else if arg == "--help" || arg == "-h" {
             protocol::success("help", serde_json::json!({"help":HELP}))?;
             return Ok(());
+        } else if arg == "--offline" {
+            if offline {
+                return Err("duplicate --offline".into());
+            }
+            offline = true;
         } else if arg == "--force" {
             if force {
                 return Err("duplicate --force".into());
@@ -120,6 +126,9 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
             positional.push(arg.clone());
         }
     }
+    if offline && command != "setup" {
+        return Err("--offline is only accepted by setup".into());
+    }
     match command {
         "chapters" => {
             if force || positional.len() != 1 {
@@ -141,8 +150,9 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
             let archive = flags.remove("--archive").map(PathBuf::from);
             let variant = take_model_variant(&mut flags)?.unwrap_or_default();
             reject_remaining(&flags)?;
-            let result = crate::runtime::setup(&root, models, archive, variant, &cancelled)
-                .map_err(|e| context(e, "setup_failed"))?;
+            let result =
+                crate::runtime::setup(&root, models, archive, variant, offline, &cancelled)
+                    .map_err(|e| context(e, "setup_failed"))?;
             protocol::success(command, result)?;
         }
         "status" | "cancel" | "resume" => {

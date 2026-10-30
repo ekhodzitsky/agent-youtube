@@ -10,6 +10,47 @@ license is now present at the root, CI is dispatch-only and hosted Actions are
 disabled. Crates.io publication stays disabled. Sections below preserve dated
 reviews, including superseded privacy/license findings; see current readiness.
 
+## Automatic setup qualification — 0.10.0, 2026-10-30
+
+Normal setup now provisions the pinned runtime and selected model automatically
+inside its owned root. Explicit --model-dir keeps local model provisioning;
+--offline prohibits requests. Successful JSON reports state=ready,
+next_action=transcribe and download_bundle_bytes (pinned files, not measured
+traffic). Existing completed manifests remain immutable.
+
+The empty-root network test selected ml_ctc, with 246,178,931 pinned model/archive
+bytes. The setup process was SIGKILLed after its receipt committed 1,061,452 model
+bytes. A new process resumed from the verified prefix, completed the model and
+runtime downloads, verified their compiled SHA-256 values and published the
+manifest. Offline reuse and doctor then passed. The new installation acquired
+and transcribed jNQXAC9IVRw with real GigaSTT: 19.063625 seconds, 305,018 contiguous
+input frames, validated transcript and post-publication cleanup. Continued setup
+took 214.854 seconds on that host/network; this is one interrupted installation,
+not a throughput claim or a platform-wide success rate.
+
+Local regressions cover truncated-response continuation in a new process,
+correct ranges, full-response prefix proof when Range is ignored, wrong ranges,
+changed/foreign/linked partials, final hash failures, refused ready-file overwrite,
+uncommitted-tail rollback, persistent numeric/unparseable cooldowns, offline
+missing files and offline publication of a complete verified cache. Catalog names
+are checked against the recognition adapter's required files. Extraction and
+certificate/URL validation regressions remain active. No runtime dependency added.
+
+Reproduce the main path from a new owned directory:
+
+```sh
+agent-youtube setup --runtime-dir runs/new-install/runtime --model-variant ml_ctc
+agent-youtube doctor --runtime-dir runs/new-install/runtime
+agent-youtube transcribe 'https://www.youtube.com/watch?v=jNQXAC9IVRw' \
+  --runtime-dir runs/new-install/runtime --work-dir runs/new-install/job
+```
+
+The qualification used a development worktree build, not a post-tag clean build.
+Its executable and original JSON/ASR evidence stay private. The final source also
+has isolated regression coverage for fully downloaded cache publication in offline
+mode and local I/O error classification. Historical measurements below retain
+exact versions; new setup does not rewrite previous transcripts or raw ASR.
+
 ## HTTP body timeout qualification — 0.9.1, 2026-10-30
 
 The preceding live http_transport failures were reproduced with typed diagnostics:
@@ -150,7 +191,7 @@ or a hosted test run. SVG labels make no third-party requests.
 
 | Badge | Source and meaning |
 | --- | --- |
-| Source 0.9.1 | Cargo.toml package version; crates.io publication is disabled |
+| Source 0.10.0 | Cargo.toml package version; crates.io publication is disabled |
 | License MIT | Root LICENSE; dependencies and model terms remain separate |
 | CI disabled | GitHub Actions disabled by owner instruction; workflow remains dispatch-only |
 | Minimum Rust 1.94 for source builds | Manifest rust-version; prior local MSRV qualification, not a passing hosted 0.8.0 claim |

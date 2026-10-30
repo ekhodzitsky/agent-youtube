@@ -677,3 +677,20 @@ fn explicit_recognizer_bypasses_broken_default_runtime() {
     let result: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(result["error"]["code"], "process_failed");
 }
+
+#[test]
+fn offline_setup_in_an_empty_directory_reports_missing_assets_without_network() {
+    let fixture = Fixture::new();
+    let output = fixture
+        .command()
+        .args(["setup", "--runtime-dir", "runtime", "--offline"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let value: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(value["error"]["code"], "setup_offline_missing");
+    assert!(!fixture.0.join("runtime/runtime.json").exists());
+    for line in String::from_utf8(output.stderr).unwrap().lines() {
+        let _: serde_json::Value = serde_json::from_str(line).unwrap();
+    }
+}

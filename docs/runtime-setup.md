@@ -1,87 +1,86 @@
-# Managed recognizer runtime — 0.4.0
+# Managed recognizer runtime — 0.10.0
 
-For current support, dependency/license disposition and release procedure, see
-[Current readiness](readiness.md). Dated evidence below retains its original scope.
+[Installation](installation.md) · [Current readiness](readiness.md)
 
-`agent-youtube setup` prepares a local pinned GigaSTT installation and returns JSON.
-`doctor` and new transcription jobs select it automatically from
-`tools-local/runtime` relative to the working directory. Explicit `--runtime-dir`
-selects another prepared root; use an absolute path when invoking elsewhere.
-An explicit `--gigastt` bypasses managed discovery. `resume` retains saved options.
+## Online setup
 
-## Trust and publication
+agent-youtube setup installs the selected pinned GigaSTT 2.22.0 runtime and models
+in tools-local/runtime by default. --runtime-dir chooses another owned directory;
+--model-variant chooses e2e_rnnt (default), ml_ctc or ml_ctc_large. An explicit
+--model-dir selects local files only. With no model directory, models are stored
+inside the runtime root, not in a global home-directory model store.
 
-The installer currently supports Linux x86_64 GNU only. It pins the upstream
-[GigaSTT 2.22.0 release](https://github.com/ekhodzitsky/gigastt/releases/tag/v2.22.0)
-archive SHA-256
-`cd790191a600df48aa5c56e124953322af89df4bbd60d2c980436b0597c46194`
-and executable SHA-256
-`efb3c09b0ddf7872fe47bccc91f556ae728cf01035a94efe6f8e0c0795591cd1`.
-These identify the previously qualified artifact; no minisign verification or
-security approval is implied. The manifest is not an executable update channel.
+The installer downloads expected files from fixed GitHub release URLs and immutable
+Hugging Face revisions. Exact sizes and SHA-256 values are compiled in
+[src/runtime/assets.rs](../src/runtime/assets.rs). HTTPS uses the existing checked
+Rust TLS provider; redirects are HTTPS-only on explicit GitHub/Hugging Face CDN
+hosts. No credentials or arbitrary download URL is accepted. Signed redirect URLs
+remain in memory and never enter JSON diagnostics or transfer receipts.
 
-HTTPS uses the application's existing checked pure-Rust TLS provider and trust
-validation. Redirects must remain HTTPS on explicit GitHub release hosts, with
-no URL credentials. Requests have timeouts and a redirect bound. Server HTTP
-refusal reports status and parsed Retry-After seconds without response bodies
-or signed URLs. Setup does not automatically retry. An interrupted download is
-not published as the cached archive; rerun setup to transfer it again.
+## Transfer ownership and resume
 
-Archive handling is streamed with a 32 MiB compressed and 128 MiB expanded bound.
-Only the regular executable and four expected license/notice/readme/changelog
-files are accepted; no unpack API, links, device entries, subdirectories or
-arbitrary archive paths are used. The gzip trailer is consumed for CRC checking.
-The binary pin is verified before making it executable. These bounds apply to
-the fixed installer release, not recording length or media downloads.
+After the private root is claimed, an OS lock serializes setup. A private
+.setup-downloads cache has its own owner marker. Each pinned asset has an
+identity-bound partial file and a bounded receipt recording total size, committed
+length and SHA-256 of the committed prefix. Network data streams through a 64 KiB
+buffer; requests normally use 4 MiB ranges. Files are not loaded into RAM.
 
-New runtime roots use private permissions, an ownership marker and an OS lock.
-Unknown nonempty directories and linked roots are refused. Individual artifacts
-are published durably without overwriting existing content. Setup can validate
-and reuse matching files left by an interrupted installation; changed files are
-preserved and refused. The manifest is published last, after model fingerprints
-are rechecked. Existing complete manifests are validated and never rewritten.
-Prepare a new root to select another model configuration.
+Data is synced before publishing a durable cursor. On restart, the committed
+prefix is rehashed and verified; only its owned uncommitted tail can be rolled
+back. Changed committed bytes, foreign partials, linked artifacts, changed ready
+files and malformed range/length/encoding responses are refused. If a server
+ignores Range, the complete retained prefix must match before any append.
+The final exact size and pinned SHA-256 must match before durable publication.
 
-## Models and readiness
+Transient transfer failures retry with bounded backoff; no-progress attempts are
+limited to three. A completed prefix can continue in a new process. Repeat the
+same setup command to resume. HTTP429/Retry-After persist a cooldown in this root;
+a new invocation cannot shorten it. Unparseable guidance blocks further setup
+network requests for inspection. Connect/response/body/per-call timeouts and
+redirect limits bound each request. Finite asset sizes bound total retained data.
 
-Setup requires readable nonempty files for the selected --model-variant:
-the four e2e_rnnt files by default, or the encoder and vocabulary for ml_ctc /
-ml_ctc_large. See [installation](installation.md#multilingual-models).
-It records the model variant and actual SHA-256 fingerprints;
-it does not fetch models, change files or assume all identically named releases
-are equivalent. Historical qualification used different encoder bytes from the
-GitHub model release; replacing models changes saved job identity. Subsequent managed selection verifies the recorded bytes.
+## Offline and local installation
 
-Successful setup proves file integrity and preparation, not ONNX compatibility,
-model loading, speech accuracy or YouTube access. Those checks are explicitly
-`not_checked` in its result. Doctor checks runnable CLI capabilities and model
-readability; a real transcription is needed to exercise inference. Full ASR JSON
-and canonical transcripts remain under the existing retention/publication rules.
+--offline prohibits requests. Missing/incomplete assets produce setup_offline_missing
+with the asset and next action. Complete verified files and fully committed cache
+files can be reused/published without network access. For a new offline root,
+provide --model-dir and --archive (see installation). Local archives must match
+the compiled release hash; explicit local model sets retain actual-byte
+fingerprinting. Setup never replaces supplied model files.
 
-## Compatibility and tests
+The release archive is streamed with a 32 MiB compressed and 128 MiB expanded
+limit. Only the executable and four expected notice/license/readme/changelog
+files are accepted. Links, traversal, unexpected entries and truncated gzip are
+rejected. The executable hash is checked before granting execute permission.
+The managed manifest is published last after rechecking models. Existing complete
+manifests are validated without rewriting them. Runtime/model changes require a
+new root. Current runtime and job identities remain compatible with 0.9.x.
 
-A nonexistent optional default runtime root retains legacy PATH behavior.
-A present incomplete/corrupt root fails with `runtime_invalid` before creating a
-job, rather than silently invoking another binary. Explicit recognizer overrides
-remain usable. `--gigastt` and `--runtime-dir` cannot be combined. Saved-job resume
-never performs discovery, including when the default runtime is broken.
+## JSON and readiness
 
-Tests cover absent/incomplete/linked roots, foreign-directory preservation,
-archive integrity, linked/duplicate/missing/traversal entries, truncated gzip,
-matching extraction reuse, changed artifact refusal, redirect trust boundaries,
-TLS/URL diagnostic redaction and explicit/saved recognizer selection. The
-[sanitized qualification record](runtime-setup-results.json) captures live setup,
-reuse, doctor, full transcription, old-job reuse and local gates. Raw operational
-files stay in ignored local storage. No repository publication or hosted CI is
-part of preparation.
+One final JSON result is written to stdout; progress on stderr is JSONL.
+setup_plan reports selected model, pinned file bytes and offline policy;
+setup_download reports asset name, total bytes and durable received bytes.
+Successful output reports state=ready, next_action=transcribe, reused and
+ download_bundle_bytes. That size is the sum of pinned model files and compressed
+runtime archive, not actual bytes transferred in this invocation: local/reused
+assets cost no new download and retries can retransmit data.
 
-The two new direct dependencies, flate2 1.1.10 and tar 0.4.46, add seven locked
-package versions. flate2 uses its Rust miniz_oxide backend; tar's default features
-are disabled. The installation path requires no native decompressor. This does
-not resolve the existing TLS security advisories or make external ASR runtimes
-pure Rust.
+Ready means preparation and fingerprint validation. Model loading, inference and
+YouTube access remain not_checked; doctor and an actual transcription are separate
+checks. Recognition uses native ONNX through GigaSTT. No model or transcript
+accuracy, universal access or unrestricted TLS security approval is implied.
 
-## Local qualification — 2026-10-29
+## Current qualification — 2026-10-30
+
+A new empty ml_ctc runtime fetched all assets from the real upstream sources.
+SIGKILL after 1,061,452 durably committed model bytes was followed by setup in a new
+process; model/runtime pins verified, offline reuse and doctor passed. The newly
+installed runtime then acquired and transcribed a fresh 19.063625-second video,
+validated contiguous sample coverage and cleaned temporary media after publication.
+[Detailed evidence and reproduction](verification.md#automatic-setup-qualification--0100-2026-10-30).
+
+## Historical local qualification — 2026-10-29
 
 The pinned archive was actually fetched over HTTPS and installed. An offline
 archive installation and repeated setup also passed. Doctor and a fresh full

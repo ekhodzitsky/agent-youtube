@@ -15,6 +15,20 @@ JSON or canonical transcripts. Source is public; crates.io publication stays dis
   while this adapter currently fixes the Russian e2e_rnnt model.
   Documentation only; runtime behavior is unchanged.
 
+## 0.10.0 — 2026-10-30
+
+- Make setup provision the selected pinned model and GigaSTT automatically when
+  --model-dir is omitted. Store models inside the owned runtime root. Explicit
+  local model/archive options remain supported; --offline prohibits requests.
+- Stream model/archive downloads with exact sizes, pinned SHA-256, bounded ranges
+  and durable prefix receipts. Resume after process death, prove prefixes when
+  Range is ignored, and retain/refuse changed or foreign data. Persist server
+  cooldowns and reject unparseable timing guidance instead of retrying early.
+- Return ready/next-action/bundle-size fields and JSON progress for setup. Existing
+  completed runtime manifests, exact ASR and transcripts remain unchanged. No new
+  dependencies or job-state migration. Default setup now uses network access;
+  scripts that require local-only behavior must pass --offline and local assets.
+
 ## 0.9.1 — 2026-10-30
 
 - Allow progressing bounded HTTP bodies to finish within 30 seconds instead of

@@ -8,6 +8,16 @@ not new measurements of the current version.
 
 ## Agent JSON contract
 
+Since 0.10.0, setup without --model-dir downloads the selected pinned model into
+the runtime root. --offline prohibits setup requests; explicit local model/archive
+options remain available. Setup progress uses setup_plan and setup_download events
+with asset/byte counters and durable cursors. Final ready output includes state,
+next_action and download_bundle_bytes; this is pinned bundle size, not traffic in
+this invocation. Interrupted setup is continued by repeating its command. Numeric
+server cooldowns persist; unparseable guidance fails closed. Missing offline
+assets use setup_offline_missing; modified artifacts or unsafe transfer responses
+are nonretryable and retained for inspection. [Setup contract](runtime-setup.md).
+
 Every public invocation, including help, version, doctor and errors, writes one
 JSON document to stdout. The default `transcribe` response uses **schema2**;
 `--response metadata` omits passage text, while `--response full` explicitly retains

@@ -30,30 +30,59 @@ local patches are in [vendor/README.md](../vendor/README.md).
 
 ### Managed Linux setup
 
-Provision the four model files into `models/e2e_rnnt` using the verified sequence
-below, then run from the project directory:
+Run from the project directory. No separate recognizer or model installation is
+needed for the normal online path:
 
 ```sh
-agent-youtube setup --model-dir "$PWD/models/e2e_rnnt"
+agent-youtube setup
 agent-youtube doctor
 ```
 
-`setup` downloads the pinned GigaSTT 2.22.0 Linux x86_64 GNU archive over verified
-HTTPS, checks compiled archive/executable SHA-256 pins, retains its notices and
-publishes a manifest under ignored `tools-local/runtime`. It uses Rust TLS,
-gzip and tar readers; no `gh`, `curl`, shell extractor or PATH modification is
-needed. Model files are checked and fingerprinted, not downloaded or replaced.
-The manifest records their actual content; repeat setup and managed selection
-reject changed model or executable bytes. `setup` does not load models or prove
-inference correctness; its JSON states those checks as `not_checked`.
-
-For an explicit location or an already downloaded official archive:
+The default downloads the Russian e2e_rnnt model and pinned GigaSTT 2.22.0 Linux
+x86_64 GNU archive into ignored `tools-local/runtime`. Select a multilingual model:
 
 ```sh
-agent-youtube setup --runtime-dir tools-local/runtime --model-dir "$HOME/.gigastt/models" \
-  --archive /absolute/gigastt-2.22.0-x86_64-unknown-linux-gnu.tar.gz
-agent-youtube doctor --runtime-dir tools-local/runtime
+agent-youtube setup --runtime-dir tools-local/ml_ctc-runtime --model-variant ml_ctc
+agent-youtube transcribe 'https://www.youtube.com/watch?v=jNQXAC9IVRw' \
+  --runtime-dir tools-local/ml_ctc-runtime --work-dir runs/english
 ```
+
+The installer uses Rust HTTPS, ranged streaming transfers and pinned SHA-256
+verification. Repeat the same command to resume partial downloads. Completed
+files are reused; modified files, foreign partials and incompatible prefixes are
+refused. Partial data/state remain owned by the selected runtime root. Server
+Retry-After guidance is persisted; rerunning setup does not clear a cooldown.
+No gh, curl, GigaSTT download command or shell extractor is needed.
+
+Online model bundles are 326,991,430 bytes (e2e_rnnt), 224,762,597 (ml_ctc) or
+591,645,175 (ml_ctc_large), plus the 21,416,334-byte runtime archive. Downloads do
+not load entire files into memory. Allow extra disk/RAM for extracted files,
+model initialization, optimized caches and transcription jobs. GitHub hosts the
+runtime/default model release; pinned Hugging Face revisions host CTC bundles.
+Model/runtime licenses remain separate from this project's source license.
+
+To use existing local models and a previously downloaded official archive:
+
+```sh
+agent-youtube setup --runtime-dir tools-local/offline-runtime \
+  --model-dir "$HOME/.gigastt/models" \
+  --archive /absolute/gigastt-2.22.0-x86_64-unknown-linux-gnu.tar.gz --offline
+agent-youtube doctor --runtime-dir tools-local/offline-runtime
+```
+
+An explicit --model-dir always selects local files; setup never downloads into
+that directory. --offline prohibits network access, including archive fetching.
+It can also validate/reuse an already prepared root or publish a fully downloaded,
+verified owned cache file. Offline failures identify missing assets in JSON.
+Online model downloads enforce the compiled upstream hashes; explicitly supplied
+local model sets retain actual-byte fingerprinting for compatibility with existing
+installations. A local archive must still match the compiled release hash.
+
+Models are stored under the runtime's models directory when --model-dir is omitted.
+The installer does not search or modify ~/.gigastt/models in this mode. The manifest
+is published last after all checks. Existing manifests are immutable and cannot
+silently switch model selection. Setup/doctor do not prove inference or YouTube
+availability; those checks remain explicitly not_checked until a real job.
 
 New `doctor`/`transcribe` invocations select a valid prepared runtime automatically
 when the default directory exists. An incomplete or corrupt directory fails with
@@ -109,6 +138,9 @@ installation, model replacement or old transcript rewrite is required.
 
 ### Models
 
+The following steps are optional manual provisioning. Normal setup fetches the
+selected pinned bundle automatically.
+
 The GigaSTT engine also supports Russian, English, Kazakh, Kyrgyz and Uzbek through
 `ml_ctc` / `ml_ctc_large`; see its [model selection](https://github.com/ekhodzitsky/gigastt#choose-a-model).
 Select the model explicitly with `--model-variant`; setup stores the selection
@@ -162,9 +194,9 @@ Older measurements used encoder `cf51b300...`; those are distinct model identiti
 
 ## Multilingual models
 
-GigaSTT 2.22.0 supports these INT8 bundles. Download models into an owned directory
-using an explicitly installed GigaSTT 2.22.0 executable (see the manual installation
-above); its model download is separate from agent-youtube runtime setup.
+Normal setup downloads the selected INT8 bundle automatically; no separately
+installed GigaSTT is required. The following filenames and optional manual commands
+are useful for offline provisioning or explicitly managed model directories.
 
 | Variant | Required files | Model bytes |
 | --- | --- | ---: |
@@ -178,20 +210,27 @@ provisioned from the upstream Hugging Face repositories and verified against the
 Disk size is not a RAM requirement. Allow runtime, inference and job storage.
 
 ```sh
-./tools-local/gigastt-2.22.0/gigastt download --model-variant ml_ctc \
-  --model-dir models/ml_ctc --skip-diarization
-python3 tools/check_models.py --model-dir models/ml_ctc --model-variant ml_ctc
-agent-youtube setup --runtime-dir tools-local/ml_ctc-runtime \
-  --model-dir "$PWD/models/ml_ctc" --model-variant ml_ctc
+agent-youtube setup --runtime-dir tools-local/ml_ctc-runtime --model-variant ml_ctc
 agent-youtube doctor --runtime-dir tools-local/ml_ctc-runtime
 agent-youtube transcribe 'https://www.youtube.com/watch?v=jNQXAC9IVRw' \
   --runtime-dir tools-local/ml_ctc-runtime --work-dir runs/english
 ```
 
-Substitute ml_ctc_large in the three model selections/directories to use the large
-model. With explicit `--gigastt`, pass `--model-dir` and `--model-variant` on the
-transcribe/doctor command. A variant that conflicts with a prepared runtime is
-rejected; runtime manifests remain immutable. The executable pins remain 2.22.0.
+Use ml_ctc_large and another runtime directory for the larger model. To prepare
+models manually with an existing GigaSTT 2.22.0 executable:
+
+```sh
+./tools-local/gigastt-2.22.0/gigastt download --model-variant ml_ctc \
+  --model-dir models/ml_ctc --skip-diarization
+python3 tools/check_models.py --model-dir models/ml_ctc --model-variant ml_ctc
+agent-youtube setup --runtime-dir tools-local/local-model-runtime \
+  --model-dir "$PWD/models/ml_ctc" --model-variant ml_ctc
+```
+
+With explicit --gigastt, pass --model-dir and --model-variant to transcribe/doctor.
+A variant conflicting with a prepared runtime is rejected. Repeated setup uses
+the same model selection flags as the original invocation; model changes need a
+new runtime root. The executable remains pinned to 2.22.0.
 
 JSON uses recognizer_language=mul for either multilingual model and ru for the
 Russian model. This is configured model scope, not detected speech language;

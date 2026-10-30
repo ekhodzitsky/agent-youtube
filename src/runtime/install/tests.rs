@@ -123,34 +123,28 @@ fn transfer_errors_do_not_expose_signed_urls_or_private_tls_context() {
 }
 
 #[test]
-fn response_read_failures_are_retryable_and_distinct_from_disk_errors() {
-    struct Failed;
-    impl Read for Failed {
-        fn read(&mut self, _: &mut [u8]) -> std::io::Result<usize> {
+fn extraction_write_errors_remain_local_io_errors() {
+    struct FailedWriter;
+    impl Write for FailedWriter {
+        fn write(&mut self, _: &[u8]) -> std::io::Result<usize> {
             Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "https://private.invalid/?token=secret",
+                std::io::ErrorKind::PermissionDenied,
+                "local disk refused write",
             ))
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
         }
     }
     let error = copy(
-        &mut ReleaseReader(Failed),
-        &mut std::io::sink(),
+        &mut &b"fixture"[..],
+        &mut FailedWriter,
         &AtomicBool::new(false),
     )
     .unwrap_err();
-    let error = body_error(error);
-    let failure = error.downcast_ref::<protocol::Failure>().unwrap();
-    assert_eq!(failure.code, "setup_download_failed");
-    assert_eq!(failure.retryable, Some(true));
-    assert_eq!(failure.details()["reason"], "timeout");
-    assert!(!failure.to_string().contains("secret"));
-    let disk = body_error(Box::new(std::io::Error::from_raw_os_error(libc::ENOSPC)));
     assert_eq!(
-        disk.downcast_ref::<std::io::Error>()
-            .unwrap()
-            .raw_os_error(),
-        Some(libc::ENOSPC)
+        error.downcast_ref::<std::io::Error>().unwrap().kind(),
+        std::io::ErrorKind::PermissionDenied
     );
 }
 

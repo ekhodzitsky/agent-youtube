@@ -7,7 +7,9 @@ use std::{
     path::{Path, PathBuf},
     sync::atomic::{AtomicBool, Ordering},
 };
+mod assets;
 mod install;
+mod transfer;
 
 pub(crate) const DEFAULT_ROOT: &str = "tools-local/runtime";
 const VERSION: &str = "2.22.0";
@@ -143,6 +145,7 @@ pub(crate) fn setup(
     model_dir: Option<PathBuf>,
     archive: Option<PathBuf>,
     model_variant: ModelVariant,
+    offline: bool,
     cancelled: &AtomicBool,
 ) -> Result<serde_json::Value> {
     platform()?;
@@ -172,16 +175,16 @@ pub(crate) fn setup(
         }
         return Ok(result(root, &selected, true));
     }
-    let model_dir = model_dir
-        .or_else(|| std::env::var_os("HOME").map(|p| PathBuf::from(p).join(".gigastt/models")))
-        .ok_or_else(|| {
+    let automatic_models = model_dir.is_none();
+    let model_dir = model_dir.unwrap_or_else(|| root.join("models"));
+    if !automatic_models {
+        models(&model_dir, model_variant).map_err(|_| {
             failure(
                 "setup_models_invalid",
-                "specify --model-dir with the selected INT8 model files",
+                "selected local model files must be readable nonempty regular files",
             )
         })?;
-    let model_fingerprint = models(&model_dir, model_variant).map_err(|_| failure("setup_models_invalid", "required selected model files must be readable nonempty regular files; provision models explicitly"))?;
-    let model_dir = fs::canonicalize(model_dir)?;
+    }
     if root.try_exists()? {
         let metadata = fs::symlink_metadata(root)?;
         if metadata.file_type().is_symlink() || !metadata.is_dir() {
@@ -200,16 +203,18 @@ pub(crate) fn setup(
         }
     }
     storage::private_directory(root, true)?;
-    let _lock = storage::Lock::acquire(root)?;
     let marker = root.join(".runtime-owner");
     if !marker.try_exists()? {
         storage::atomic_write(&marker, OWNER.as_bytes(), false)?;
     }
     owner(root)?;
+    let _lock = storage::Lock::acquire(root)?;
     // Recheck after locking: another setup may have finished in the meantime.
     if root.join("runtime.json").try_exists()? {
         let selected = select(root, true)?.ok_or("missing runtime")?;
-        if selected.model_dir != model_dir || selected.model_variant != model_variant {
+        if selected.model_dir != fs::canonicalize(&model_dir)?
+            || selected.model_variant != model_variant
+        {
             return Err(failure(
                 "setup_config_mismatch",
                 "existing runtime selects different models; use a new runtime directory",
@@ -217,7 +222,38 @@ pub(crate) fn setup(
         }
         return Ok(result(root, &selected, true));
     }
-    install::install(root, archive.as_deref(), cancelled)?;
+    let planned_bytes = if automatic_models {
+        assets::models(model_variant)
+            .iter()
+            .map(|a| a.bytes)
+            .sum::<u64>()
+    } else {
+        0
+    } + if archive.is_none() {
+        assets::ARCHIVE.bytes
+    } else {
+        0
+    };
+    protocol::progress(
+        "setup_plan",
+        "preparing selected pinned runtime and models",
+        serde_json::json!({"model_variant":model_variant,"asset_bytes":planned_bytes,"offline":offline,"next_action":"wait_for_setup"}),
+    );
+    if automatic_models {
+        storage::private_directory(&model_dir, true)?;
+        for asset in assets::models(model_variant) {
+            transfer::fetch(
+                root,
+                &model_dir.join(asset.name),
+                *asset,
+                offline,
+                cancelled,
+            )?;
+        }
+    }
+    let model_dir = fs::canonicalize(model_dir)?;
+    let model_fingerprint = models(&model_dir, model_variant)?;
+    install::install(root, archive.as_deref(), offline, cancelled)?;
     if models(&model_dir, model_variant)? != model_fingerprint {
         return Err(failure(
             "setup_models_invalid",
@@ -251,7 +287,7 @@ pub(crate) fn setup(
 
 fn result(root: &Path, selected: &Selection, reused: bool) -> serde_json::Value {
     serde_json::json!({"runtime_dir":root,"gigastt":selected.gigastt,"gigastt_version":VERSION,"model_dir":selected.model_dir,"model_variant":selected.model_variant,
-        "reused":reused,"checks":{"executable_sha256":true,"model_files_sha256":true,"model_load":"not_checked","inference":"not_checked","youtube_access":"not_checked"}})
+        "reused":reused,"state":"ready","next_action":"transcribe","download_bundle_bytes":assets::models(selected.model_variant).iter().map(|a|a.bytes).sum::<u64>()+assets::ARCHIVE.bytes,"checks":{"executable_sha256":true,"model_files_sha256":true,"model_load":"not_checked","inference":"not_checked","youtube_access":"not_checked"}})
 }
 
 #[cfg(test)]

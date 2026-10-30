@@ -2,7 +2,7 @@
 
 YouTube transcripts for AI agents.
 
-[![Source version: 0.9.1](docs/assets/version.svg)](Cargo.toml)
+[![Source version: 0.10.0](docs/assets/version.svg)](Cargo.toml)
 [![License: MIT](docs/assets/license.svg)](LICENSE)
 [![CI: disabled](docs/assets/ci.svg)](.github/workflows/check.yml)
 [![Minimum Rust for source builds: 1.94](docs/assets/msrv.svg)](docs/verification.md#badge-sources)
@@ -17,10 +17,10 @@ Kazakh, Kyrgyz and Uzbek. [Models and setup](#language-support).
 
 ## Examples
 
-**Turn a video into text.** After [installing and setting up the recognizer](docs/installation.md#models):
+**Turn a video into text.** After the [one-time setup](#install):
 
 ```sh
-agent-youtube transcribe 'https://www.youtube.com/watch?v=of4B3aw7MXo' \
+agent-youtube transcribe 'https://www.youtube.com/watch?v=jNQXAC9IVRw' \
   --work-dir runs/first-job
 ```
 
@@ -72,22 +72,25 @@ another download or recognition run.
 
 ## Install
 
-Linux x86_64 GNU, Git and Rust **1.94+**. Network access is needed for Cargo
-and YouTube. Try chapters first; this needs no model setup or user API key:
+Linux x86_64 GNU, Git and Rust **1.94+**. The example downloads about **234.8 MiB**
+of pinned model/runtime files from Hugging Face and GitHub. Allow extra disk space
+for the extracted runtime, caches and jobs. YouTube access needs network connectivity;
+recognition runs locally, with no paid transcription service or user API key.
 
 ```sh
 git clone https://github.com/ekhodzitsky/agent-youtube.git
 cd agent-youtube
 cargo install --path . --locked
-agent-youtube chapters 'https://www.youtube.com/watch?v=rfscVS0vtbw'
+agent-youtube setup --model-variant ml_ctc
+agent-youtube transcribe 'https://www.youtube.com/watch?v=jNQXAC9IVRw' \
+  --work-dir runs/first-job
 ```
 
-Check for `ok: true` and `result.status: "available"`. No matching published
-entries produces `not_found`; access failures produce an error.
-
-For transcription, [set up GigaSTT 2.22.0 and the four model files](docs/installation.md#models)
-(**311.84 MiB** for the default model, plus runtime and job storage), then use the first example.
-No paid transcription service is required.
+Setup downloads and verifies the selected model and GigaSTT automatically.
+Repeat the same setup command after an interruption; verified files are reused.
+Setup returns `state: "ready"` and `next_action: "transcribe"`. Transcription returns
+`ok: true`, text passages and saved artifact paths on success.
+[Local files, offline setup and other models](docs/installation.md).
 
 ## Compared with
 
