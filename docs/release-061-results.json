@@ -1,0 +1,314 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-30",
+  "version": "0.6.1",
+  "qualification_build": {
+    "binary_sha256": "ac8e7514b7c9f74d0ba75b4a4e9bf13e90ac8146acb0fa7aee30b8e712704903",
+    "revision": "725f259333b3055964a4ce5e33c9d5997ef2f9bc",
+    "source_dirty": true,
+    "source_fingerprint": "74a0d805e32f979171214e01a41f21b9e1ae8a12",
+    "version": "0.6.1"
+  },
+  "identity_note": "Pre-commit binary. Production source fingerprint identifies these inputs; a committed rebuild has different revision/binary metadata.",
+  "source_sha256": {
+    "src/cli.rs": "840bb101819fba042ab745c394a3c2a6935a25a446a405ac647ee317c97d282b",
+    "src/agent.rs": "e34f63f02175ab70eafedcca83e3772fa9f9aea67b1f89c305e8970e656d4cf1",
+    "src/job.rs": "079c43539081c09e9423411fe22d8928516720275795943d125af5b78a5ace59",
+    "build.rs": "c3ad0c1160fc26fa288655a77442d10809cc854f92cb51888fee88cc2eb972cd",
+    "Cargo.toml": "85168181570e36857361d5dd4de7017026f65cb7a06186f757caa00859bb6916",
+    "Cargo.lock": "6821e08cf66deee5640d33e65bb254f8906c7d7cd1fa801e00e64b274c161475",
+    "schemas/contract.schema.json": "869a07f4ad9915fa4d29ac01e3dc67319eda170893e42e15d433224afcdd5282",
+    "vendor/rustls-rustcrypto-current/Cargo.toml": "974714256959acd337011bbe02c58ce643a830aa78f7be531ca3b1b25572c801",
+    "vendor/rustls-rustcrypto-current/upstream.json": "1cf8eee5116ea872727dea9338ea2cf69692e4ea208b7f9b6cf70f46144e4bd9"
+  },
+  "checks": {
+    "rust_passed": 368,
+    "rust_ignored": 17,
+    "python_passed": 69,
+    "fmt": "passed",
+    "clippy_locked_all_targets_deny_warnings": "passed",
+    "msrv_1_94_locked_all_targets": "passed",
+    "release_build": "passed",
+    "live_cli_and_event_schema_documents_validated": 20,
+    "negative_contract_cases": "passed",
+    "source_archive_document_inventory": "Explicit source-tree mode; mismatched Git roots rejected"
+  },
+  "tls_provider": {
+    "upstream_revision": "70f76c039e587192688af18a80d5d6435dedaf22",
+    "rust_sources_unchanged": true,
+    "manifest_patch": "private publication flag; paste alias to existing pastey 0.2.3",
+    "removed_package": "paste 1.0.15",
+    "cryptographic_package_versions_changed": false,
+    "oracle_cases": 14,
+    "oracle_results": [
+      {
+        "case": "oracle-default",
+        "certificate": "ecdsa",
+        "record_limit_probe": false,
+        "results": [
+          {
+            "version": "tls12",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_2)",
+            "group": "Some(X25519)"
+          },
+          {
+            "version": "tls13",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_3)",
+            "group": "Some(X25519)"
+          }
+        ]
+      },
+      {
+        "case": "oracle-limits-rsa",
+        "certificate": "rsa",
+        "record_limit_probe": true,
+        "results": [
+          {
+            "version": "tls12",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_2)",
+            "group": "Some(X25519)",
+            "record_limits": {
+              "accepted_plaintext_bytes": 18,
+              "close_alert": true,
+              "test_record_limit": 4,
+              "tls12_application_records": 3,
+              "tls13": false
+            },
+            "oracle_key_update_messages": 0
+          },
+          {
+            "version": "tls13",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_3)",
+            "group": "Some(X25519)",
+            "record_limits": {
+              "accepted_plaintext_bytes": 72,
+              "close_alert": false,
+              "test_record_limit": 4,
+              "tls12_application_records": 0,
+              "tls13": true
+            },
+            "oracle_key_update_messages": 6
+          }
+        ]
+      },
+      {
+        "case": "oracle-limits",
+        "certificate": "ecdsa",
+        "record_limit_probe": true,
+        "results": [
+          {
+            "version": "tls12",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_2)",
+            "group": "Some(X25519)",
+            "record_limits": {
+              "accepted_plaintext_bytes": 18,
+              "close_alert": true,
+              "test_record_limit": 4,
+              "tls12_application_records": 3,
+              "tls13": false
+            },
+            "oracle_key_update_messages": 0
+          },
+          {
+            "version": "tls13",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_3)",
+            "group": "Some(X25519)",
+            "record_limits": {
+              "accepted_plaintext_bytes": 72,
+              "close_alert": false,
+              "test_record_limit": 4,
+              "tls12_application_records": 0,
+              "tls13": true
+            },
+            "oracle_key_update_messages": 6
+          }
+        ]
+      },
+      {
+        "case": "oracle-p256",
+        "certificate": "ecdsa",
+        "record_limit_probe": false,
+        "results": [
+          {
+            "version": "tls12",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_2)",
+            "group": "Some(secp256r1)"
+          },
+          {
+            "version": "tls13",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_3)",
+            "group": "Some(secp256r1)"
+          }
+        ]
+      },
+      {
+        "case": "oracle-p384",
+        "certificate": "ecdsa",
+        "record_limit_probe": false,
+        "results": [
+          {
+            "version": "tls12",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_2)",
+            "group": "Some(secp384r1)"
+          },
+          {
+            "version": "tls13",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_3)",
+            "group": "Some(secp384r1)"
+          }
+        ]
+      },
+      {
+        "case": "oracle-rsa",
+        "certificate": "rsa",
+        "record_limit_probe": false,
+        "results": [
+          {
+            "version": "tls12",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_2)",
+            "group": "Some(X25519)"
+          },
+          {
+            "version": "tls13",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_3)",
+            "group": "Some(X25519)"
+          }
+        ]
+      },
+      {
+        "case": "oracle-x25519",
+        "certificate": "ecdsa",
+        "record_limit_probe": false,
+        "results": [
+          {
+            "version": "tls12",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_2)",
+            "group": "Some(X25519)"
+          },
+          {
+            "version": "tls13",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_3)",
+            "group": "Some(X25519)"
+          }
+        ]
+      }
+    ],
+    "raw_audit_exit": 1,
+    "vulnerabilities": [
+      {
+        "id": "RUSTSEC-2023-0071",
+        "package": "rsa",
+        "version": "0.10.0-rc.19"
+      }
+    ],
+    "warnings": [],
+    "independent_security_approval": false
+  },
+  "live": {
+    "online_github_setup": true,
+    "setup_wall_seconds": 25.468,
+    "doctor": true,
+    "youtube_full_transcription": true,
+    "transcribe_wall_seconds": 24.671,
+    "video_id": "of4B3aw7MXo",
+    "source_bytes": 858695,
+    "source_sha256": "9ff98eeebbfbc735a3ff93959d4d081682b4fef40aa9a5b58ff3951830cfbb3c",
+    "decoded_seconds": 52.96475,
+    "decoded_frames": 847436,
+    "sample_rate": 16000,
+    "official_model_encoder_sha256": "16805903b102d8b27bb0253de044f25e33a8a5bf07fce0c4da4ac1a5a7544091",
+    "raw_asr_chunks": 1,
+    "raw_and_transcript_hashes_verified": true,
+    "cleanup_complete": true,
+    "schema_validated": true
+  },
+  "distribution": {
+    "source_artifact_route": "tools/prepare_release.py from an immutable clean commit; qualification recorded in local release manifest and Backlog",
+    "root_license": "MIT",
+    "notice_collection": {
+      "packages": 264,
+      "unique_texts": 188,
+      "missing_texts": [],
+      "project_license_text_present": true
+    },
+    "public_repository_or_crate_publication_authorized": false,
+    "existing_history_must_remain_private": true,
+    "hosted_ci_triggered": false,
+    "history_scan": {
+      "scanner": "gitleaks 8.30.1",
+      "commits_scanned": 88,
+      "findings": 8,
+      "private_credentials_confirmed": false,
+      "categories": [
+        "three public BgUtils attestation constants",
+        "three CSS parser enumeration matches",
+        "two SHA256 source-file digests labeled keyless.rs"
+      ],
+      "raw_scanner_exit": 1,
+      "scope": "All local Git refs before remediation commit; contents remain local-only; not a proof of absence of secrets"
+    }
+  },
+  "limits": [
+    "One fresh short external recording; historical corpus/multi-hour evidence is separate.",
+    "No independent cryptographic audit or unrestricted production-security approval.",
+    "Raw RSA advisory remains without suppression; application excludes private RSA operations.",
+    "No YouTube availability or ASR accuracy guarantee.",
+    "No root history rewrite or public release upload."
+  ]
+}

@@ -1,0 +1,26 @@
+[package]
+name = "agent-youtube-botguard-probe"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.94"
+publish = false
+default-run = "agent-youtube-botguard-probe"
+
+[dependencies]
+boa_ast = "=0.22.0"
+boa_parser = { version = "=0.22.0", features = ["annex-b"] }
+boa_interner = "=0.22.0"
+base64 = "=0.23.1"
+boa_engine = { version = "=0.22.0", default-features = false, features = ["annex-b"] }
+boa_runtime = { version = "=0.22.0", default-features = false, features = ["url"] }
+serde_json = "1"
+ureq = { version = "=3.4.2", default-features = false, features = ["rustls-no-provider", "rustls-webpki-roots"] }
+rustls-rustcrypto = "=0.0.2-alpha"
+
+[workspace]
+members = ["vendor/boa_engine", "vendor/boa_ast"]
+default-members = ["."]
+
+[patch.crates-io]
+boa_engine = { path = "vendor/boa_engine" }
+boa_ast = { path = "vendor/boa_ast" }

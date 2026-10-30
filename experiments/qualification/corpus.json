@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "version": "2026-10-25.1",
+  "selection_frozen_on": "2026-10-25",
+  "category_policy": "Candidate tags are selection intent, not verified upload dates or audio-track counts. Keep all failures in the denominator; never silently replace an unavailable item.",
+  "videos": [
+    {
+      "id": "of4B3aw7MXo",
+      "label": "Existing short Russian recording",
+      "candidate_tags": [
+        "short",
+        "russian"
+      ],
+      "provenance": "Short Russian recording used in the native full-audio acquisition and recovery qualification"
+    },
+    {
+      "id": "2teKcIDANI4",
+      "label": "Owner-supplied conversation",
+      "candidate_tags": [
+        "conversation",
+        "russian",
+        "recent_candidate"
+      ],
+      "provenance": "Owner-supplied public conversation used in the historical acquisition comparison"
+    },
+    {
+      "id": "a2hbJlPxj4M",
+      "label": "Existing long Russian recording",
+      "candidate_tags": [
+        "multi_hour",
+        "russian",
+        "resume"
+      ],
+      "provenance": "Long Russian recording used in the native multi-hour acquisition and resume qualification"
+    },
+    {
+      "id": "BaW_jenozKc",
+      "label": "Historical yt-dlp example ID",
+      "candidate_tags": [
+        "short_candidate",
+        "test_fixture_candidate"
+      ],
+      "provenance": "https://github.com/yt-dlp/yt-dlp/blob/fa9886678eb65103303c627b8e013f13f8999b41/yt_dlp/extractor/youtube/_video.py"
+    },
+    {
+      "id": "jNQXAC9IVRw",
+      "label": "Me at the zoo",
+      "candidate_tags": [
+        "short",
+        "old_candidate"
+      ],
+      "provenance": "https://www.youtube.com/watch?v=jNQXAC9IVRw"
+    },
+    {
+      "id": "aqz-KE-bpKQ",
+      "label": "Big Buck Bunny",
+      "candidate_tags": [
+        "animation",
+        "old_candidate"
+      ],
+      "provenance": "https://www.youtube.com/watch?v=aqz-KE-bpKQ"
+    },
+    {
+      "id": "M7lc1UVf-VE",
+      "label": "YouTube API demonstration",
+      "candidate_tags": [
+        "short",
+        "official_demo"
+      ],
+      "provenance": "https://developers.google.com/youtube/iframe_api_reference"
+    },
+    {
+      "id": "aircAruvnKk",
+      "label": "Neural networks chapter one",
+      "candidate_tags": [
+        "lecture",
+        "multiple_tracks_candidate",
+        "old_candidate"
+      ],
+      "provenance": "https://www.3blue1brown.com/lessons/neural-networks/"
+    },
+    {
+      "id": "Ilg3gGewQ5U",
+      "label": "Backpropagation explanation",
+      "candidate_tags": [
+        "lecture",
+        "multiple_tracks_candidate"
+      ],
+      "provenance": "https://www.3blue1brown.com/lessons/backpropagation/"
+    },
+    {
+      "id": "rfscVS0vtbw",
+      "label": "Python course",
+      "candidate_tags": [
+        "multi_hour",
+        "english"
+      ],
+      "provenance": "https://www.youtube.com/watch?v=rfscVS0vtbw"
+    },
+    {
+      "id": "VMj-3S1tku0",
+      "label": "Micrograd lecture",
+      "candidate_tags": [
+        "multi_hour",
+        "english"
+      ],
+      "provenance": "https://karpathy.ai/zero-to-hero.html"
+    },
+    {
+      "id": "zjkBMFhNj_g",
+      "label": "Introduction to large language models",
+      "candidate_tags": [
+        "lecture",
+        "english"
+      ],
+      "provenance": "https://www.youtube.com/watch?v=zjkBMFhNj_g"
+    },
+    {
+      "id": "IiKtcKEdUFE",
+      "label": "Socialism after AI",
+      "candidate_tags": [
+        "lecture",
+        "recent_candidate"
+      ],
+      "provenance": "https://www.lse.ac.uk/lse-player/socialism-after-ai"
+    },
+    {
+      "id": "LXb3EKWsInQ",
+      "label": "Costa Rica nature recording",
+      "candidate_tags": [
+        "music",
+        "non_speech_candidate"
+      ],
+      "provenance": "https://www.youtube.com/watch?v=LXb3EKWsInQ"
+    },
+    {
+      "id": "kqtD5dpn9C8",
+      "label": "Python introductory course",
+      "candidate_tags": [
+        "lecture",
+        "multiple_tracks_candidate"
+      ],
+      "provenance": "https://www.youtube.com/watch?v=kqtD5dpn9C8"
+    }
+  ]
+}

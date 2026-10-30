@@ -1,0 +1,151 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-29",
+  "revision": "6f4952228518e918c7ddd5b73b397371ccd24d5e",
+  "scanner": {
+    "name": "gitleaks",
+    "version": "v8.30.1",
+    "archive_sha256": "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb",
+    "commit_count": 75,
+    "scope": "all local Git refs and exported HEAD; default rules, full redaction, gitleaks:allow comments disabled",
+    "head_findings": [
+      {
+        "path": "experiments/botguard/src/main.rs",
+        "rule": "gcp-api-key",
+        "line": 17,
+        "category": "public_bgutils_attestation_key"
+      },
+      {
+        "path": "src/web/runtime.rs",
+        "rule": "gcp-api-key",
+        "line": 11,
+        "category": "public_bgutils_attestation_key"
+      },
+      {
+        "path": "vendor/botguard/dom.min.js",
+        "rule": "generic-api-key",
+        "line": 13,
+        "category": "css_parser_token_enum"
+      },
+      {
+        "path": "vendor/botguard/dom.min.js",
+        "rule": "generic-api-key",
+        "line": 13,
+        "category": "css_parser_token_enum"
+      },
+      {
+        "path": "vendor/botguard/dom.min.js",
+        "rule": "generic-api-key",
+        "line": 13,
+        "category": "css_parser_token_enum"
+      },
+      {
+        "path": "vendor/botguard/dom.min.js",
+        "rule": "gcp-api-key",
+        "line": 819,
+        "category": "public_bgutils_attestation_key"
+      }
+    ],
+    "history_findings": [
+      {
+        "path": "src/web/runtime.rs",
+        "rule": "gcp-api-key",
+        "category": "public_bgutils_attestation_key"
+      },
+      {
+        "path": "experiments/botguard/src/main.rs",
+        "rule": "gcp-api-key",
+        "category": "public_bgutils_attestation_key"
+      },
+      {
+        "path": "vendor/botguard/dom.min.js",
+        "rule": "gcp-api-key",
+        "category": "public_bgutils_attestation_key"
+      },
+      {
+        "path": "vendor/botguard/dom.min.js",
+        "rule": "generic-api-key",
+        "category": "css_parser_token_enum"
+      },
+      {
+        "path": "vendor/botguard/dom.min.js",
+        "rule": "generic-api-key",
+        "category": "css_parser_token_enum"
+      },
+      {
+        "path": "vendor/botguard/dom.min.js",
+        "rule": "generic-api-key",
+        "category": "css_parser_token_enum"
+      }
+    ],
+    "confirmed_private_credentials": 0,
+    "unclassified_findings": 0,
+    "public_key_reference": {
+      "repository": "https://github.com/LuanRT/BgUtils",
+      "revision": "f842f8a14435a35800ff469d315bb1a7e6d7a64a",
+      "matching_public_keys": 2
+    },
+    "limitations": [
+      "Pattern scan, not proof of absence of secrets",
+      "Ignored local files not scanned or distributable",
+      "Scanner findings remain reported; no allowlist added"
+    ],
+    "staged_scan": {
+      "findings": 6,
+      "new_unclassified_findings": 0,
+      "exit_code": 1
+    }
+  },
+  "historical_private_files": {
+    "count": 145,
+    "backlog_files": 144,
+    "grok_config_files": 1,
+    "removed_from_current_index": true,
+    "history_rewritten": false
+  },
+  "notices": {
+    "dependency_packages": 257,
+    "unique_texts": 182,
+    "missing_dependency_texts": [],
+    "bundled_asset_notice_files": 3,
+    "supplement_hash_negative_test": "passed",
+    "root_license_present": false,
+    "root_license_draft": "docs/proposed-LICENSE-MIT.txt",
+    "policy_approval": false,
+    "generated_notice_sha256": "926d97946fdefb1438a0cc2e49b1710e0f6e742f2266dd4b073cf2eb167fc7d2"
+  },
+  "advisories": [
+    {
+      "id": "RUSTSEC-2026-0387",
+      "package": "crypto-bigint",
+      "locked_version": "0.5.5",
+      "patched": ">=0.7.6",
+      "disposition": "not a compatible leaf upgrade; affected secret paths excluded by configured client provider; audit remains failing",
+      "source": "https://rustsec.org/advisories/RUSTSEC-2026-0387.html"
+    },
+    {
+      "id": "RUSTSEC-2023-0071",
+      "package": "rsa",
+      "locked_version": "0.9.10",
+      "patched": null,
+      "disposition": "no patched version listed; private-key loading disabled, certificate verification remains; audit remains failing",
+      "source": "https://rustsec.org/advisories/RUSTSEC-2023-0071.html"
+    }
+  ],
+  "public_distribution_ready": false,
+  "local_checks": [
+    {
+      "check": "fmt",
+      "exit_code": 0
+    },
+    {
+      "check": "clippy",
+      "exit_code": 0
+    },
+    {
+      "check": "test",
+      "exit_code": 0
+    }
+  ],
+  "tests_passed": 330
+}

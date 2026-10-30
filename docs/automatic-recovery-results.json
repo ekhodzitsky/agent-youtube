@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-30",
+  "version": "0.6.0",
+  "qualification_build": {
+    "binary_sha256": "ee2bf9d8db424d295989a7383dbcdf2a604e7444728c8d372659ba5ec9b4f554",
+    "revision": "7c3df5b84eb81bc62e9ec98dfa3b10c505d2072f",
+    "source_dirty": true,
+    "source_fingerprint": "3ff4bc57e25b0fd72863bc113b3f5b5dcf4e5363",
+    "version": "0.6.0"
+  },
+  "identity_note": "Qualification used the pre-commit build. Source fingerprint identifies production sources; revision is its parent commit. A post-commit build has different binary metadata.",
+  "source_sha256": {
+    "src/cli.rs": "840bb101819fba042ab745c394a3c2a6935a25a446a405ac647ee317c97d282b",
+    "src/job.rs": "079c43539081c09e9423411fe22d8928516720275795943d125af5b78a5ace59",
+    "src/job/retry.rs": "e566edd437ce13022be861b9f964de8b2b97a95075b86dcdf6488fe3496af098",
+    "tests/pipeline.rs": "38524c4c31491e7864e2bd63c0ffb97e5ceb1a407d28b8d72f97c708106f05e0",
+    "Cargo.toml": "1ee01d64f59d18a3b7d20b0ed15b59256c271d085f001e2ca3560143d7d35d71",
+    "Cargo.lock": "ce5cccb04af2d177a01f0a6bb04eb1464b203e82c0035eb4c5339f9462e90f52"
+  },
+  "local_checks": {
+    "cargo_fmt_check": "passed",
+    "cargo_clippy_all_targets_deny_warnings": "passed",
+    "cargo_test": {
+      "passed": 366,
+      "ignored": 17,
+      "failed": 0
+    },
+    "python_unittest": {
+      "passed": 56,
+      "failed": 0
+    },
+    "rust_1_94_locked_check_all_targets": "passed",
+    "release_build": "passed",
+    "dependency_changes": false,
+    "dependency_warnings": "Existing syom/bandlimit dead-code warnings remain; project strict Clippy passes."
+  },
+  "controlled_real_audio": {
+    "automatic_retries": 1,
+    "cause_code": "download_no_progress",
+    "cleanup_complete": true,
+    "controlled_loopback": true,
+    "duration_seconds": 52.96475,
+    "one_cli_invocation": true,
+    "raw_asr_chunks": 6,
+    "real_gigastt": true,
+    "remaining_seconds": 3598,
+    "source_sha256": "9ff98eeebbfbc735a3ff93959d4d081682b4fef40aa9a5b58ff3951830cfbb3c",
+    "success_json_documents": 1,
+    "transcript_validated": true,
+    "version": "0.6.0",
+    "video_id": "of4B3aw7MXo"
+  },
+  "fresh_youtube": {
+    "video_id": "of4B3aw7MXo",
+    "one_cli_invocation": true,
+    "complete": true,
+    "wall_seconds": 22.29,
+    "source_bytes": 858695,
+    "source_sha256": "9ff98eeebbfbc735a3ff93959d4d081682b4fef40aa9a5b58ff3951830cfbb3c",
+    "decoded_seconds": 52.96475,
+    "decoded_frames": 847436,
+    "sample_rate": 16000,
+    "raw_asr_chunks": 1,
+    "raw_hashes_verified": true,
+    "transcript_sha256": "257c6528c671b6c8a311402e39fbf133f95c5445ec5d7b0adb0d63717e1fdbd8",
+    "coverage_hash_verified": true,
+    "cleanup_complete": true,
+    "automatic_retries": 0,
+    "waiting_budget_remaining_seconds": 3600,
+    "real_gigastt": true
+  },
+  "legacy_completed_job": {
+    "version": "0.5.1",
+    "retry_window_seconds": 0,
+    "retry_ledger_created": false,
+    "transcript_manifest_raw_bytes_unchanged": true
+  },
+  "regression_scenarios": [
+    "one CLI invocation resumes a durable 1 MiB prefix after HTTP429 and Retry-After",
+    "one CLI invocation recovers SABR initialization-prefix no-progress",
+    "healthy ASR exceeds a three-second waiting budget with and without an earlier retry",
+    "pending wait survives cancel/resume without early HTTP",
+    "elapsed wait charged once across scheduler reload",
+    "zero remaining or server wait beyond budget cannot dispatch an early attempt",
+    "malformed state and missing enabled ledger rejected without refill",
+    "legacy missing option and explicit zero stay disabled",
+    "legacy absolute deadline remains enforced",
+    "durable publication reconciles before valid expired wait"
+  ],
+  "limits": [
+    "Controlled loopback fault recovery is not a measurement of natural YouTube availability.",
+    "Fresh external sample size is one short recording; historical 0.5.1 multi-hour corpus evidence is separate.",
+    "Active attempt durations are excluded; this is not an overall wall-clock deadline.",
+    "The caller must relaunch resume after process death; no detached scheduler is added.",
+    "YouTube can remove content or deny every available client; no unconditional access guarantee.",
+    "ASR accuracy and completeness of recognized speech remain unverified."
+  ],
+  "hosted_ci_triggered": false,
+  "repository_private": true
+}

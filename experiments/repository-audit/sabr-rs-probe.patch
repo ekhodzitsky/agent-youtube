@@ -1,0 +1,71 @@
+diff --git a/src/stream.rs b/src/stream.rs
+index e564f6c..05ef6e6 100644
+--- a/src/stream.rs
++++ b/src/stream.rs
+@@ -136,3 +136,3 @@ async fn innertube_player(
+     let resp = http
+-        .post(INNERTUBE_PLAYER_URL)
++        .post(format!("http://127.0.0.1:{}/player", RESEARCH_PORT.load(std::sync::atomic::Ordering::SeqCst)))
+         .header("User-Agent", itclient.user_agent)
+@@ -932 +932,61 @@ async fn sabr_loop(
+ }
++
++#[cfg(test)]
++static RESEARCH_PORT: std::sync::atomic::AtomicU16 = std::sync::atomic::AtomicU16::new(0);
++
++#[cfg(test)]
++#[tokio::test(flavor = "current_thread")]
++async fn research_android_fallback_and_late_http_failure() {
++    use std::{io::{Read, Write}, net::TcpListener};
++    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
++    let port = listener.local_addr().unwrap().port();
++    RESEARCH_PORT.store(port, std::sync::atomic::Ordering::SeqCst);
++    let server = std::thread::spawn(move || {
++        let mut observed = Vec::new();
++        for index in 0..8 {
++            let (mut connection, _) = listener.accept().unwrap();
++            connection.set_read_timeout(Some(std::time::Duration::from_secs(30))).unwrap();
++            let mut request = Vec::new();
++            let mut buffer = [0; 4096];
++            let split = loop {
++                let n = connection.read(&mut buffer).unwrap();
++                assert!(n > 0);
++                request.extend_from_slice(&buffer[..n]);
++                if let Some(p) = request.windows(4).position(|w| w == b"\r\n\r\n") { break p + 4; }
++            };
++            let headers = String::from_utf8_lossy(&request[..split]).to_ascii_lowercase();
++            let length: usize = headers.lines().find_map(|line| line.strip_prefix("content-length:")).unwrap().trim().parse().unwrap();
++            while request.len() < split + length {
++                let n = connection.read(&mut buffer).unwrap(); assert!(n > 0);
++                request.extend_from_slice(&buffer[..n]);
++            }
++            let (status, body) = match index {
++                0 => {
++                    let body: serde_json::Value = serde_json::from_slice(&request[split..]).unwrap();
++                    assert_eq!(body["context"]["client"]["clientName"], "IOS");
++                    (200, serde_json::json!({"playabilityStatus":{"status":"UNPLAYABLE","reason":"fixture"}}).to_string())
++                },
++                1 => {
++                    let body: serde_json::Value = serde_json::from_slice(&request[split..]).unwrap();
++                    assert_eq!(body["context"]["client"]["clientName"], "ANDROID");
++                    (200, serde_json::json!({"playabilityStatus":{"status":"OK"},"videoDetails":{"title":"fixture","lengthSeconds":"600"},"streamingData":{"serverAbrStreamingUrl":format!("http://127.0.0.1:{port}/media"),"adaptiveFormats":[{"itag":251,"mimeType":"audio/webm; codecs=opus","bitrate":128000,"lastModified":"1"},{"itag":160,"mimeType":"video/mp4","bitrate":1000,"lastModified":"1"}]}}).to_string())
++                },
++                _ => {
++                    let proto = vs::VideoPlaybackAbrRequest::decode(&request[split..]).unwrap();
++                    observed.push(proto.streamer_context.unwrap().client_info.unwrap().client_name.unwrap());
++                    assert!(headers.contains("com.google.ios.youtube"));
++                    (403, String::new())
++                }
++            };
++            write!(connection, "HTTP/1.1 {status} Fixture\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).unwrap();
++        }
++        observed
++    });
++    let http = reqwest::Client::builder().no_proxy().timeout(std::time::Duration::from_secs(5)).build().unwrap();
++    let (info, mut receiver) = stream_audio(&http, "fixture").await.unwrap();
++    assert_eq!(info.title, "fixture");
++    assert!(tokio::time::timeout(std::time::Duration::from_secs(30), receiver.recv()).await.unwrap().is_none());
++    let observed = server.join().unwrap();
++    assert_eq!(observed, vec![5; 6]);
++    println!("RESEARCH_RESULT source_client=ANDROID sabr_client=IOS media_requests=6 metadata_ok=true audio_bytes=0 receiver_eof=true error_item_unavailable=true");
++}

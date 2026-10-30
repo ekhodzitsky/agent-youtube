@@ -1,0 +1,286 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-29",
+  "scope": "One real 3.82-hour Russian recording; current Linux network and hardware; no speech-accuracy assessment",
+  "video_id": "a2hbJlPxj4M",
+  "source_bytes": 222653848,
+  "source_sha256": "03aa68c5dd636ee05f023ce2a51dfd2013d3968058353ca4326b9d0774e36631",
+  "decoded_seconds": 13757.6838125,
+  "frames": 220122941,
+  "sample_rate": 16000,
+  "raw_chunks": 46,
+  "producer": {
+    "binary_sha256": "cdc2c49ba252db9d6c57c7d7d4eee65ea27feb2f59ff36ae35825da56060d8aa",
+    "revision": "7acc40b8261b6c1bfb1b12b406cdb1f1cb808719",
+    "source_dirty": true,
+    "source_fingerprint": "55d8415864759b3414be78d199e81389668e3ec8",
+    "version": "0.5.0"
+  },
+  "recognizer_sha256": "efb3c09b0ddf7872fe47bccc91f556ae728cf01035a94efe6f8e0c0795591cd1",
+  "recognizer_version": "gigastt 2.22.0",
+  "model_fingerprint": {
+    "v3_e2e_rnnt_decoder.onnx": "7b0a16d67fd2cb37061decc93c69e364a9ab27afee3c57495d55b1c974cf7231",
+    "v3_e2e_rnnt_encoder_int8.onnx": "cf51b300af47cea099e17c806f8fecce2c46e9e8deb4709ec203f8970a067389",
+    "v3_e2e_rnnt_joint.onnx": "602ff7017a93311aad34df1437c8d7f49911353c13d6eae7a6ee7b041339465c",
+    "v3_e2e_rnnt_vocab.txt": "39abae20e692998290c574e606f11a9edef2902a1995463fcff63d1490cf22b7"
+  },
+  "defaults": {
+    "chunk_seconds": 300,
+    "encoder_threads": null,
+    "retry_window_seconds": 0,
+    "recognizer_selection": "prepared runtime discovered by CLI; no override",
+    "boundary_window_ms": 0,
+    "asr_inactivity_timeout_seconds": 1800
+  },
+  "driver_sha256": "7149e986e9bedf0526d91886fdb3bce1f5f395feaaa18d3feed5c77c1e5f2047",
+  "phase_timeout_seconds": 7200,
+  "resource_sample_interval_seconds": 0.1,
+  "disk_sample_interval_seconds": 1,
+  "phases": [
+    {
+      "label": "initial",
+      "peak_rss_bytes": 719044608,
+      "peak_apparent_bytes": 664852353,
+      "peak_allocated_bytes": 665042944,
+      "stages": {
+        "startup": {
+          "sampled_seconds": 0.2016062980001152,
+          "peak_tree_rss_bytes": 9502720,
+          "peak_parent_rss_bytes": 9502720,
+          "peak_children_rss_bytes": 0,
+          "peak_apparent_bytes": 0,
+          "peak_allocated_bytes": 0
+        },
+        "preflight": {
+          "sampled_seconds": 0.20085072300207685,
+          "peak_tree_rss_bytes": 9502720,
+          "peak_parent_rss_bytes": 9502720,
+          "peak_children_rss_bytes": 0,
+          "peak_apparent_bytes": 0,
+          "peak_allocated_bytes": 0
+        },
+        "acquisition": {
+          "sampled_seconds": 372.051776884,
+          "peak_tree_rss_bytes": 385441792,
+          "peak_parent_rss_bytes": 21721088,
+          "peak_children_rss_bytes": 367259648,
+          "peak_apparent_bytes": 222756114,
+          "peak_allocated_bytes": 222797824
+        },
+        "decode": {
+          "sampled_seconds": 88.7633597899985,
+          "peak_tree_rss_bytes": 40349696,
+          "peak_parent_rss_bytes": 40349696,
+          "peak_children_rss_bytes": 0,
+          "peak_apparent_bytes": 656467542,
+          "peak_allocated_bytes": 656650240
+        },
+        "recognition": {
+          "sampled_seconds": 26.08139536100134,
+          "peak_tree_rss_bytes": 719044608,
+          "peak_parent_rss_bytes": 21295104,
+          "peak_children_rss_bytes": 697749504,
+          "peak_apparent_bytes": 664852353,
+          "peak_allocated_bytes": 665042944
+        }
+      },
+      "exit_code": -9,
+      "wall_seconds": 487.54652707700006
+    },
+    {
+      "label": "resume",
+      "peak_rss_bytes": 415092736,
+      "peak_apparent_bytes": 676965143,
+      "peak_allocated_bytes": 677310464,
+      "stages": {
+        "startup": {
+          "sampled_seconds": 0.0006524329983221833,
+          "peak_tree_rss_bytes": 208896,
+          "peak_parent_rss_bytes": 208896,
+          "peak_children_rss_bytes": 0,
+          "peak_apparent_bytes": 0,
+          "peak_allocated_bytes": 0
+        },
+        "preflight": {
+          "sampled_seconds": 0.3010513170011109,
+          "peak_tree_rss_bytes": 10465280,
+          "peak_parent_rss_bytes": 10465280,
+          "peak_children_rss_bytes": 0,
+          "peak_apparent_bytes": 0,
+          "peak_allocated_bytes": 0
+        },
+        "acquisition": {
+          "sampled_seconds": 0.20074278999891249,
+          "peak_tree_rss_bytes": 11448320,
+          "peak_parent_rss_bytes": 11448320,
+          "peak_children_rss_bytes": 0,
+          "peak_apparent_bytes": 0,
+          "peak_allocated_bytes": 0
+        },
+        "recognition": {
+          "sampled_seconds": 371.9360575409992,
+          "peak_tree_rss_bytes": 415092736,
+          "peak_parent_rss_bytes": 11448320,
+          "peak_children_rss_bytes": 403644416,
+          "peak_apparent_bytes": 667953031,
+          "peak_allocated_bytes": 668221440
+        },
+        "publication": {
+          "sampled_seconds": 0.9093553359998623,
+          "peak_tree_rss_bytes": 11448320,
+          "peak_parent_rss_bytes": 11448320,
+          "peak_children_rss_bytes": 0,
+          "peak_apparent_bytes": 676965143,
+          "peak_allocated_bytes": 677310464
+        }
+      },
+      "exit_code": 0,
+      "wall_seconds": 373.44810729299934
+    }
+  ],
+  "giga_process_observation": {
+    "schema_version": 1,
+    "recognizer_sha256": "efb3c09b0ddf7872fe47bccc91f556ae728cf01035a94efe6f8e0c0795591cd1",
+    "observer_sha256": "f3616233613b7510c41fe86ff3fcc1b8c2ff29392c2c14045c530a16dc03ca74",
+    "interval_seconds": 0.5,
+    "phases": {
+      "initial": {
+        "peak_rss_bytes": 569290752,
+        "peak_os_threads": 50,
+        "samples": 53,
+        "observed_cpu_seconds": 270.12
+      },
+      "resume": {
+        "peak_rss_bytes": 399200256,
+        "peak_os_threads": 50,
+        "samples": 740,
+        "observed_cpu_seconds": 3817.07
+      }
+    },
+    "complete": true,
+    "measurement": "GigaSTT batch process RSS and total OS threads; CPU accounting from proc ticks"
+  },
+  "kill": {
+    "kind": "SIGKILL of owned parent/child tree after freezing and snapshotting valid output",
+    "preserved_raw_sha256": {
+      "000000.json": "eedfcaec71b1ddec176c0898312323d6180c0885e45478f4f557dd4f028627dc",
+      "000002.json": "baf01ccd023606012de192f22801e4aff0edf1c9f964ab526b8afe8a9c6296c6",
+      "000001.json": "db7ef06d0d8a9f317f23d6cef495144e4496f28fd05427905d3698bac2cf056c"
+    },
+    "media_preserved_after_kill": true,
+    "complete_worker_teardown_verified": true,
+    "remaining_submitted_chunks": 43,
+    "preserved_chunks_resubmitted": 0
+  },
+  "publication": {
+    "transcript_sha256": "524aa630d95da45232b37aeffbe0d93c17d0f683fd4ee09b2a0efe41eaa5722c",
+    "manifest_sha256": "5838572f6d892d1f25e7e137ebcaa6c828478067ff22014979f870676bfc9636",
+    "raw_sha256": {
+      "000000.json": "eedfcaec71b1ddec176c0898312323d6180c0885e45478f4f557dd4f028627dc",
+      "000001.json": "db7ef06d0d8a9f317f23d6cef495144e4496f28fd05427905d3698bac2cf056c",
+      "000002.json": "baf01ccd023606012de192f22801e4aff0edf1c9f964ab526b8afe8a9c6296c6",
+      "000003.json": "403eb94a6d3f2c4fd5f8c06c35643e8dba3af149319641cde21543589df19ce4",
+      "000004.json": "82d826aa1674dce880b59380ac3df420334c3654649050e5adf37555f832e655",
+      "000005.json": "913f2013fa0afb983c4d4c9a98ef5db9b8a9a93bbc588c74bc0c399fa9645e06",
+      "000006.json": "3a801d86e9ac779081bb7a7ebac8df2be7c330ced6ccd1424bdacfb2c8b84d9d",
+      "000007.json": "d5bc00dc20f8bf0c997a92295837b4e5b78f32a13ad75e102a35eb577d1ef090",
+      "000008.json": "48cb140a6d1d6f38a097faa287419f505051aa1ad82cc6e621f75da5f11fe561",
+      "000009.json": "17b3e448a368ce9e6fe975abe3e4da5b595995f955400f052eac552396a04b2d",
+      "000010.json": "1b7924cddae1e0087fd1fb3a1d509b1d648fabb8096cb50029258f0dd4b1677e",
+      "000011.json": "a22412b1a412a20a95693b806a8e4b2c5fcf750a425cd0cab4b13860ff8a2511",
+      "000012.json": "4ea70266a512a3f7d27092429c140c45626990d0082be58a28ecccfb588bd7a2",
+      "000013.json": "a6df2bd180fd3a6aca8d951a8ad8d1b6bdf755e8f792c7872461f47dc3e0f679",
+      "000014.json": "8fa908de7758ad1982bcc004b9048049fd8c9052f9f483077025f05c1f424d82",
+      "000015.json": "23acf4122558aeead8d74616c149f51a0ab7714a2a4a643d947a86ed9a1df8b7",
+      "000016.json": "54d38dea5e5d67313a0bda9630d2b1ad855394dae9003559d241b269c85b7df3",
+      "000017.json": "e3a93ab022c0f1ecc1828626dd703ec51de059524dd5f1d780cc25984a26cbb0",
+      "000018.json": "30726a418b1d29b9653caa25404271c63bb9195a0511f9fc830164780ab47531",
+      "000019.json": "c36a044c8cd0a68aa583f87f5d9b6109554f3de35ca21236235f732809e727bb",
+      "000020.json": "4b91a3ecdc0a2d1ba2bfd1287c0ad1e0136f8d42cf3e3ba7fed61df047532c2c",
+      "000021.json": "dc1329b2810dfaebfc37b928191ec9984a111c52876741babacf051c26aa6b7e",
+      "000022.json": "16ee2b33e805596948ed9b3413f1e3b56b610eb1aadd03da903c5a9c1c0fdf77",
+      "000023.json": "c9f8b65c81f28c87d950c5f105ff68de32c01b04e696a1895352ab74b115bf04",
+      "000024.json": "faa69177ffbf9541af95fab81b799c1b2a98cbb4f7b041079aba6390064ce1e3",
+      "000025.json": "466c02b0d5bd858943da8e3c6968699c068e32295f0f12d7e8e62ae8dfc8b3b6",
+      "000026.json": "3b1e46de0983be14013f852f766f4b7b51f781d5a72b5c556a6f14c708dc6643",
+      "000027.json": "468e81c379ba08fe26169c41df6684781cb2db6ade320ebf05c2cb0df6c2753e",
+      "000028.json": "a825873b568e545f61e64463d2446b843d0c5f9138c2cd098602553e10f13b6c",
+      "000029.json": "7ac94ff3715c91058c5f8d8d8e28f89e388a20b4e6409a71ad73974eb33039c8",
+      "000030.json": "5e56ed5cfde4a271f2ca196ff0edfd0db006ffd29753b66d93c4a32001e29bad",
+      "000031.json": "cc9c497c11ed470835213cc5e0930eb6b2a9efdf856239a8744fb4feab07b534",
+      "000032.json": "1cb0d5875a03cc093cf2ffa483b4ed7c0a0b3868bc4e4ca4b727dcfc47204197",
+      "000033.json": "587da817438fdca28b141ed4a3d54a89b883b65d196ea8497a284f1519a98633",
+      "000034.json": "d72a95340b2bdf2f7ee1202a842048cd3bedadd9dbe4b8e30f7a109bd607fec8",
+      "000035.json": "c2500adea8a9b8467ebd66ff981ab760920ba7f5c4b15edd08a3301dd55a7ef3",
+      "000036.json": "3f6080d125afcd428d7385e81f8a5f86daa4faa8b3a83f09cdfedcab57fc67da",
+      "000037.json": "f20db7c934c9cf33ef8822b147b748dbcf0e3092b01f49dc448349771f2dabc7",
+      "000038.json": "49bb04e071c45a48665303709b4f2c3377dd1df8dcaded7e48519267e47ec3ac",
+      "000039.json": "49308f083b02fb47ff4e513e4e34c7786d80af096db0bea2f8dd7769e5ac6289",
+      "000040.json": "0a3a9f491c0637efd18b6c92516cea4b68713b752e837f48e0c4966b5c1485bf",
+      "000041.json": "a4b4e00f1371fb5f6ebf481fd808357b1a64266a11aa1da234a712a3866cd5cf",
+      "000042.json": "a5376480f87d254cfff8041791520d1b5074bcd029192367bdd7b4f4bb3f07bf",
+      "000043.json": "098435c1d2f22b1f11494b421509591d714c1062ce3f31766bc49fb2b76bc7b7",
+      "000044.json": "fc6427a3bfbc008a4963d5638ad27c11a768a9341c1247ebd5dae33832843133",
+      "000045.json": "0e3dfe3c2d1e73e14b4b5ebee9e29705b6266bdef8e2b1299ef5ea1375982d66"
+    },
+    "contiguous_full_frame_coverage": true,
+    "hashes_verified": true,
+    "cleanup_complete": true,
+    "staging_and_wav_files_removed": true,
+    "completed_reuse_unchanged": true,
+    "owned_post_cleanup_storage": {
+      "apparent_bytes": 9343341,
+      "allocated_bytes": 9465856
+    }
+  },
+  "checks": [
+    {
+      "check": "fmt",
+      "exit_code": 0
+    },
+    {
+      "check": "clippy",
+      "exit_code": 0
+    },
+    {
+      "check": "tests",
+      "exit_code": 0
+    },
+    {
+      "check": "python",
+      "exit_code": 0
+    }
+  ],
+  "rust_tests": 349,
+  "rust_opt_in_ignored": 15,
+  "python_tests": 56,
+  "prior_attempts": [
+    {
+      "settings": "harness mistakenly set a 180-second total job deadline",
+      "ok": false,
+      "error_code": "job_deadline_exceeded",
+      "elapsed_seconds": 181.01460859800136,
+      "retained_committed_prefix_bytes": 141236227,
+      "retained_prefix_sha256": "520e5eb069fb9831872c6674905cdad83c8d7c5e4ba99afd8fdd8eb768c0908a",
+      "prefix_verified": true,
+      "deadline_not_reset": true
+    },
+    {
+      "operation": "auxiliary observer started after old driver exited",
+      "measurement_recorded": false
+    }
+  ],
+  "limits": [
+    "One source and one successful default-setting scenario; no unlimited-duration or access guarantee",
+    "RSS sums may double-count shared pages; sampled peaks may miss transients",
+    "Stage labels derive from progress events and include waiting/monitoring overhead",
+    "GigaSTT process RSS is sampled separately at 0.5s; total OS threads are not the encoder setting",
+    "Owned disk excludes models/caches, directory metadata, earlier failed jobs and unrelated work",
+    "No whole-file memory proof for all codecs/durations or ASR accuracy claim",
+    "Binary was qualified before its earlier source commit; exact producer identity is retained"
+  ],
+  "hardware_context": {
+    "logical_cpus_available_at_start": 24,
+    "wall_times_are_not_a_comparative_benchmark": true
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "repository": "https://github.com/RustCrypto/rustls-rustcrypto",
+  "revision": "70f76c039e587192688af18a80d5d6435dedaf22",
+  "upstream_sha256": {
+    "Cargo.toml": "be04cd801bc501452b9fd8057a9d18f6e7ad382f4791d9dee7d6afda22aa0eac",
+    "README.md": "1017250b5c9d00250b90175d845cfd261d54941b139694ec9eb0d57c68babd6e",
+    "LICENSE-APACHE": "a9040321c3712d8fd0b09cf52b17445de04a23a10165049ae187cd39e5c86be5",
+    "LICENSE-MIT": "1b9cec622a18a7789d0154a3040d7448f79414aed2fc31b95e49b01a234fb998",
+    "src/aead/chacha20.rs": "1977208a25c634fcf4a0e713b49631a6f13fc787953441779459e8795226b93c",
+    "src/aead/gcm.rs": "82a1eed6200d429d6e34f24281608b13d99ba483c0cd5e3a3e1946cf2e17c2c1",
+    "src/aead.rs": "c29e5e65f9c8ad5d6f759f507d4722363bb614b9d184b4098f990057e9ed86f6",
+    "src/hash.rs": "0b3794dc220e978328989edb4f437c084ef39f9cf982ca6f8f5bd9b4745e23ab",
+    "src/hmac.rs": "f83bc9024113136cebd184c1aae335e56564bd5bbe42587dc0622108995dc5a3",
+    "src/kx.rs": "c50172468fe432fc8d288e7b76d9558de0f893fddc32349a882a2b9d9df3fd65",
+    "src/lib.rs": "97c854eda3eff7955ae8b9cf6c8574e5447211797825f92daf7b81aaac3f8119",
+    "src/misc.rs": "6c5e1d674ba9e8c3b917e2bdce288a95d11bd390a8abc7daa50edf5b1a075718",
+    "src/quic.rs": "9d5b3d7ff77c5e49323b5a6413add7b132f7b1c020c707a21f79fafc51dec637",
+    "src/sign/ecdsa.rs": "86e9764968168db4975e206181985024448ae6c86dc03ee367ed513d75e1ed42",
+    "src/sign/eddsa.rs": "a3bf79f58cbce6ab868ccbe4c792ae93b831c41f1db96e80ef20d4cec6c2da40",
+    "src/sign/rsa.rs": "8b97b1b7eedf9ae5f55964ad925ae465f45b2ae19fa1417ad2ec6b2613428679",
+    "src/sign.rs": "38cd646b036d91f55fa63068f9d2eeedcc914157ddf7e08849d28a6e7d0e3021",
+    "src/verify/ecdsa.rs": "22ea7cddc0aa3b1280d101519e074bf52050cbf9085ab3fe6a6591cd425bda25",
+    "src/verify/eddsa.rs": "f6fb0eb23a703462a0568b069e75c4c877439f4086315546903cf8c0aca63ec8",
+    "src/verify/rsa.rs": "85602bad25c4765878254316f8a82a0fd0e1fdc8fe3eeb5a62d764bbbd4477df",
+    "src/verify.rs": "6a135a0db5fd173546b66a541538956fbe37bf8ea8c377e281135c45eb65c3ba"
+  },
+  "changes": [
+    "Disable package publication",
+    "Alias paste to pastey 0.2.3; all Rust source files are byte-identical to upstream"
+  ]
+}

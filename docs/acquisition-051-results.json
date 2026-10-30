@@ -1,0 +1,339 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-29",
+  "version": "0.5.1",
+  "source_revision": "f71bda449c8375be105a22c81b08520f01d074c9",
+  "binary_sha256": "d752de5217115510385b142757c87b75d18a23b7b6cbfee0b43733ae684be092",
+  "release_probe_sha256": "193493d8a4b3e3054f3cbb0ab174a99387ca640d8baa7e3d1dcbedd27b3ca444",
+  "corpus_sha256": "cd05b3590f803f5ba97b8d45ca1fbf7415d3f11409b61bddf408327a979faf53",
+  "helper_sha256": "3ec4cde33176445f0ab3cde78abacfc52e7231ffac88ebb323e58c643846016a",
+  "counts": {
+    "distinct_videos": 15,
+    "fully_verified": 14,
+    "first_invocation_complete": 12,
+    "recovered": 2,
+    "failed": 1,
+    "unattempted_after_continuation": 0
+  },
+  "full_completion_fraction": 0.9333333333333333,
+  "total_decoded_seconds": 56054.2938125,
+  "maximum_decoded_seconds": 16011.598375,
+  "trials": [
+    {
+      "video_id": "of4B3aw7MXo",
+      "fresh_complete": true,
+      "complete": true,
+      "resumed": false,
+      "initial_error_code": null,
+      "error_code": null,
+      "bytes": 858695,
+      "sha256": "9ff98eeebbfbc735a3ff93959d4d081682b4fef40aa9a5b58ff3951830cfbb3c",
+      "decoded_seconds": 52.96475
+    },
+    {
+      "video_id": "2teKcIDANI4",
+      "fresh_complete": true,
+      "complete": true,
+      "resumed": false,
+      "initial_error_code": null,
+      "error_code": null,
+      "bytes": 13802520,
+      "sha256": "cdf5d1ebdcf887551a7298b47fdfd363ab2c206436de2d2aa1602ede445b9384",
+      "decoded_seconds": 852.7993125
+    },
+    {
+      "video_id": "a2hbJlPxj4M",
+      "fresh_complete": false,
+      "complete": true,
+      "resumed": true,
+      "initial_error_code": "download_no_progress",
+      "error_code": null,
+      "bytes": 222653848,
+      "sha256": "03aa68c5dd636ee05f023ce2a51dfd2013d3968058353ca4326b9d0774e36631",
+      "decoded_seconds": 13757.6838125,
+      "resumed_from_bytes": 1148661,
+      "prefix_preserved": true,
+      "resume_wall_seconds": 363.1400415290009
+    },
+    {
+      "video_id": "BaW_jenozKc",
+      "fresh_complete": false,
+      "complete": false,
+      "resumed": false,
+      "initial_error_code": "youtube_source_unavailable",
+      "error_code": "youtube_source_unavailable",
+      "bytes": null,
+      "sha256": null,
+      "decoded_seconds": null
+    },
+    {
+      "video_id": "jNQXAC9IVRw",
+      "fresh_complete": true,
+      "complete": true,
+      "resumed": false,
+      "initial_error_code": null,
+      "error_code": null,
+      "bytes": 309288,
+      "sha256": "a01b38c896d27707ef852301f1ccc6c39cebe792852c868109e85753ef159e47",
+      "decoded_seconds": 19.063625
+    },
+    {
+      "video_id": "aqz-KE-bpKQ",
+      "fresh_complete": true,
+      "complete": true,
+      "resumed": false,
+      "initial_error_code": null,
+      "error_code": null,
+      "bytes": 30767611,
+      "sha256": "595acb084489cf9bee90547335de299189114b341445c2f2d62b168c4b77a513",
+      "decoded_seconds": 634.624
+    },
+    {
+      "video_id": "M7lc1UVf-VE",
+      "fresh_complete": true,
+      "complete": true,
+      "resumed": false,
+      "initial_error_code": null,
+      "error_code": null,
+      "bytes": 21747280,
+      "sha256": "4454ec9f1eda741c85652aeb4a7620026ed477aed353a7c308fb66bd119b16ab",
+      "decoded_seconds": 1343.692375
+    },
+    {
+      "video_id": "aircAruvnKk",
+      "fresh_complete": true,
+      "complete": true,
+      "resumed": false,
+      "initial_error_code": null,
+      "error_code": null,
+      "bytes": 18126904,
+      "sha256": "718cc5edeea3eb85d9049a0745f660dfc973ecd4bc32e62b0fdf92cae5c01b0c",
+      "decoded_seconds": 1119.9913125
+    },
+    {
+      "video_id": "Ilg3gGewQ5U",
+      "fresh_complete": false,
+      "complete": true,
+      "resumed": true,
+      "initial_error_code": "download_no_progress",
+      "error_code": null,
+      "bytes": 12410001,
+      "sha256": "9f5b1332ed823604c72022cf756408c60204fb0200798ffb1ada3d8f662788eb",
+      "decoded_seconds": 766.746125,
+      "resumed_from_bytes": 1133147,
+      "prefix_preserved": true,
+      "resume_wall_seconds": 26.87655299999824
+    },
+    {
+      "video_id": "rfscVS0vtbw",
+      "fresh_complete": true,
+      "complete": true,
+      "resumed": false,
+      "initial_error_code": null,
+      "error_code": null,
+      "bytes": 259130892,
+      "sha256": "27f7f9dafe01ce1bf46fd211b54a9cbf1c1d68b6f2dfe034707315ca6190df9b",
+      "decoded_seconds": 16011.598375
+    },
+    {
+      "video_id": "VMj-3S1tku0",
+      "fresh_complete": true,
+      "complete": true,
+      "resumed": false,
+      "initial_error_code": null,
+      "error_code": null,
+      "bytes": 141641738,
+      "sha256": "37ca83770a29732eb39c084731953c188909d92d327dbd23226b9279870ef06b",
+      "decoded_seconds": 8751.94925
+    },
+    {
+      "video_id": "zjkBMFhNj_g",
+      "fresh_complete": true,
+      "complete": true,
+      "resumed": false,
+      "initial_error_code": null,
+      "error_code": null,
+      "bytes": 58064721,
+      "sha256": "6f910748ea507c6b24d74ab9e2cff2b3f1a1935f59d6778cf41c08c4c0eb17a8",
+      "decoded_seconds": 3587.7384375
+    },
+    {
+      "video_id": "IiKtcKEdUFE",
+      "fresh_complete": true,
+      "complete": true,
+      "resumed": false,
+      "initial_error_code": null,
+      "error_code": null,
+      "bytes": 84739123,
+      "sha256": "de6dee141d2d27520cd3ccfb7e8dbc4287e09c3d0528689e9509b5e221b489db",
+      "decoded_seconds": 5235.9605
+    },
+    {
+      "video_id": "LXb3EKWsInQ",
+      "fresh_complete": true,
+      "complete": true,
+      "resumed": false,
+      "initial_error_code": null,
+      "error_code": null,
+      "bytes": 5080048,
+      "sha256": "77871aeac8f83c064daefaca66950425dcfcaf726799c880e37d4e8487367f50",
+      "decoded_seconds": 313.8409375
+    },
+    {
+      "video_id": "kqtD5dpn9C8",
+      "fresh_complete": true,
+      "complete": true,
+      "resumed": false,
+      "initial_error_code": null,
+      "error_code": null,
+      "bytes": 58354130,
+      "sha256": "eddee34b4cdfa95978902f1c6214c9f7c37f34992b0eec9c7a5d044f5dd2780c",
+      "decoded_seconds": 3605.641
+    }
+  ],
+  "baseline_integrity": {
+    "matching_representations": 14,
+    "identical_full_file_hashes": 14,
+    "baseline_version": "0.3.13",
+    "performance_or_availability_comparison": false
+  },
+  "early_phases": [
+    {
+      "reason": "shared_server_cooldown",
+      "attempted": 0,
+      "skipped": 15
+    },
+    {
+      "reason": "youtube_rate_limited",
+      "http_status": 302,
+      "retry_after_seconds": 60,
+      "attempted": 1,
+      "skipped": 14,
+      "media_requests": 0
+    }
+  ],
+  "quiet_wait_policy": "additional ten-minute quiet interval from observed challenge; no cooldown clearing or alternate network; not a guarantee",
+  "live_faults": [
+    {
+      "kind": "403",
+      "complete": true,
+      "prefix_bytes": 324343,
+      "renewals": 1,
+      "token_refreshes": 1,
+      "initial_error_code": null,
+      "resumed": false
+    },
+    {
+      "kind": "source-expiry",
+      "complete": true,
+      "prefix_bytes": 324343,
+      "renewals": 1,
+      "token_refreshes": 1,
+      "initial_error_code": null,
+      "resumed": false
+    },
+    {
+      "kind": "token-expiry",
+      "complete": true,
+      "prefix_bytes": 324343,
+      "renewals": 0,
+      "token_refreshes": 1,
+      "initial_error_code": null,
+      "resumed": false
+    },
+    {
+      "kind": "track",
+      "complete": true,
+      "prefix_bytes": 324343,
+      "renewals": 0,
+      "token_refreshes": 0,
+      "initial_error_code": "download_audio_track_changed",
+      "resumed": true
+    },
+    {
+      "kind": "representation",
+      "complete": true,
+      "prefix_bytes": 324343,
+      "renewals": 0,
+      "token_refreshes": 0,
+      "initial_error_code": "download_representation_changed",
+      "resumed": true
+    },
+    {
+      "kind": "renewed-stall",
+      "complete": true,
+      "prefix_bytes": 324343,
+      "renewals": 1,
+      "token_refreshes": null,
+      "initial_error_code": null,
+      "resumed": false
+    },
+    {
+      "kind": "persistent-stall",
+      "complete": true,
+      "prefix_bytes": 324343,
+      "renewals": 1,
+      "token_refreshes": null,
+      "initial_error_code": "download_no_progress",
+      "resumed": true
+    }
+  ],
+  "controlled_loopback": [
+    {
+      "case": "kill",
+      "complete": true,
+      "prefix_bytes": 1048576,
+      "killed_exit_code": -9,
+      "automatic_recovery": null,
+      "honored_retry_after_seconds": null,
+      "decoded_seconds": 13757.6838125
+    },
+    {
+      "case": "drop",
+      "complete": true,
+      "prefix_bytes": 1048576,
+      "killed_exit_code": null,
+      "automatic_recovery": true,
+      "honored_retry_after_seconds": null,
+      "decoded_seconds": 13757.6838125
+    },
+    {
+      "case": "429",
+      "complete": true,
+      "prefix_bytes": 1048576,
+      "killed_exit_code": null,
+      "automatic_recovery": null,
+      "honored_retry_after_seconds": 1,
+      "decoded_seconds": 13757.6838125
+    }
+  ],
+  "checks": {
+    "fmt": true,
+    "strict_all_target_clippy": true,
+    "rust_passed": 357,
+    "rust_ignored": 16,
+    "python_passed": 56
+  },
+  "environment": {
+    "networks": 1,
+    "proxy_environment_present": false,
+    "account_cookies": false,
+    "paid_service": false
+  },
+  "bounds": {
+    "per_process_seconds": 600,
+    "main_cohort_seconds": 2700,
+    "minimum_between_video_seconds": 5,
+    "recording_duration_limit_added": false
+  },
+  "limitations": [
+    "Selected corpus on one network, not a representative availability probability or SLA",
+    "Two early phases and recovery process failures are preserved, not removed from evidence",
+    "An isolated process invoked the same production downloader/decoder and the frozen release worker; no ASR was run",
+    "Resume timing is active process wall time including remaining acquisition and decoding, excluding analysis or caller wait",
+    "Injected faults test real remaining YouTube transfer but do not claim natural server 403 or token expiry",
+    "Loopback SIGKILL/drop/429 tests exercise retained real media and are not YouTube availability",
+    "Default retry window is zero; unattended CLI use requires an explicit bounded retry window",
+    "TLS experimental/security limitations remain separate"
+  ]
+}

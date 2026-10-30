@@ -1,0 +1,349 @@
+{
+  "measurement_date": "2026-10-24",
+  "rechecked_date": "2026-10-27",
+  "source_sha256": "e104eee5af8a7c3e3aa01dc0691c3f477ba9bc2542d783079b1abe2a8fb095bd",
+  "source_location": "runs/agent-fixes-20261024/quality-final/quality.json (local-only)",
+  "corpus_manifest": "tests/fixtures/asr-references.json",
+  "corpus_revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+  "configurations": [
+    {
+      "boundary_window_ms": 0,
+      "chunk_seconds": 600,
+      "encoder_threads": 2,
+      "gigastt_binary": "2c26f2d2a0c83b2be2fe1b0ce78733c5c847de0dbae9d62fc68737e323c50586",
+      "gigastt_version": "gigastt 2.21.0",
+      "media_backend": "syom-0.7.1-bandlimit-0.1.7-ryf-0.7.3-mono-pcm16-v2",
+      "model_fingerprint": {
+        "v3_e2e_rnnt_decoder.onnx": "7b0a16d67fd2cb37061decc93c69e364a9ab27afee3c57495d55b1c974cf7231",
+        "v3_e2e_rnnt_encoder_int8.onnx": "cf51b300af47cea099e17c806f8fecce2c46e9e8deb4709ec203f8970a067389",
+        "v3_e2e_rnnt_joint.onnx": "602ff7017a93311aad34df1437c8d7f49911353c13d6eae7a6ee7b041339465c",
+        "v3_e2e_rnnt_vocab.txt": "39abae20e692998290c574e606f11a9edef2902a1995463fcff63d1490cf22b7"
+      }
+    },
+    {
+      "boundary_window_ms": 0,
+      "chunk_seconds": 10,
+      "encoder_threads": 2,
+      "gigastt_binary": "2c26f2d2a0c83b2be2fe1b0ce78733c5c847de0dbae9d62fc68737e323c50586",
+      "gigastt_version": "gigastt 2.21.0",
+      "media_backend": "syom-0.7.1-bandlimit-0.1.7-ryf-0.7.3-mono-pcm16-v2",
+      "model_fingerprint": {
+        "v3_e2e_rnnt_decoder.onnx": "7b0a16d67fd2cb37061decc93c69e364a9ab27afee3c57495d55b1c974cf7231",
+        "v3_e2e_rnnt_encoder_int8.onnx": "cf51b300af47cea099e17c806f8fecce2c46e9e8deb4709ec203f8970a067389",
+        "v3_e2e_rnnt_joint.onnx": "602ff7017a93311aad34df1437c8d7f49911353c13d6eae7a6ee7b041339465c",
+        "v3_e2e_rnnt_vocab.txt": "39abae20e692998290c574e606f11a9edef2902a1995463fcff63d1490cf22b7"
+      }
+    },
+    {
+      "boundary_window_ms": 1000,
+      "chunk_seconds": 10,
+      "encoder_threads": 2,
+      "gigastt_binary": "2c26f2d2a0c83b2be2fe1b0ce78733c5c847de0dbae9d62fc68737e323c50586",
+      "gigastt_version": "gigastt 2.21.0",
+      "media_backend": "syom-0.7.1-bandlimit-0.1.7-ryf-0.7.3-mono-pcm16-v2-quiet-boundaries-v1",
+      "model_fingerprint": {
+        "v3_e2e_rnnt_decoder.onnx": "7b0a16d67fd2cb37061decc93c69e364a9ab27afee3c57495d55b1c974cf7231",
+        "v3_e2e_rnnt_encoder_int8.onnx": "cf51b300af47cea099e17c806f8fecce2c46e9e8deb4709ec203f8970a067389",
+        "v3_e2e_rnnt_joint.onnx": "602ff7017a93311aad34df1437c8d7f49911353c13d6eae7a6ee7b041339465c",
+        "v3_e2e_rnnt_vocab.txt": "39abae20e692998290c574e606f11a9edef2902a1995463fcff63d1490cf22b7"
+      }
+    }
+  ],
+  "results": [
+    {
+      "mode": "full",
+      "frames": 132480,
+      "metrics": {
+        "cer": 0.0,
+        "character_errors": 0,
+        "hypothesis_words": 7,
+        "reference_characters": 57,
+        "reference_words": 7,
+        "silence_insertions": 0,
+        "wer": 0.0,
+        "word_errors": 0
+      },
+      "pcm_sha256": "03a9786087e897903888a9ea5e46aa390ea5833e081f1f70b47d4121d49c9b3d",
+      "reference_sha256": "9547e80d6f8c74a1ab38e5a90cdbc1ac9703c462368f06c53ae9c9e325bc5a80",
+      "case": "1652-12991791007873426296-full"
+    },
+    {
+      "mode": "fixed",
+      "frames": 132480,
+      "metrics": {
+        "cer": 0.0,
+        "character_errors": 0,
+        "hypothesis_words": 7,
+        "reference_characters": 57,
+        "reference_words": 7,
+        "silence_insertions": 0,
+        "wer": 0.0,
+        "word_errors": 0
+      },
+      "pcm_sha256": "03a9786087e897903888a9ea5e46aa390ea5833e081f1f70b47d4121d49c9b3d",
+      "reference_sha256": "9547e80d6f8c74a1ab38e5a90cdbc1ac9703c462368f06c53ae9c9e325bc5a80",
+      "case": "1652-12991791007873426296-fixed"
+    },
+    {
+      "mode": "quiet",
+      "frames": 132480,
+      "metrics": {
+        "cer": 0.0,
+        "character_errors": 0,
+        "hypothesis_words": 7,
+        "reference_characters": 57,
+        "reference_words": 7,
+        "silence_insertions": 0,
+        "wer": 0.0,
+        "word_errors": 0
+      },
+      "pcm_sha256": "03a9786087e897903888a9ea5e46aa390ea5833e081f1f70b47d4121d49c9b3d",
+      "reference_sha256": "9547e80d6f8c74a1ab38e5a90cdbc1ac9703c462368f06c53ae9c9e325bc5a80",
+      "case": "1652-12991791007873426296-quiet"
+    },
+    {
+      "mode": "full",
+      "frames": 221760,
+      "metrics": {
+        "cer": 0.02459016393442623,
+        "character_errors": 3,
+        "hypothesis_words": 20,
+        "reference_characters": 122,
+        "reference_words": 20,
+        "silence_insertions": 0,
+        "wer": 0.15,
+        "word_errors": 3
+      },
+      "pcm_sha256": "562388e044806460ff2e55d202f67c991ebe9059ba51f6837cb270cbf03ad97b",
+      "reference_sha256": "a0b6a6e458bd6efc83ea3b92c3264ee9df9c13732e7add042ae0313542a804d8",
+      "case": "1591-15831057629221328872-full"
+    },
+    {
+      "mode": "fixed",
+      "frames": 221760,
+      "metrics": {
+        "cer": 0.02459016393442623,
+        "character_errors": 3,
+        "hypothesis_words": 20,
+        "reference_characters": 122,
+        "reference_words": 20,
+        "silence_insertions": 0,
+        "wer": 0.15,
+        "word_errors": 3
+      },
+      "pcm_sha256": "562388e044806460ff2e55d202f67c991ebe9059ba51f6837cb270cbf03ad97b",
+      "reference_sha256": "a0b6a6e458bd6efc83ea3b92c3264ee9df9c13732e7add042ae0313542a804d8",
+      "case": "1591-15831057629221328872-fixed"
+    },
+    {
+      "mode": "quiet",
+      "frames": 221760,
+      "metrics": {
+        "cer": 0.01639344262295082,
+        "character_errors": 2,
+        "hypothesis_words": 20,
+        "reference_characters": 122,
+        "reference_words": 20,
+        "silence_insertions": 0,
+        "wer": 0.1,
+        "word_errors": 2
+      },
+      "pcm_sha256": "562388e044806460ff2e55d202f67c991ebe9059ba51f6837cb270cbf03ad97b",
+      "reference_sha256": "a0b6a6e458bd6efc83ea3b92c3264ee9df9c13732e7add042ae0313542a804d8",
+      "case": "1591-15831057629221328872-quiet"
+    },
+    {
+      "mode": "full",
+      "frames": 205440,
+      "metrics": {
+        "cer": 0.020689655172413793,
+        "character_errors": 3,
+        "hypothesis_words": 24,
+        "reference_characters": 145,
+        "reference_words": 25,
+        "silence_insertions": 0,
+        "wer": 0.08,
+        "word_errors": 2
+      },
+      "pcm_sha256": "6afe9f618673fb944923c9ed685709272e88deac69323c0a9869f49047b31aa5",
+      "reference_sha256": "9811def313925b4b39a85759ea23c172bbcab09eb87d38fc7c6b3b3a1523607f",
+      "case": "1617-8615352657490921896-full"
+    },
+    {
+      "mode": "fixed",
+      "frames": 205440,
+      "metrics": {
+        "cer": 0.04827586206896552,
+        "character_errors": 7,
+        "hypothesis_words": 24,
+        "reference_characters": 145,
+        "reference_words": 25,
+        "silence_insertions": 0,
+        "wer": 0.16,
+        "word_errors": 4
+      },
+      "pcm_sha256": "6afe9f618673fb944923c9ed685709272e88deac69323c0a9869f49047b31aa5",
+      "reference_sha256": "9811def313925b4b39a85759ea23c172bbcab09eb87d38fc7c6b3b3a1523607f",
+      "case": "1617-8615352657490921896-fixed"
+    },
+    {
+      "mode": "quiet",
+      "frames": 205440,
+      "metrics": {
+        "cer": 0.020689655172413793,
+        "character_errors": 3,
+        "hypothesis_words": 24,
+        "reference_characters": 145,
+        "reference_words": 25,
+        "silence_insertions": 0,
+        "wer": 0.08,
+        "word_errors": 2
+      },
+      "pcm_sha256": "6afe9f618673fb944923c9ed685709272e88deac69323c0a9869f49047b31aa5",
+      "reference_sha256": "9811def313925b4b39a85759ea23c172bbcab09eb87d38fc7c6b3b3a1523607f",
+      "case": "1617-8615352657490921896-quiet"
+    },
+    {
+      "mode": "full",
+      "frames": 272640,
+      "metrics": {
+        "cer": 0.02127659574468085,
+        "character_errors": 3,
+        "hypothesis_words": 27,
+        "reference_characters": 141,
+        "reference_words": 26,
+        "silence_insertions": 0,
+        "wer": 0.19230769230769232,
+        "word_errors": 5
+      },
+      "pcm_sha256": "7fea268f1063f88dd3eccec4182056a8c22cf53cb14b9016fb39d5355199790b",
+      "reference_sha256": "5b767d4e195479b4ea19f6a05bfc6dd9d7fc23a7c389b0b72e1527fe97d328a3",
+      "case": "1618-1024552646813367065-full"
+    },
+    {
+      "mode": "fixed",
+      "frames": 272640,
+      "metrics": {
+        "cer": 0.02127659574468085,
+        "character_errors": 3,
+        "hypothesis_words": 26,
+        "reference_characters": 141,
+        "reference_words": 26,
+        "silence_insertions": 0,
+        "wer": 0.11538461538461539,
+        "word_errors": 3
+      },
+      "pcm_sha256": "7fea268f1063f88dd3eccec4182056a8c22cf53cb14b9016fb39d5355199790b",
+      "reference_sha256": "5b767d4e195479b4ea19f6a05bfc6dd9d7fc23a7c389b0b72e1527fe97d328a3",
+      "case": "1618-1024552646813367065-fixed"
+    },
+    {
+      "mode": "quiet",
+      "frames": 272640,
+      "metrics": {
+        "cer": 0.028368794326241134,
+        "character_errors": 4,
+        "hypothesis_words": 26,
+        "reference_characters": 141,
+        "reference_words": 26,
+        "silence_insertions": 0,
+        "wer": 0.11538461538461539,
+        "word_errors": 3
+      },
+      "pcm_sha256": "7fea268f1063f88dd3eccec4182056a8c22cf53cb14b9016fb39d5355199790b",
+      "reference_sha256": "5b767d4e195479b4ea19f6a05bfc6dd9d7fc23a7c389b0b72e1527fe97d328a3",
+      "case": "1618-1024552646813367065-quiet"
+    },
+    {
+      "mode": "full",
+      "frames": 288000,
+      "metrics": {
+        "cer": 0.036585365853658534,
+        "character_errors": 6,
+        "hypothesis_words": 25,
+        "reference_characters": 164,
+        "reference_words": 25,
+        "silence_insertions": 0,
+        "wer": 0.04,
+        "word_errors": 1
+      },
+      "pcm_sha256": "f4ec63279a07240da594a3a21190d43a1098b1f1b46dd8e613b292ecc6d348b7",
+      "reference_sha256": "4cc70512af33e1927cbc9b14f7d6b6ea0c55e187e24a91094d7db0a69dbd926d",
+      "case": "1568-1277872989383182246-full"
+    },
+    {
+      "mode": "fixed",
+      "frames": 288000,
+      "metrics": {
+        "cer": 0.03048780487804878,
+        "character_errors": 5,
+        "hypothesis_words": 25,
+        "reference_characters": 164,
+        "reference_words": 25,
+        "silence_insertions": 0,
+        "wer": 0.04,
+        "word_errors": 1
+      },
+      "pcm_sha256": "f4ec63279a07240da594a3a21190d43a1098b1f1b46dd8e613b292ecc6d348b7",
+      "reference_sha256": "4cc70512af33e1927cbc9b14f7d6b6ea0c55e187e24a91094d7db0a69dbd926d",
+      "case": "1568-1277872989383182246-fixed"
+    },
+    {
+      "mode": "quiet",
+      "frames": 288000,
+      "metrics": {
+        "cer": 0.03048780487804878,
+        "character_errors": 5,
+        "hypothesis_words": 25,
+        "reference_characters": 164,
+        "reference_words": 25,
+        "silence_insertions": 0,
+        "wer": 0.04,
+        "word_errors": 1
+      },
+      "pcm_sha256": "f4ec63279a07240da594a3a21190d43a1098b1f1b46dd8e613b292ecc6d348b7",
+      "reference_sha256": "4cc70512af33e1927cbc9b14f7d6b6ea0c55e187e24a91094d7db0a69dbd926d",
+      "case": "1568-1277872989383182246-quiet"
+    },
+    {
+      "mode": "full",
+      "frames": 132480,
+      "metrics": {
+        "cer": 0.0,
+        "character_errors": 0,
+        "hypothesis_words": 7,
+        "reference_characters": 57,
+        "reference_words": 7,
+        "silence_insertions": 0,
+        "wer": 0.0,
+        "word_errors": 0
+      },
+      "pcm_sha256": "8ff65eb91c14740ec160ccb804d79d4b635d2ddabfe2fc60c16c07b6a02169b2",
+      "reference_sha256": "9547e80d6f8c74a1ab38e5a90cdbc1ac9703c462368f06c53ae9c9e325bc5a80",
+      "case": "synthetic-noise-full"
+    },
+    {
+      "mode": "full",
+      "frames": 160000,
+      "metrics": {
+        "cer": null,
+        "character_errors": 0,
+        "hypothesis_words": 0,
+        "reference_characters": 0,
+        "reference_words": 0,
+        "silence_insertions": 0,
+        "wer": null,
+        "word_errors": 0
+      },
+      "pcm_sha256": "ac2878215ad33205d1732578c89f25ededaad1b676911c540825bcf4baa42d9b",
+      "reference_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "case": "silence-full"
+    }
+  ],
+  "limits": [
+    "Small read-speech qualification, not a general accuracy guarantee",
+    "Published prompts are not independently corrected here",
+    "Orthographic WER penalizes digit/word and proper-name differences",
+    "Synthetic noise is not representative real-world noise; music and spontaneous multilingual conversations remain unqualified"
+  ]
+}

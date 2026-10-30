@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-29",
+  "runtime_version": "0.3.13",
+  "production_dependency_changes": false,
+  "constraint": "strict_pure_rust",
+  "current_provider": {
+    "package": "rustls-rustcrypto",
+    "version": "0.0.2-alpha",
+    "upstream_revision": "70f76c039e587192688af18a80d5d6435dedaf22",
+    "upstream_production_warning": true,
+    "rsa_verification_retained": true,
+    "private_key_loading_refused": true,
+    "key_exchange": [
+      "X25519"
+    ],
+    "certificate_name_trust_validity_signature_checks_passed": true,
+    "signature_algorithm_positive_and_negative_cases": 11,
+    "live_youtube_verified_https": true,
+    "security_audit_approval": false
+  },
+  "fixtures_sha256": {
+    "rsa.pub": "3ef5f4f10e967d6f57283c6188b317770bc7bba0b80fd4eb6a6e8ad04730fb63",
+    "README.md": "ba26f035bb3b5068bf7c2b204d9104652437d542fa60e831e4182cedbd6e8a88",
+    "3.sig": "0e8dfb0f43168e4aaebd01eb1d5c4cce010d60da4c14a642fad8ddf6293828ff",
+    "p256.pub": "7eb4687dca56192e2f19ee883ff80b85057d406eabc582543fd585b1ec95ae1c",
+    "ed25519.pub": "772fa4ef4662dc775d7cdd5e525759a661aae084ef4e06c81e30729849b96b94",
+    "2.sig": "73aace810db6a180a50b32b1b806a342172ec78c6f377b846d077dda57233a72",
+    "10.sig": "26eb010194f4b4bb5b57cdd318d010e60c47aa976f29615f2a57e2167cb6e563",
+    "5.sig": "47f108d4497297f39ad6b8526d78d0fc623a07dddf998af6f61dce617e505e60",
+    "9.sig": "972a6a2fba60a99d38657c6ada21e5ddfa0b5264ab8902306433efad13ac6bd4",
+    "leaf.der": "c404227320baea7dc05545a392b7a30e361e27a7a4cf6b262f17057e8da7d215",
+    "p384.pub": "16dbbc7eef1dfb37d640b2c7d5a12c131c46343fbac238aba577f487f4978872",
+    "4.sig": "b626f3970c3d8026cd9b7b9c944c7df1fe6926db43abf3202a398443aa68c5c3",
+    "7.sig": "7100088b75ba669769b6cc50439f76ee34833e0f1c2129588aaf89a8ca77011f",
+    "1.sig": "4320273b3b7b408d2f6b59e33b2875687529df1c4b8cea2277437c511d313ac5",
+    "parameters.json": "f9db2c02a3867b837ca8326a83124ceabe15d5f58214ed610a2406eb4523e210",
+    "ca.der": "539c93c2c03960a971bd988c71841d7a9d4dd2d4e9ed671dcbbd9ac3832ec472",
+    "0.sig": "af4888f19c7d4cc5f1c8e380c993f310176bafd385dfe7030344a5101140b3bb",
+    "8.sig": "0880e20df120946d0329d2ac21d0a671f3df10ba8df346f95a01f429a51c98b3",
+    "6.sig": "738213249aec92a13be63c200914629074ebb949d1436d012a648c15428a6d80"
+  },
+  "alternative": {
+    "name": "rustls-pure",
+    "version": "0.15.4",
+    "archive_sha256": "0cb411ce187caac7001e460c965ed5fdc761afa105408bc668767ee5c291cd28",
+    "isolated_probe_graph_packages": 110,
+    "crypto_bigint_version": "0.7.10",
+    "rsa_present": false,
+    "rustsec_vulnerabilities": 0,
+    "youtube_https_status": 200,
+    "valid_rsa_chain_refused": true,
+    "refusal": "UnsupportedSignatureAlgorithmContext",
+    "tls_versions": [
+      "1.3"
+    ],
+    "externally_audited": false,
+    "compatible_drop_in_replacement": false,
+    "full_video_download_tested": true,
+    "full_video_download_complete": false,
+    "full_video_failure": "download_transport",
+    "full_video_id": "of4B3aw7MXo",
+    "candidate_application_graph_packages": 261,
+    "candidate_binary_sha256": "5646daae716cd1269734463bf7a63a42b2364db55f1726a77d8a7fb915e76699",
+    "candidate_probe_sha256": "b005c776b3fda7ec1c723d25106d1fbb81aa04050f501a965479466cbcadcfaa",
+    "diagnostic_repeat_complete": false,
+    "diagnostic_transport_io_kind": "InvalidData",
+    "same_cdn_origin_failure": "InvalidCertificate(UnsupportedSignatureAlgorithmContext)",
+    "same_cdn_origin_signature_algorithm": "RSA PKCS#1 SHA-256"
+  },
+  "checks": [
+    {
+      "check": "fmt",
+      "exit_code": 0
+    },
+    {
+      "check": "clippy",
+      "exit_code": 0
+    },
+    {
+      "check": "tests",
+      "exit_code": 0
+    }
+  ],
+  "tests_passed": 332,
+  "tests_ignored": 14,
+  "limits": [
+    "Reachability and regression evidence, not a cryptographic security certification",
+    "Alternative graph is isolated research, not an application upgrade",
+    "Default/native crypto providers excluded by confirmed owner constraint"
+  ],
+  "release_tls_tests_passed": 6
+}

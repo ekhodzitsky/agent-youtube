@@ -1,0 +1,1402 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "agent-youtube machine contracts",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/failure"
+    },
+    {
+      "$ref": "#/$defs/transcribe2"
+    },
+    {
+      "$ref": "#/$defs/transcribe1"
+    },
+    {
+      "$ref": "#/$defs/doctor"
+    },
+    {
+      "$ref": "#/$defs/setup"
+    },
+    {
+      "$ref": "#/$defs/job_status"
+    },
+    {
+      "$ref": "#/$defs/job_cancel"
+    },
+    {
+      "$ref": "#/$defs/other_success"
+    },
+    {
+      "$ref": "#/$defs/progress"
+    },
+    {
+      "$ref": "#/$defs/error_event"
+    },
+    {
+      "$ref": "#/$defs/agent"
+    },
+    {
+      "$ref": "#/$defs/canonical"
+    },
+    {
+      "$ref": "#/$defs/coverage_artifact"
+    },
+    {
+      "$ref": "#/$defs/manifest"
+    },
+    {
+      "$ref": "#/$defs/raw_asr"
+    }
+  ],
+  "$defs": {
+    "source": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "video_id": {
+          "type": "string"
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "url",
+        "video_id",
+        "title"
+      ],
+      "additionalProperties": false
+    },
+    "engine": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "model_variant": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "model_variant"
+      ],
+      "additionalProperties": false
+    },
+    "word": {
+      "type": "object",
+      "properties": {
+        "word": {
+          "type": "string"
+        },
+        "start": {
+          "type": "number",
+          "minimum": 0
+        },
+        "end": {
+          "type": "number",
+          "minimum": 0
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "speaker": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "word",
+        "start",
+        "end"
+      ],
+      "additionalProperties": false
+    },
+    "segment": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "number",
+          "minimum": 0
+        },
+        "end": {
+          "type": "number",
+          "minimum": 0
+        },
+        "text": {
+          "type": "string"
+        },
+        "timing": {
+          "enum": [
+            "words",
+            "chunk"
+          ]
+        },
+        "words": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/word"
+          }
+        },
+        "speaker": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "start",
+        "end",
+        "text",
+        "timing"
+      ],
+      "additionalProperties": false
+    },
+    "canonical": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "language": {
+          "type": "string"
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0
+        },
+        "engine": {
+          "$ref": "#/$defs/engine"
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/segment"
+          }
+        }
+      },
+      "required": [
+        "schema_version",
+        "source",
+        "language",
+        "duration",
+        "engine",
+        "segments"
+      ],
+      "additionalProperties": false
+    },
+    "producer": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "source_fingerprint": {
+          "type": "string"
+        },
+        "binary_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source_dirty": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "version",
+        "revision",
+        "source_fingerprint",
+        "binary_sha256"
+      ],
+      "additionalProperties": false
+    },
+    "coverage": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "unavailable"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "complete"
+            },
+            "frames": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sample_rate": {
+              "const": 16000
+            },
+            "start_frame": {
+              "const": 0
+            },
+            "end_frame": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "chunks": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "contiguous": {
+              "const": true
+            },
+            "scope": {
+              "const": "audio_processed"
+            }
+          },
+          "required": [
+            "status",
+            "frames",
+            "sample_rate",
+            "start_frame",
+            "end_frame",
+            "chunks",
+            "contiguous",
+            "scope"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "passage": {
+      "type": "object",
+      "properties": {
+        "asr_chunk": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "start": {
+          "type": "number",
+          "minimum": 0
+        },
+        "end": {
+          "type": "number",
+          "minimum": 0
+        },
+        "text": {
+          "type": "string"
+        },
+        "timing": {
+          "enum": [
+            "asr_estimate",
+            "chunk_estimate"
+          ]
+        }
+      },
+      "required": [
+        "asr_chunk",
+        "start",
+        "end",
+        "text",
+        "timing"
+      ],
+      "additionalProperties": false
+    },
+    "agent": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 2
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0
+        },
+        "engine": {
+          "$ref": "#/$defs/engine"
+        },
+        "recognizer_language": {
+          "type": "string"
+        },
+        "source_language": {
+          "const": null
+        },
+        "accuracy": {
+          "const": "unverified"
+        },
+        "timing": {
+          "const": "asr_estimates"
+        },
+        "speaker_attribution": {
+          "const": "unverified"
+        },
+        "content_trust": {
+          "const": "untrusted_source"
+        },
+        "coverage": {
+          "$ref": "#/$defs/coverage"
+        },
+        "producer": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/producer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "passages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/passage"
+          }
+        },
+        "speech_coverage": {
+          "$ref": "#/$defs/speech_coverage"
+        }
+      },
+      "required": [
+        "schema_version",
+        "source",
+        "duration",
+        "engine",
+        "recognizer_language",
+        "source_language",
+        "accuracy",
+        "timing",
+        "speaker_attribution",
+        "content_trust",
+        "coverage",
+        "producer",
+        "speech_coverage"
+      ],
+      "additionalProperties": false
+    },
+    "error": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "retryable": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "details": {}
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable",
+        "details"
+      ],
+      "additionalProperties": false
+    },
+    "failure": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "ok": {
+          "const": false
+        },
+        "error": {
+          "$ref": "#/$defs/error"
+        }
+      },
+      "required": [
+        "schema_version",
+        "ok",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "artifacts": {
+      "type": "object",
+      "properties": {
+        "transcript": {
+          "type": "string"
+        },
+        "manifest": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "transcript",
+        "manifest"
+      ],
+      "additionalProperties": false
+    },
+    "transcribe2": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 2
+        },
+        "ok": {
+          "const": true
+        },
+        "command": {
+          "enum": [
+            "transcribe",
+            "resume"
+          ]
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "artifacts": {
+              "$ref": "#/$defs/artifacts"
+            },
+            "reused": {
+              "type": "boolean"
+            },
+            "cleanup_complete": {
+              "const": true
+            },
+            "transcript": {
+              "$ref": "#/$defs/agent"
+            }
+          },
+          "required": [
+            "artifacts",
+            "reused",
+            "cleanup_complete",
+            "transcript"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "ok",
+        "command",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    "transcribe1": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "ok": {
+          "const": true
+        },
+        "command": {
+          "enum": [
+            "transcribe",
+            "resume"
+          ]
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "artifacts": {
+              "$ref": "#/$defs/artifacts"
+            },
+            "reused": {
+              "type": "boolean"
+            },
+            "cleanup_complete": {
+              "const": true
+            },
+            "transcript": {
+              "$ref": "#/$defs/canonical"
+            }
+          },
+          "required": [
+            "artifacts",
+            "reused",
+            "cleanup_complete",
+            "transcript"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "ok",
+        "command",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    "doctor": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "ok": {
+          "const": true
+        },
+        "command": {
+          "const": "doctor"
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "gigastt_version": {
+              "type": "string"
+            },
+            "model_variant": {
+              "const": "e2e_rnnt"
+            },
+            "verified": {
+              "const": false
+            },
+            "preflight_passed": {
+              "const": true
+            },
+            "checks": {
+              "type": "object",
+              "properties": {
+                "executable_runs": {
+                  "const": true
+                },
+                "required_flags_present": {
+                  "const": true
+                },
+                "model_files_readable": {
+                  "const": true
+                },
+                "model_load": {
+                  "const": "not_checked"
+                },
+                "inference": {
+                  "const": "not_checked"
+                },
+                "youtube_access": {
+                  "const": "not_checked"
+                }
+              },
+              "required": [
+                "executable_runs",
+                "required_flags_present",
+                "model_files_readable",
+                "model_load",
+                "inference",
+                "youtube_access"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "gigastt_version",
+            "model_variant",
+            "verified",
+            "preflight_passed",
+            "checks"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "ok",
+        "command",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    "other_success": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "ok": {
+          "const": true
+        },
+        "command": {
+          "enum": [
+            "help",
+            "version",
+            "export"
+          ]
+        },
+        "result": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "schema_version",
+        "ok",
+        "command",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    "progress": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "event": {
+          "const": "progress"
+        },
+        "stage": {
+          "enum": [
+            "diagnostic",
+            "preflight",
+            "metadata",
+            "download",
+            "decode",
+            "recognize",
+            "assemble",
+            "publish",
+            "complete",
+            "resource",
+            "retry",
+            "waiting"
+          ]
+        },
+        "message": {
+          "type": "string"
+        },
+        "completed_chunks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total_chunks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "durable": {
+          "type": "boolean"
+        },
+        "processed_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "total_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "downloaded_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "peak_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "budget_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "retry_after_seconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "scope": {
+          "enum": [
+            "pending_batch",
+            "recording"
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "event",
+        "stage",
+        "message"
+      ],
+      "additionalProperties": true
+    },
+    "error_event": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "event": {
+          "const": "error"
+        },
+        "error": {
+          "$ref": "#/$defs/error"
+        }
+      },
+      "required": [
+        "schema_version",
+        "event",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "coverage_artifact": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "transcript_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "frames": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sample_rate": {
+          "const": 16000
+        },
+        "chunk_frames": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "chunks": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "boundary_window_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2000
+        },
+        "producer": {
+          "$ref": "#/$defs/producer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "transcript_sha256",
+        "frames",
+        "sample_rate",
+        "chunk_frames",
+        "chunks",
+        "boundary_window_ms",
+        "producer"
+      ],
+      "additionalProperties": false
+    },
+    "manifest": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 2
+        },
+        "evidence": {
+          "type": "object",
+          "properties": {
+            "application_version": {
+              "type": "string"
+            },
+            "configuration": {
+              "type": "object"
+            },
+            "download": {
+              "type": "object"
+            },
+            "transcript_sha256": {
+              "type": "string"
+            },
+            "warnings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "coverage": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/coverage_artifact"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "application_version",
+            "configuration",
+            "download",
+            "transcript_sha256",
+            "warnings"
+          ],
+          "additionalProperties": true
+        },
+        "chunks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string"
+              },
+              "start": {
+                "type": "number",
+                "minimum": 0
+              },
+              "end": {
+                "type": "number",
+                "minimum": 0
+              },
+              "recognized_start": {
+                "type": "number",
+                "minimum": 0
+              },
+              "recognized_end": {
+                "type": "number",
+                "minimum": 0
+              },
+              "input_start_frame": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "input_end_frame": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "path",
+              "sha256",
+              "start",
+              "end"
+            ],
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [
+        "schema_version",
+        "evidence",
+        "chunks"
+      ],
+      "additionalProperties": false
+    },
+    "raw_asr": {
+      "type": "object",
+      "required": [
+        "duration",
+        "text"
+      ],
+      "properties": {
+        "duration": {
+          "type": "number",
+          "minimum": 0
+        },
+        "text": {
+          "type": "string"
+        },
+        "words": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "word": {
+                "type": "string"
+              },
+              "start": {
+                "type": "number",
+                "minimum": 0
+              },
+              "end": {
+                "type": "number",
+                "minimum": 0
+              },
+              "confidence": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "speaker": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "word",
+              "start",
+              "end"
+            ],
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "job_status": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "ok": {
+          "const": true
+        },
+        "command": {
+          "const": "status"
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "state": {
+              "enum": [
+                "not_started",
+                "running",
+                "resumable",
+                "cleanup_pending",
+                "completed",
+                "waiting",
+                "deadline_exceeded"
+              ]
+            },
+            "next_action": {
+              "enum": [
+                "transcribe",
+                "resume",
+                "repeat_transcribe",
+                "poll_status",
+                "read_transcript",
+                "inspect_preserved_artifacts"
+              ]
+            },
+            "work_dir": {
+              "type": "string"
+            },
+            "transcript_validated": {
+              "type": "boolean"
+            },
+            "cleanup_complete": {
+              "type": "boolean"
+            },
+            "transcript": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "retained_acquisitions": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3
+            },
+            "next_retry_at": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "deadline": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "retry_policy": {
+              "enum": [
+                "waiting_budget",
+                "legacy_job_deadline"
+              ]
+            },
+            "retry_budget_remaining_seconds": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            }
+          },
+          "required": [
+            "state",
+            "next_action",
+            "work_dir"
+          ],
+          "additionalProperties": false,
+          "dependentRequired": {
+            "retry_policy": [
+              "next_retry_at",
+              "deadline",
+              "retry_budget_remaining_seconds"
+            ]
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "retry_policy": {
+                    "const": "legacy_job_deadline"
+                  }
+                },
+                "required": [
+                  "retry_policy"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "retry_budget_remaining_seconds": {
+                    "type": "null"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "retry_policy": {
+                    "const": "waiting_budget"
+                  }
+                },
+                "required": [
+                  "retry_policy"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "retry_budget_remaining_seconds": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "waiting"
+                  }
+                },
+                "required": [
+                  "state"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "next_action": {
+                    "const": "poll_status"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "state": {
+                    "const": "deadline_exceeded"
+                  }
+                },
+                "required": [
+                  "state"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "next_action": {
+                    "const": "inspect_preserved_artifacts"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "ok",
+        "command",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    "job_cancel": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "ok": {
+          "const": true
+        },
+        "command": {
+          "const": "cancel"
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "state": {
+              "enum": [
+                "idle",
+                "cancel_requested"
+              ]
+            },
+            "next_action": {
+              "enum": [
+                "status",
+                "poll_status"
+              ]
+            },
+            "work_dir": {
+              "type": "string"
+            },
+            "cancel_requested": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "state",
+            "next_action",
+            "work_dir",
+            "cancel_requested"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "ok",
+        "command",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    "speech_coverage": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "const": "unverified"
+        },
+        "method": {
+          "const": "asr_timestamp_gaps"
+        },
+        "minimum_gap_seconds": {
+          "const": 5
+        },
+        "word_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unaligned_text_segments": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "gap_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "gaps": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "number",
+                "minimum": 0
+              },
+              "end": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "interpretation": {
+          "const": "Gaps may be pauses, music or missed speech; no gaps does not prove complete recognition"
+        }
+      },
+      "required": [
+        "status",
+        "method",
+        "minimum_gap_seconds",
+        "word_count",
+        "unaligned_text_segments",
+        "gap_count",
+        "gaps",
+        "truncated",
+        "interpretation"
+      ],
+      "additionalProperties": false
+    },
+    "setup": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "ok": {
+          "const": true
+        },
+        "command": {
+          "const": "setup"
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "runtime_dir": {
+              "type": "string"
+            },
+            "gigastt": {
+              "type": "string"
+            },
+            "gigastt_version": {
+              "type": "string"
+            },
+            "model_dir": {
+              "type": "string"
+            },
+            "reused": {
+              "type": "boolean"
+            },
+            "checks": {
+              "type": "object",
+              "properties": {
+                "executable_sha256": {
+                  "const": true
+                },
+                "model_files_sha256": {
+                  "const": true
+                },
+                "model_load": {
+                  "const": "not_checked"
+                },
+                "inference": {
+                  "const": "not_checked"
+                },
+                "youtube_access": {
+                  "const": "not_checked"
+                }
+              },
+              "required": [
+                "executable_sha256",
+                "model_files_sha256",
+                "model_load",
+                "inference",
+                "youtube_access"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "runtime_dir",
+            "gigastt",
+            "gigastt_version",
+            "model_dir",
+            "reused",
+            "checks"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "ok",
+        "command",
+        "result"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

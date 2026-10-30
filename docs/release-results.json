@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-29",
+  "version": "0.3.13",
+  "readiness": "controlled_private_candidate",
+  "public_release_ready": false,
+  "producer": {
+    "binary_sha256": "ed64dfe3199a91d0e4a4e2097262333bcca13600a31f3aa91a125ba9bced63bd",
+    "revision": "ba506a0c16c393469c8bee945da4c7cfd604fa97",
+    "source_dirty": true,
+    "source_fingerprint": "32098a1f47bb77c47d24b02ff9309d56a50e69c4",
+    "version": "0.3.13"
+  },
+  "configuration": {
+    "platform": "Linux x86_64",
+    "gigastt_version": "2.21.0",
+    "model": "GigaAM v3 e2e_rnnt INT8",
+    "encoder_threads": 2
+  },
+  "checks": [
+    {
+      "check": "fmt",
+      "exit_code": 0
+    },
+    {
+      "check": "clippy",
+      "exit_code": 0
+    },
+    {
+      "check": "test",
+      "exit_code": 0
+    },
+    {
+      "check": "msrv",
+      "exit_code": 0
+    },
+    {
+      "check": "release-test",
+      "exit_code": 0
+    },
+    {
+      "check": "multi-hour",
+      "exit_code": 0
+    }
+  ],
+  "debug_tests_passed": 330,
+  "release_tests_passed": 330,
+  "opt_in_tests_ignored": 14,
+  "early_backend_refusal": {
+    "normal_regression_passed": true,
+    "cross_build_regression_passed": true,
+    "no_saved_file_mutation": true,
+    "no_recognizer_invocation": true,
+    "completed_transcript_backend_reuse_passed": true
+  },
+  "live_complete": true,
+  "live_cases": {
+    "killed-job": {
+      "decoded_seconds": 1053.8376875,
+      "raw_files": 36,
+      "source_sha256": "5e608a8e46c2515077cf297220987980538929c98f87f8636034f64d6738b5c9",
+      "transcript_sha256": "8aad164d4d8e72063a2bb776ed47ae3f75373de918eae9c08bb96619a4d3fba7",
+      "cleanup_complete": true
+    },
+    "natural-short-job": {
+      "decoded_seconds": 52.96475,
+      "raw_files": 1,
+      "source_sha256": "9ff98eeebbfbc735a3ff93959d4d081682b4fef40aa9a5b58ff3951830cfbb3c",
+      "transcript_sha256": "b7b7c3a0c7ad5b101db69c6d85243a5a16e1f7f4b1c759898ee0fe00b471e8e0",
+      "cleanup_complete": true
+    }
+  },
+  "hard_termination": {
+    "exit_code": -9,
+    "stdout_bytes": 0,
+    "prefix_bytes": 163880,
+    "prefix_sha256": "2d067cec4aaf03be54e1299ef70b283efa98e889d24714fc1800df913451eeaf",
+    "completed": true
+  },
+  "multi_hour": {
+    "synthetic": true,
+    "recognition_tested": false,
+    "reported_decoded_seconds": 7200,
+    "full_decode_ms": 43054,
+    "resume_ms": 8402,
+    "codec_frames_full": 337500,
+    "codec_frames_prefix": 270001,
+    "codec_frames_resume": 67499,
+    "full_and_resumed_pcm_hashes_equal": true,
+    "peak_owned_disk_bytes": 236409994,
+    "source_bytes": 3375622,
+    "test_process_peak_rss_kib": 39256
+  },
+  "dependency_advisories": [
+    {
+      "id": "RUSTSEC-2026-0387",
+      "package": "crypto-bigint",
+      "version": "0.5.5"
+    },
+    {
+      "id": "RUSTSEC-2023-0071",
+      "package": "rsa",
+      "version": "0.9.10"
+    }
+  ],
+  "license_inventory_packages": 258,
+  "license_expressions_missing": 0,
+  "limitations": [
+    "Two live observations, not a representative availability rate",
+    "Two-hour test uses synthetic media and does not evaluate long-form speech accuracy",
+    "Public/private policy, license grant, redistribution notices and history scan remain unresolved",
+    "Dependency audit remains nonzero; configured mitigation is not a clean audit",
+    "Other platforms not qualified"
+  ]
+}

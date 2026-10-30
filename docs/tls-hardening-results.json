@@ -1,0 +1,346 @@
+{
+  "schema_version": 1,
+  "reviewed_at": "2026-10-29",
+  "version": "0.5.1",
+  "release_sha256": "3b7fa7d661eb3f3a6be82698f9ea6506613dd41365593e4e01d4ec41048d0b87",
+  "producer": {
+    "binary_sha256": "3b7fa7d661eb3f3a6be82698f9ea6506613dd41365593e4e01d4ec41048d0b87",
+    "revision": "9b2dd86ac8afb222f6f0f6840c74b7319c64f9e2",
+    "source_dirty": true,
+    "source_fingerprint": "ad776ef4ef577426d0c3481afcd557e9dd6838ce",
+    "version": "0.5.1"
+  },
+  "verification": {
+    "rust_tests_passed": 357,
+    "rust_opt_in_ignored": 15,
+    "python_tests_passed": 56,
+    "optimized_tls_tests_passed": 18,
+    "msrv": "1.94.0",
+    "required_gates": [
+      {
+        "command": [
+          "cargo",
+          "fmt",
+          "--check"
+        ],
+        "exit_code": 0
+      },
+      {
+        "command": [
+          "cargo",
+          "clippy",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0
+      },
+      {
+        "command": [
+          "cargo",
+          "test"
+        ],
+        "exit_code": 0
+      },
+      {
+        "command": [
+          "python3",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "experiments/qualification"
+        ],
+        "exit_code": 0
+      },
+      {
+        "command": [
+          "cargo",
+          "+1.94.0",
+          "check",
+          "--locked",
+          "--lib"
+        ],
+        "exit_code": 0
+      },
+      {
+        "command": [
+          "cargo",
+          "test",
+          "--release",
+          "--lib",
+          "tls"
+        ],
+        "exit_code": 0
+      },
+      {
+        "command": [
+          "cargo",
+          "build",
+          "--release",
+          "--locked"
+        ],
+        "exit_code": 0
+      }
+    ]
+  },
+  "graph": {
+    "locked_packages": 266,
+    "dependency_versions_unchanged": true,
+    "normal_build_native_crypto_absent": true
+  },
+  "rsa": {
+    "allowed_modulus_bits": [
+      2048,
+      8192
+    ],
+    "oracle_fixture_bits": [
+      1024,
+      2047,
+      2048,
+      3072
+    ],
+    "signature_cases": 23,
+    "handshake_mapping_cases": 23,
+    "complete_chain_cases": 4
+  },
+  "randomness": {
+    "configured_groups": [
+      "X25519",
+      "P-256",
+      "P-384"
+    ],
+    "syscall_fault": "Linux x86_64 seccomp getrandom EIO",
+    "configured_group_failure_cases": 3,
+    "injected_partial_failure_cases": 3,
+    "direct_or_io_wrapped_http_failure_cases": 4,
+    "durable_job_retry_regression": true
+  },
+  "protocol_probe_sha256": "40f1dd9f748390d9030025bffe0d4ac2280790a9121c018e67bb499cd42085c6",
+  "protocol_driver_sha256": "2f6afa401e0ca7c8f7d3fb80f93c018f802b54f135a766ac736a31cee926db80",
+  "protocol_cases": [
+    {
+      "case": "default",
+      "results": [
+        {
+          "version": "tls12",
+          "succeeded": true,
+          "expected_success": true,
+          "matches_expected": true,
+          "exit_code": 0,
+          "negotiated": "Some(TLSv1_2)",
+          "group": "Some(X25519)"
+        },
+        {
+          "version": "tls13",
+          "succeeded": true,
+          "expected_success": true,
+          "matches_expected": true,
+          "exit_code": 0,
+          "negotiated": "Some(TLSv1_3)",
+          "group": "Some(X25519)"
+        }
+      ]
+    },
+    {
+      "case": "x25519",
+      "results": [
+        {
+          "version": "tls12",
+          "succeeded": true,
+          "expected_success": true,
+          "matches_expected": true,
+          "exit_code": 0,
+          "negotiated": "Some(TLSv1_2)",
+          "group": "Some(X25519)"
+        },
+        {
+          "version": "tls13",
+          "succeeded": true,
+          "expected_success": true,
+          "matches_expected": true,
+          "exit_code": 0,
+          "negotiated": "Some(TLSv1_3)",
+          "group": "Some(X25519)"
+        }
+      ]
+    },
+    {
+      "case": "p256",
+      "results": [
+        {
+          "version": "tls12",
+          "succeeded": true,
+          "expected_success": true,
+          "matches_expected": true,
+          "exit_code": 0,
+          "negotiated": "Some(TLSv1_2)",
+          "group": "Some(secp256r1)"
+        },
+        {
+          "version": "tls13",
+          "succeeded": true,
+          "expected_success": true,
+          "matches_expected": true,
+          "exit_code": 0,
+          "negotiated": "Some(TLSv1_3)",
+          "group": "Some(secp256r1)"
+        }
+      ]
+    },
+    {
+      "case": "p384",
+      "results": [
+        {
+          "version": "tls12",
+          "succeeded": true,
+          "expected_success": true,
+          "matches_expected": true,
+          "exit_code": 0,
+          "negotiated": "Some(TLSv1_2)",
+          "group": "Some(secp384r1)"
+        },
+        {
+          "version": "tls13",
+          "succeeded": true,
+          "expected_success": true,
+          "matches_expected": true,
+          "exit_code": 0,
+          "negotiated": "Some(TLSv1_3)",
+          "group": "Some(secp384r1)"
+        }
+      ]
+    },
+    {
+      "case": "rsa",
+      "results": [
+        {
+          "version": "tls12",
+          "succeeded": true,
+          "expected_success": true,
+          "matches_expected": true,
+          "exit_code": 0,
+          "negotiated": "Some(TLSv1_2)",
+          "group": "Some(X25519)"
+        },
+        {
+          "version": "tls13",
+          "succeeded": true,
+          "expected_success": true,
+          "matches_expected": true,
+          "exit_code": 0,
+          "negotiated": "Some(TLSv1_3)",
+          "group": "Some(X25519)"
+        }
+      ]
+    },
+    {
+      "case": "record-ecdsa",
+      "results": [
+        {
+          "version": "tls12",
+          "succeeded": true,
+          "expected_success": true,
+          "matches_expected": true,
+          "exit_code": 0,
+          "negotiated": "Some(TLSv1_2)",
+          "group": "Some(X25519)",
+          "record_limits": {
+            "accepted_plaintext_bytes": 18,
+            "close_alert": true,
+            "test_record_limit": 4,
+            "tls12_application_records": 3,
+            "tls13": false
+          },
+          "oracle_key_update_messages": 0
+        },
+        {
+          "version": "tls13",
+          "succeeded": true,
+          "expected_success": true,
+          "matches_expected": true,
+          "exit_code": 0,
+          "negotiated": "Some(TLSv1_3)",
+          "group": "Some(X25519)",
+          "record_limits": {
+            "accepted_plaintext_bytes": 72,
+            "close_alert": false,
+            "test_record_limit": 4,
+            "tls12_application_records": 0,
+            "tls13": true
+          },
+          "oracle_key_update_messages": 6
+        }
+      ]
+    },
+    {
+      "case": "record-rsa",
+      "results": [
+        {
+          "version": "tls12",
+          "succeeded": true,
+          "expected_success": true,
+          "matches_expected": true,
+          "exit_code": 0,
+          "negotiated": "Some(TLSv1_2)",
+          "group": "Some(X25519)",
+          "record_limits": {
+            "accepted_plaintext_bytes": 18,
+            "close_alert": true,
+            "test_record_limit": 4,
+            "tls12_application_records": 3,
+            "tls13": false
+          },
+          "oracle_key_update_messages": 0
+        },
+        {
+          "version": "tls13",
+          "succeeded": true,
+          "expected_success": true,
+          "matches_expected": true,
+          "exit_code": 0,
+          "negotiated": "Some(TLSv1_3)",
+          "group": "Some(X25519)",
+          "record_limits": {
+            "accepted_plaintext_bytes": 72,
+            "close_alert": false,
+            "test_record_limit": 4,
+            "tls12_application_records": 0,
+            "tls13": true
+          },
+          "oracle_key_update_messages": 6
+        }
+      ]
+    }
+  ],
+  "live": {
+    "video_id": "of4B3aw7MXo",
+    "reused": false,
+    "fully_decoded": true,
+    "decoded_frames": 847436,
+    "sample_rate": 16000,
+    "decoded_seconds": 52.96475,
+    "download_bytes": 858695,
+    "transcript_sha256": "257c6528c671b6c8a311402e39fbf133f95c5445ec5d7b0adb0d63717e1fdbd8",
+    "cleanup_complete": true,
+    "fresh_github_runtime_setup": true,
+    "gigastt_version": "2.22.0"
+  },
+  "raw_audit": {
+    "exit_code": 1,
+    "advisories": [
+      {
+        "id": "RUSTSEC-2023-0071",
+        "package": "rsa",
+        "version": "0.10.0-rc.19"
+      }
+    ],
+    "suppressed": false
+  },
+  "limitations": [
+    "No independent cryptographic audit or unconditional production-security guarantee",
+    "Upstream experimental warning and RSA advisory remain disclosed",
+    "Reduced-budget wire checks exercise AES-128-GCM; metadata tests cover all configured AES-GCM suites"
+  ]
+}

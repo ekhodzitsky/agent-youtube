@@ -1,0 +1,151 @@
+{
+  "schema_version": 1,
+  "binary_sha256": "60d2d363913f94ace08c2fc6c58ac09bb4e984a6e0337826750519a9818baf85",
+  "recognizer_sha256": "efb3c09b0ddf7872fe47bccc91f556ae728cf01035a94efe6f8e0c0795591cd1",
+  "video_id": "bedsdFbhqhw",
+  "phases": [
+    {
+      "label": "initial",
+      "peak_rss_bytes": 397639680,
+      "peak_apparent_bytes": 52269645,
+      "peak_allocated_bytes": 52506624,
+      "exit_code": -9,
+      "wall_seconds": 45.322001036000074
+    },
+    {
+      "label": "resume",
+      "peak_rss_bytes": 432898048,
+      "peak_apparent_bytes": 52862607,
+      "peak_allocated_bytes": 53198848,
+      "exit_code": 0,
+      "wall_seconds": 39.95364779299962
+    }
+  ],
+  "measurement": "sampled sum RSS (shared pages may be counted twice); inode-deduplicated owned-job storage",
+  "sample_interval_seconds": 0.1,
+  "disk_interval_seconds": 1,
+  "resumed_retained_acquisition": true,
+  "contiguous_full_coverage": true,
+  "preserved_raw_bytes_verified": true,
+  "cleanup_complete": true,
+  "date": "2026-10-29",
+  "scope": "Linux x86_64; one 17.56-minute real recording; no ASR accuracy measurement",
+  "complete": true,
+  "producer": {
+    "binary_sha256": "60d2d363913f94ace08c2fc6c58ac09bb4e984a6e0337826750519a9818baf85",
+    "revision": "8fcc8615ca1505f996a86d75bb676c9b21dfe1d3",
+    "source_dirty": true,
+    "source_fingerprint": "3d1c61594748291d34588bf98f6b35d147a089fa",
+    "version": "0.3.14"
+  },
+  "recognizer_configuration": {
+    "boundary_window_ms": 0,
+    "chunk_seconds": 30,
+    "encoder_threads": 4,
+    "gigastt_binary": "efb3c09b0ddf7872fe47bccc91f556ae728cf01035a94efe6f8e0c0795591cd1",
+    "gigastt_version": "gigastt 2.22.0",
+    "media_backend": "syom-0.7.1-bandlimit-0.1.7-ryf-0.7.3-mono-pcm16-v2",
+    "model_fingerprint": {
+      "v3_e2e_rnnt_decoder.onnx": "7b0a16d67fd2cb37061decc93c69e364a9ab27afee3c57495d55b1c974cf7231",
+      "v3_e2e_rnnt_encoder_int8.onnx": "cf51b300af47cea099e17c806f8fecce2c46e9e8deb4709ec203f8970a067389",
+      "v3_e2e_rnnt_joint.onnx": "602ff7017a93311aad34df1437c8d7f49911353c13d6eae7a6ee7b041339465c",
+      "v3_e2e_rnnt_vocab.txt": "39abae20e692998290c574e606f11a9edef2902a1995463fcff63d1490cf22b7"
+    }
+  },
+  "decoded_seconds": 1053.8376875,
+  "frames": 16861403,
+  "raw_chunks": 36,
+  "preserved_chunks": {
+    "000000.json": "943597dc7460ebbdb17611e717d103bf9489d2d5271c4e6fdf897214df097292",
+    "000002.json": "30854f54ee3457c1e28d80a8958d8a4d082b1def12a274ec43c7e01a82fb7840",
+    "000001.json": "faa1188bba760df03f5fca064799ec4dd025ba0cdf2119f9421f820d5c815918"
+  },
+  "resubmitted_preserved_chunks": 0,
+  "remaining_submitted_chunks": 33,
+  "raw_sha256": {
+    "000000.json": "943597dc7460ebbdb17611e717d103bf9489d2d5271c4e6fdf897214df097292",
+    "000001.json": "faa1188bba760df03f5fca064799ec4dd025ba0cdf2119f9421f820d5c815918",
+    "000002.json": "30854f54ee3457c1e28d80a8958d8a4d082b1def12a274ec43c7e01a82fb7840",
+    "000003.json": "db9c6ce917e99e5bc67f808931503de45f994cdcbacf6de6aced658e072f6e8c",
+    "000004.json": "989dda612d04594a44b41abc8a7c80bf6108c6802177f577c199f018130749df",
+    "000005.json": "f2fcc4180896afc03d9972a0d713d889e5c8b7c003a8ab8041da0b291bf71777",
+    "000006.json": "d926b289adb4d6c17c9d0c4f92145c08cc14d8e2fbeff9a0294c84360b02587b",
+    "000007.json": "9499eb575038d7ac8d88efaabde47d5d475f5d78e816dde2b5040617fa71aef9",
+    "000008.json": "7c9f9747c7382bffcfd1916a2355c917f1803448457368244334bb7079a1c795",
+    "000009.json": "9584a26c944903f1bfeedb8faba8bc6208ab5ef068ff93f1249631910d9967ec",
+    "000010.json": "6f0b8c403fd09741190cdf5c1124fae35aa8c15c1f45074fcef774c7091f473d",
+    "000011.json": "797f106e2c2c79a62439c982638265b6c5f1a9fecf54ebf7948e62a6b7d2234f",
+    "000012.json": "6ffa8c225296efb7798c7ef13cced2e9dc2982cc4ec39edea42b60d7fd9ccb8c",
+    "000013.json": "829eae3069833dacc1fbb6a0d283b837864ceacf8fc39cd3debbd3306e459a1f",
+    "000014.json": "18e636f815e2fc1c9ac3547bfb92188f4ae866405e2c524025d967e5657e8419",
+    "000015.json": "8ff3d02afbca9cf00cb5340c9f7f127c1eac9312b73cc3cb3df78d35fbd9de22",
+    "000016.json": "f0f04bc758d47fc6fa07142e98eb352ba8cb21857c4f1e29275ecfeb87c07395",
+    "000017.json": "e2687fb727ba3fd2b1d6c3fe70db957ca6df97cbfd7c1b2ac147d9c106476ade",
+    "000018.json": "eaa8d406779c97eb67aa95d2c742cb84bdfb5f7986bf03603c993b1117f2c687",
+    "000019.json": "f3ad2be4058ea461c71c5c117ebae4b3a74c8d1eb45645f684b66575732895e3",
+    "000020.json": "2155665a9dc8e9bce03509b2af9526f188e1eed74703b61f593deb52ed56fe83",
+    "000021.json": "c7e47f02d0e576ecc386e3762353ab7fc2ba53999dd984ca5c21d220993b17d2",
+    "000022.json": "e67f3d1d771ab845e3617edafd7c963db2ddd049cf7f95f2f032f8172f07348b",
+    "000023.json": "f2aa6df3569be2968e7531e4e6cc9d3942f7d4d977839097532e9f8401a8a7fb",
+    "000024.json": "2de0085ed5946576dd7a0fc8b724619e9219b2644f9ee9ed2f7e77ab6eac0d69",
+    "000025.json": "2faafba4e682ca14352c1bdf3b3816d91f5cd776829d0cbe71151048acc0b587",
+    "000026.json": "2afef9609dc890a3fac965375b848c5a92b03e26a9e3e68ad1b5c0168a00a656",
+    "000027.json": "42fd34a4d80c91ecc7bb6828e68ede8c429237ebc37ad67e49ea1b7bfba1b488",
+    "000028.json": "c46f76cc680d59bea37291e625094cbfa4ea23b45da1be471374869a657aeebd",
+    "000029.json": "11199b1af7b92a03c5d06f93f0370ab137d1911c6d039e6e8f19899a417d90ae",
+    "000030.json": "c6483fb0f6e4535f00488ce2413d87c3724d61393ae74cb605d699e07367fc3b",
+    "000031.json": "29d0b5fcaf6171beaa06b88331d6dce43bedced28ab7052fba617704e43eebc7",
+    "000032.json": "5e8c430a2969c1ca86d9ccfba7d7582e7650d0654a007e529b3f9dfa9fe90084",
+    "000033.json": "3d0be7b38786b3b85014532d239d09f69af70acb5bf08750151d7be1c5b2f073",
+    "000034.json": "f3a1a4d7e2dc3dee88a37cfb387c8f8959754c6406b5f2c1e2efe3654164153b",
+    "000035.json": "03dd216eb53df164cc55d5c37fba21fcc77dccb66fdba3bf2cf504e379555bfb"
+  },
+  "transcript_sha256": "9940cd9e926d6690f568c96800526de58734fb38caed02e3cfad6ca489c17e9c",
+  "completed_reuse_unchanged": true,
+  "success_json_and_jsonl_valid": true,
+  "driver_sha256": "8aa24aee65e15f840e7919bae256852c7ba8c637767496544fe83ab99b3f92d5",
+  "prior_incomplete_attempts": [
+    {
+      "stage": "post-run verification",
+      "cause": "harness used 64KiB probe reader for transcript"
+    },
+    {
+      "stage": "post-run verification",
+      "cause": "harness replaced cumulative submission observations during cleanup"
+    },
+    {
+      "stage": "acquisition",
+      "code": "download_no_progress",
+      "retryable": true,
+      "owned_job_continued": true
+    },
+    {
+      "stage": "argument validation",
+      "code": "invalid_arguments",
+      "cause": "harness passed transcribe-only retry flag to resume"
+    }
+  ],
+  "acquired_audio_sha256": "5e608a8e46c2515077cf297220987980538929c98f87f8636034f64d6738b5c9",
+  "acquired_audio_hash_matches_pre_kill": true,
+  "checks": [
+    {
+      "check": "fmt",
+      "exit_code": 0
+    },
+    {
+      "check": "clippy",
+      "exit_code": 0
+    },
+    {
+      "check": "rust-tests",
+      "exit_code": 0
+    },
+    {
+      "check": "python-tests",
+      "exit_code": 0
+    }
+  ],
+  "rust_tests_passed": 334,
+  "rust_opt_in_ignored": 14,
+  "python_tests_passed": 49
+}

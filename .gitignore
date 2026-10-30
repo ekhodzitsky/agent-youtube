@@ -1,0 +1,52 @@
+target/
+runs/
+/.serena/
+*.partial
+.DS_Store
+__pycache__/
+*.pyc
+*.pyo
+
+tools-local/
+models/
+
+!CLAUDE.md
+
+# Local agent state and private task data
+.grok
+.serena
+.claude
+.codex
+.cursor
+.kimi
+.kimi-code
+.agents
+.aider
+.aider.*
+.claude-memory-compiler
+.codebase-memory
+.codebase-memory-*
+.mcp.json
+.omc
+.omx
+.superpowers
+.gstack
+backlog
+.backlog
+backlog.config.yml
+
+# Real environment configuration stays local
+.env
+.env.*
+
+# Local Python environments and caches
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local coverage output
+/coverage/
+*.profraw
+*.profdata

@@ -1,0 +1,55 @@
+[package]
+name = "agent-youtube"
+version = "0.7.0"
+edition = "2024"
+rust-version = "1.94"
+publish = false
+default-run = "agent-youtube"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/ekhodzitsky/agent-youtube"
+documentation = "https://github.com/ekhodzitsky/agent-youtube/blob/main/docs/README.md"
+description = "JSON-only CLI for agents: resumable YouTube audio downloads and local Russian transcription with GigaSTT"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+# Preserve ASR confidence/timestamp f64 roundtrips; adds no transitive packages.
+serde_json = { version = "1", features = ["float_roundtrip"] }
+ctrlc = { version = "3", features = ["termination"] }
+sha2 = "0.10"
+syom = { version = "=0.7.1", path = "vendor/syom" }
+bandlimit = { version = "=0.1.7", path = "vendor/bandlimit" }
+ryf = { version = "=0.7.3", default-features = false, features = ["simd"] }
+ureq = { version = "=3.4.2", default-features = false, features = ["rustls-no-provider", "rustls-webpki-roots"] }
+rustls-rustcrypto = { version = "=0.0.2-alpha", path = "vendor/rustls-rustcrypto-current" }
+# Require the patched family before enabling NIST ECDH; joins the existing graph.
+crypto-bigint = { version = "0.7.6", default-features = false }
+# Already in ureq's graph; direct API access adds no package versions/features.
+rustls = { version = "=0.23.46", default-features = false }
+# Borrowed PKCS1 DER validation before upstream public RSA verification; already locked.
+pkcs1 = { version = "=0.8.0-rc.5", default-features = false }
+# Existing locked primitives, exposed directly for fallible client-only KX glue.
+p256 = { version = "=0.14.0", default-features = false, features = ["ecdh"] }
+p384 = { version = "=0.14.0", default-features = false, features = ["ecdh"] }
+x25519-dalek = { version = "=3.0.0", default-features = false, features = ["static_secrets", "zeroize"] }
+getrandom = { version = "=0.4.3", default-features = false, features = ["sys_rng"] }
+zeroize = { version = "=1.9.1", default-features = false }
+base64 = "0.23"
+
+# The Web worker executes BotGuard and player functions in a Rust interpreter.
+# These share a normal/build graph with no native JS engine or JS executable.
+boa_engine = { version = "=0.22.0", default-features = false, features = ["annex-b"] }
+boa_runtime = { version = "=0.22.0", default-features = false, features = ["url"] }
+boa_ast = "=0.22.0"
+boa_parser = { version = "=0.22.0", features = ["annex-b"] }
+boa_interner = "=0.22.0"
+libc = "0.2"
+# Parse Retry-After HTTP dates without a custom calendar parser (no dependencies).
+httpdate = "=1.0.3"
+# Setup reads pinned gzip/tar release assets without a native decompressor.
+flate2 = { version = "=1.1.10", default-features = false, features = ["rust_backend"] }
+tar = { version = "=0.4.46", default-features = false }
+
+[patch.crates-io]
+boa_engine = { path = "experiments/botguard/vendor/boa_engine" }
+boa_ast = { path = "experiments/botguard/vendor/boa_ast" }

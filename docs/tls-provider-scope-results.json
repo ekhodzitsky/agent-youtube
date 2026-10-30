@@ -1,0 +1,528 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-29",
+  "scope": "Linux x86_64; current network only; private controlled candidate, not unrestricted production security approval",
+  "decision": {
+    "selected": "pinned upstream RustCrypto",
+    "upstream_revision": "70f76c039e587192688af18a80d5d6435dedaf22",
+    "application_version": "0.5.0",
+    "offered_groups": [
+      "X25519",
+      "secp256r1",
+      "secp384r1"
+    ],
+    "crypto_bigint_minimum": "0.7.6",
+    "certificate_private_key_loading": "unconditionally_refused",
+    "external_crypto_audit": false,
+    "upstream_production_warning_retained": true
+  },
+  "candidate_qualification": [
+    {
+      "provider": "composition",
+      "upstream_revision": null,
+      "worker_identity": {
+        "binary_sha256": "c820ce26aeca0713da345c434ca54957b1c699ff10e8a572e20adf4f5873f572",
+        "revision": "unavailable",
+        "source_dirty": null,
+        "source_fingerprint": "2ab71aad1123260fa9131ebdb1e9d596654c80a3",
+        "version": "0.4.0"
+      },
+      "binaries": {
+        "worker": "c820ce26aeca0713da345c434ca54957b1c699ff10e8a572e20adf4f5873f572",
+        "probe": "3c5e032ce739af0b548f0bd3842b48c4540618eb292f28bd11e5a60a2503b64b"
+      },
+      "runner_sha256": "cff6e38231fa4a153f85a8b0676320fac94e22f636f474b1c9377e0310bd079b",
+      "prototype_sha256": {
+        "provider.rs": "ace7bf8d3f30e6633e1f2015d9df4b8e6e0fc2f7c5a9b5cd38c61fe8bd994681",
+        "rsa.rs": "781eeee25981d8cb3ecebdf8ec38d4fc860bcd850166d92d53a057a0935c2915",
+        "capabilities.rs": "85e53cb90b14232698622e1e0e5f1efae2c7c019d3ee6c778288240bc0559d20",
+        "keyless.rs": "c5c28d17bcbb2465fe09570e60571a4c582b350527f954004b4db6aba6bca65e",
+        "upstream.rs": "e0d24bd85126dff2ad89689b8b4623ff008042f3b93cc7e81df8edc8c566b865"
+      },
+      "checks": [
+        {
+          "name": "tls-tests",
+          "exit_code": 0
+        },
+        {
+          "name": "protocols",
+          "exit_code": 0
+        },
+        {
+          "name": "application-tests",
+          "exit_code": 0
+        },
+        {
+          "name": "clippy",
+          "exit_code": 0
+        },
+        {
+          "name": "msrv",
+          "exit_code": 0
+        },
+        {
+          "name": "setup",
+          "exit_code": 0
+        },
+        {
+          "name": "doctor",
+          "exit_code": 0
+        }
+      ],
+      "provider_protocols": {
+        "tls12": false,
+        "tls13": true
+      },
+      "normal_binaries_unchanged_during_trials": true,
+      "normal_binaries_at_that_time": {
+        "historical-debug-binary": "c544ca399765228e0ee1d42b4ab9b401cce14472c1eac587231f854d96851b95",
+        "historical-release-binary": "cc67d027ba227e12542172eaf6e3edcda1bb45bb942caa2476cf0fcef64461d0"
+      },
+      "setup_and_doctor_passed": true,
+      "graph": {
+        "packages": 286,
+        "rsa": [
+          "0.9.10"
+        ],
+        "crypto_bigint": [
+          "0.7.10"
+        ],
+        "audit_exit": 1,
+        "advisories": [
+          "RUSTSEC-2023-0071"
+        ],
+        "active_native_packages": []
+      },
+      "provider_handshakes": {
+        "schema_version": 1,
+        "provider": "composition",
+        "probe_sha256": "73221952741feb93b801a7e60b970fce8ac10ab5430352030e1f73990ae551ce",
+        "driver_sha256": "84882cd1841902e9b83be86774798403613ee3128a6b9490766e956846c81b50",
+        "fixture_ca_sha256": "a691213e22cf5873af7a3ed89e906a4a9d7d3bb5c08e701799d7edca61491fb1",
+        "results": [
+          {
+            "version": "tls12",
+            "succeeded": false,
+            "expected_success": false,
+            "matches_expected": true,
+            "exit_code": 1,
+            "negotiated": null
+          },
+          {
+            "version": "tls13",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_3)"
+          }
+        ],
+        "complete": true
+      },
+      "trials": [
+        {
+          "video_id": "of4B3aw7MXo",
+          "scenario": "fresh",
+          "complete": true,
+          "bytes": 858695,
+          "sha256": "9ff98eeebbfbc735a3ff93959d4d081682b4fef40aa9a5b58ff3951830cfbb3c",
+          "decoded_seconds": 52.96475,
+          "process_attempts": 1
+        },
+        {
+          "video_id": "rQMC7nKfAXE",
+          "scenario": "fresh",
+          "complete": true,
+          "bytes": 4092800,
+          "sha256": "dd1eca306d6121b138bf6376e3e26f4bce3fb1609a334b192c9711493aa00bc5",
+          "decoded_seconds": 252.842125,
+          "process_attempts": 1
+        },
+        {
+          "video_id": "bedsdFbhqhw",
+          "scenario": "resume",
+          "complete": true,
+          "bytes": 17056307,
+          "sha256": "5e608a8e46c2515077cf297220987980538929c98f87f8636034f64d6738b5c9",
+          "decoded_seconds": 1053.8376875,
+          "process_attempts": 2,
+          "resumed_from_bytes": 163880
+        }
+      ]
+    },
+    {
+      "provider": "upstream",
+      "upstream_revision": "70f76c039e587192688af18a80d5d6435dedaf22",
+      "worker_identity": {
+        "binary_sha256": "bbd9959c8165c015ed7204ef81970ee41754f2371aeeadaf3b7ced66444f4ace",
+        "revision": "unavailable",
+        "source_dirty": null,
+        "source_fingerprint": "76e97c2d7e7669fc909cec24b99d8d765b8f1a3b",
+        "version": "0.4.0"
+      },
+      "binaries": {
+        "worker": "bbd9959c8165c015ed7204ef81970ee41754f2371aeeadaf3b7ced66444f4ace",
+        "probe": "fe9244d686f6b3c8701a9c117f8c1b886cb2df9e8c0acffde90263806500e17d"
+      },
+      "runner_sha256": "cff6e38231fa4a153f85a8b0676320fac94e22f636f474b1c9377e0310bd079b",
+      "prototype_sha256": {
+        "provider.rs": "ace7bf8d3f30e6633e1f2015d9df4b8e6e0fc2f7c5a9b5cd38c61fe8bd994681",
+        "rsa.rs": "781eeee25981d8cb3ecebdf8ec38d4fc860bcd850166d92d53a057a0935c2915",
+        "capabilities.rs": "85e53cb90b14232698622e1e0e5f1efae2c7c019d3ee6c778288240bc0559d20",
+        "keyless.rs": "c5c28d17bcbb2465fe09570e60571a4c582b350527f954004b4db6aba6bca65e",
+        "upstream.rs": "e0d24bd85126dff2ad89689b8b4623ff008042f3b93cc7e81df8edc8c566b865"
+      },
+      "checks": [
+        {
+          "name": "tls-tests",
+          "exit_code": 0
+        },
+        {
+          "name": "protocols",
+          "exit_code": 0
+        },
+        {
+          "name": "application-tests",
+          "exit_code": 0
+        },
+        {
+          "name": "clippy",
+          "exit_code": 0
+        },
+        {
+          "name": "msrv",
+          "exit_code": 0
+        },
+        {
+          "name": "setup",
+          "exit_code": 0
+        },
+        {
+          "name": "doctor",
+          "exit_code": 0
+        }
+      ],
+      "provider_protocols": {
+        "tls12": true,
+        "tls13": true
+      },
+      "normal_binaries_unchanged_during_trials": true,
+      "normal_binaries_at_that_time": {
+        "historical-debug-binary": "c544ca399765228e0ee1d42b4ab9b401cce14472c1eac587231f854d96851b95",
+        "historical-release-binary": "cc67d027ba227e12542172eaf6e3edcda1bb45bb942caa2476cf0fcef64461d0"
+      },
+      "setup_and_doctor_passed": true,
+      "graph": {
+        "packages": 266,
+        "rsa": [
+          "0.10.0-rc.19"
+        ],
+        "crypto_bigint": [
+          "0.7.10"
+        ],
+        "audit_exit": 1,
+        "advisories": [
+          "RUSTSEC-2023-0071"
+        ],
+        "active_native_packages": []
+      },
+      "provider_handshakes": {
+        "schema_version": 1,
+        "provider": "upstream",
+        "probe_sha256": "4d96cbc9e25176743e845873c2aa7cc8ecc440b7f47f0720f9a6b006d89082f4",
+        "driver_sha256": "84882cd1841902e9b83be86774798403613ee3128a6b9490766e956846c81b50",
+        "fixture_ca_sha256": "828a15905c903beae2fca05e231ebabc08e76867aff55371d7ea42a5dd2ed234",
+        "results": [
+          {
+            "version": "tls12",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_2)"
+          },
+          {
+            "version": "tls13",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_3)"
+          }
+        ],
+        "complete": true
+      },
+      "trials": [
+        {
+          "video_id": "of4B3aw7MXo",
+          "scenario": "fresh",
+          "complete": true,
+          "bytes": 858695,
+          "sha256": "9ff98eeebbfbc735a3ff93959d4d081682b4fef40aa9a5b58ff3951830cfbb3c",
+          "decoded_seconds": 52.96475,
+          "process_attempts": 1
+        },
+        {
+          "video_id": "rQMC7nKfAXE",
+          "scenario": "fresh",
+          "complete": true,
+          "bytes": 4092800,
+          "sha256": "dd1eca306d6121b138bf6376e3e26f4bce3fb1609a334b192c9711493aa00bc5",
+          "decoded_seconds": 252.842125,
+          "process_attempts": 1
+        },
+        {
+          "video_id": "bedsdFbhqhw",
+          "scenario": "resume",
+          "complete": true,
+          "bytes": 17056307,
+          "sha256": "5e608a8e46c2515077cf297220987980538929c98f87f8636034f64d6738b5c9",
+          "decoded_seconds": 1053.8376875,
+          "process_attempts": 2,
+          "resumed_from_bytes": 163880
+        }
+      ]
+    }
+  ],
+  "production": {
+    "identity": {
+      "binary_sha256": "cdc2c49ba252db9d6c57c7d7d4eee65ea27feb2f59ff36ae35825da56060d8aa",
+      "revision": "7acc40b8261b6c1bfb1b12b406cdb1f1cb808719",
+      "source_dirty": true,
+      "source_fingerprint": "55d8415864759b3414be78d199e81389668e3ec8",
+      "version": "0.5.0"
+    },
+    "probe_sha256": "fa01ef75aedd54b8bae0db833008d251760e5efe7af26d8bdead062f6300635c",
+    "handshakes": [
+      {
+        "schema_version": 1,
+        "provider": "application",
+        "certificate": "ecdsa",
+        "probe_sha256": "fa01ef75aedd54b8bae0db833008d251760e5efe7af26d8bdead062f6300635c",
+        "driver_sha256": "5250bb0bf9b517533e890acb2fd2308d4da1c1d7150369e8afde80652f7854c1",
+        "fixture_ca_sha256": "5f2e42aa00333a5ea04d1551de8fe91ed70185fa247a9d350d75e3dd4cc06a64",
+        "results": [
+          {
+            "version": "tls12",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_2)",
+            "group": "Some(secp256r1)"
+          },
+          {
+            "version": "tls13",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_3)",
+            "group": "Some(secp256r1)"
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": 1,
+        "provider": "application",
+        "certificate": "ecdsa",
+        "probe_sha256": "fa01ef75aedd54b8bae0db833008d251760e5efe7af26d8bdead062f6300635c",
+        "driver_sha256": "5250bb0bf9b517533e890acb2fd2308d4da1c1d7150369e8afde80652f7854c1",
+        "fixture_ca_sha256": "7bb3ae5f0b3e4757c68611adee0e9bd2408b5bec482bfb0129eeebdb52cf115a",
+        "results": [
+          {
+            "version": "tls12",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_2)",
+            "group": "Some(secp384r1)"
+          },
+          {
+            "version": "tls13",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_3)",
+            "group": "Some(secp384r1)"
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": 1,
+        "provider": "application",
+        "certificate": "ecdsa",
+        "probe_sha256": "fa01ef75aedd54b8bae0db833008d251760e5efe7af26d8bdead062f6300635c",
+        "driver_sha256": "5250bb0bf9b517533e890acb2fd2308d4da1c1d7150369e8afde80652f7854c1",
+        "fixture_ca_sha256": "aab30d3d3d9bd2ef79cffc02678d0f01208fdf161acac7f37d159f1b00e8b413",
+        "results": [
+          {
+            "version": "tls12",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_2)",
+            "group": "Some(X25519)"
+          },
+          {
+            "version": "tls13",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_3)",
+            "group": "Some(X25519)"
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": 1,
+        "provider": "application",
+        "certificate": "rsa",
+        "probe_sha256": "fa01ef75aedd54b8bae0db833008d251760e5efe7af26d8bdead062f6300635c",
+        "driver_sha256": "5250bb0bf9b517533e890acb2fd2308d4da1c1d7150369e8afde80652f7854c1",
+        "fixture_ca_sha256": "1ee5250867fc053d2425db6fcdd8fc6d7b69acff4696686ea08374e0e77e0b36",
+        "results": [
+          {
+            "version": "tls12",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_2)",
+            "group": "Some(X25519)"
+          },
+          {
+            "version": "tls13",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_3)",
+            "group": "Some(X25519)"
+          }
+        ],
+        "complete": true
+      },
+      {
+        "schema_version": 1,
+        "provider": "application",
+        "certificate": "ecdsa",
+        "probe_sha256": "fa01ef75aedd54b8bae0db833008d251760e5efe7af26d8bdead062f6300635c",
+        "driver_sha256": "5250bb0bf9b517533e890acb2fd2308d4da1c1d7150369e8afde80652f7854c1",
+        "fixture_ca_sha256": "658245f15151e4aa7b19626f68b46ec9fca8a138b9d1871bf7f27d2f807eed34",
+        "results": [
+          {
+            "version": "tls12",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_2)",
+            "group": "Some(X25519)"
+          },
+          {
+            "version": "tls13",
+            "succeeded": true,
+            "expected_success": true,
+            "matches_expected": true,
+            "exit_code": 0,
+            "negotiated": "Some(TLSv1_3)",
+            "group": "Some(X25519)"
+          }
+        ],
+        "complete": true
+      }
+    ],
+    "https_setup_and_doctor_passed": true,
+    "acquisition_resume": {
+      "complete": true,
+      "bytes": 17056307,
+      "sha256": "5e608a8e46c2515077cf297220987980538929c98f87f8636034f64d6738b5c9",
+      "decoded_seconds": 1053.8376875,
+      "resumed_from_bytes": 163880,
+      "process_attempts": 2
+    },
+    "asr_and_compatibility": {
+      "decoded_seconds": 52.96475,
+      "transcript_sha256": "257c6528c671b6c8a311402e39fbf133f95c5445ec5d7b0adb0d63717e1fdbd8",
+      "raw_sha256": [
+        "774f6d8bb527afc8cd1d29d19e39a34563c6995bca5d74b154096fb87ecb3829"
+      ],
+      "raw_chunks": 1,
+      "model_fingerprint": {
+        "v3_e2e_rnnt_decoder.onnx": "7b0a16d67fd2cb37061decc93c69e364a9ab27afee3c57495d55b1c974cf7231",
+        "v3_e2e_rnnt_encoder_int8.onnx": "cf51b300af47cea099e17c806f8fecce2c46e9e8deb4709ec203f8970a067389",
+        "v3_e2e_rnnt_joint.onnx": "602ff7017a93311aad34df1437c8d7f49911353c13d6eae7a6ee7b041339465c",
+        "v3_e2e_rnnt_vocab.txt": "39abae20e692998290c574e606f11a9edef2902a1995463fcff63d1490cf22b7"
+      },
+      "hashes_verified": true,
+      "cleanup_complete": true,
+      "old_0_4_job_unchanged": true
+    },
+    "checks": [
+      {
+        "check": "fmt",
+        "exit_code": 0
+      },
+      {
+        "check": "clippy",
+        "exit_code": 0
+      },
+      {
+        "check": "tests",
+        "exit_code": 0
+      },
+      {
+        "check": "msrv",
+        "exit_code": 0
+      },
+      {
+        "check": "release-tests",
+        "exit_code": 0
+      },
+      {
+        "check": "python",
+        "exit_code": 0
+      },
+      {
+        "check": "build",
+        "exit_code": 0
+      }
+    ],
+    "rust_tests_each_debug_and_release": 349,
+    "opt_in_rust_tests_ignored": 15,
+    "python_tests": 52,
+    "resolved_packages": 266,
+    "active_native_crypto_packages": [],
+    "raw_audit_exit": 1,
+    "advisories": [
+      "RUSTSEC-2023-0071"
+    ],
+    "cargo_lock_sha256": "2241eac2f784ffde85993d70b4593d26a3aa5606e72bac88f21decc8275de96b"
+  },
+  "incomplete_and_failed_attempts": [
+    "initial composition driver stopped before network to correct combined JSONL/result decoding",
+    "protocol helper initially ran before report metadata publication; completed capability log now supplies expected versions",
+    "intermediate X25519-only application failed TLS1.2 ECDSA handshake; retained separately and fixed by qualified patched NIST groups",
+    "existing private-key-refusal regression failed during dependency transition before application guard",
+    "generalized exchange initially reported X25519 for NIST groups; identity regression caught and fixed it",
+    "old ClientHello assertion rejected expanded groups; exact expectation changed under documented policy, not weakened"
+  ],
+  "limits": [
+    "RSA advisory remains; no suppression or security waiver",
+    "Upstream provider remains experimental and discourages production use",
+    "Certificate private-key loading/client authentication unsupported",
+    "TLS versions and groups beyond the verified set are unsupported",
+    "Enterprise/custom trust or alternate proxy/network environments not qualified",
+    "Full decoded audio and valid ASR JSON do not prove speech accuracy",
+    "Successful trials do not guarantee upstream availability",
+    "Pre-commit binary provenance is explicit; future builds have different identities"
+  ]
+}

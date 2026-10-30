@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-29",
+  "scope": "Linux x86_64; current host and network only",
+  "production": {
+    "identity": {
+      "binary_sha256": "60d2d363913f94ace08c2fc6c58ac09bb4e984a6e0337826750519a9818baf85",
+      "revision": "8fcc8615ca1505f996a86d75bb676c9b21dfe1d3",
+      "source_dirty": true,
+      "source_fingerprint": "3d1c61594748291d34588bf98f6b35d147a089fa",
+      "version": "0.3.14"
+    },
+    "affected_source": {
+      "video_id": "rQMC7nKfAXE",
+      "decoded_seconds": 252.842125,
+      "transcription_complete": true,
+      "canonical_and_raw_hashes_validated": true,
+      "owned_media_cleaned_after_publication": true
+    },
+    "completed_0_3_13_job_reused_without_transcript_change": true,
+    "checks": [
+      {
+        "check": "fmt",
+        "exit_code": 0
+      },
+      {
+        "check": "clippy",
+        "exit_code": 0
+      },
+      {
+        "check": "tests",
+        "exit_code": 0
+      },
+      {
+        "check": "msrv",
+        "exit_code": 0
+      },
+      {
+        "check": "release-tests",
+        "exit_code": 0
+      },
+      {
+        "check": "build",
+        "exit_code": 0
+      }
+    ],
+    "rust_tests_each_debug_and_release": 334,
+    "opt_in_ignored": 14,
+    "python_tests": 42
+  },
+  "prototype": {
+    "activated_in_production": false,
+    "identity": {
+      "binary_sha256": "1cf031846fecce4c2fbd58d9bcde99fa8c8b7c3e4dde132914f874a52afb4398",
+      "revision": "unavailable",
+      "source_dirty": null,
+      "source_fingerprint": "640f3f50914515a3197c1aeed90989203ad25ff3",
+      "version": "0.3.14"
+    },
+    "runner_sha256": "a3fa28b2d18b76bafdfdb7a599d6fb0d0cf965b44fa44c0b386b8dee0940292c",
+    "qualifier_sha256": "3ec4cde33176445f0ab3cde78abacfc52e7231ffac88ebb323e58c643846016a",
+    "prototype_sha256": {
+      "provider.rs": "687cba7b8a8229c39030fa9ca94c559858b73435d06f733b86dfd7f2dcacb326",
+      "rsa.rs": "781eeee25981d8cb3ecebdf8ec38d4fc860bcd850166d92d53a057a0935c2915",
+      "capabilities.rs": "8bf95fa0bbced0436361400d74f62202013ed2c0dce7e516c4058ea1f3048d44"
+    },
+    "binaries": {
+      "worker": "1cf031846fecce4c2fbd58d9bcde99fa8c8b7c3e4dde132914f874a52afb4398",
+      "probe": "72734a2c347b29a72eebafe9f2fac0975b22ab83caaa5641c5e0faee9c949190"
+    },
+    "checks": [
+      {
+        "name": "tls-tests",
+        "exit_code": 0
+      },
+      {
+        "name": "protocols",
+        "exit_code": 0
+      },
+      {
+        "name": "application-tests",
+        "exit_code": 0
+      },
+      {
+        "name": "clippy",
+        "exit_code": 0
+      },
+      {
+        "name": "msrv",
+        "exit_code": 0
+      }
+    ],
+    "protocols": {
+      "tls12": false,
+      "tls13": true
+    },
+    "normal_executable_hashes_unchanged": true,
+    "normal_executables": {
+      "historical-debug-binary": "04e02dc334b64dbe6f818350d8eba1b517271bd5212967cf1ee5954fbf444dc2",
+      "historical-release-binary": "60d2d363913f94ace08c2fc6c58ac09bb4e984a6e0337826750519a9818baf85"
+    },
+    "trials": [
+      {
+        "video_id": "of4B3aw7MXo",
+        "scenario": "fresh",
+        "complete": true,
+        "bytes": 858695,
+        "sha256": "9ff98eeebbfbc735a3ff93959d4d081682b4fef40aa9a5b58ff3951830cfbb3c",
+        "decoded_seconds": 52.96475,
+        "declared_seconds": 53.0,
+        "process_attempts": 1
+      },
+      {
+        "video_id": "rQMC7nKfAXE",
+        "scenario": "fresh",
+        "complete": true,
+        "bytes": 4092800,
+        "sha256": "dd1eca306d6121b138bf6376e3e26f4bce3fb1609a334b192c9711493aa00bc5",
+        "decoded_seconds": 252.842125,
+        "declared_seconds": 253.0,
+        "process_attempts": 1
+      },
+      {
+        "video_id": "bedsdFbhqhw",
+        "scenario": "resume",
+        "complete": true,
+        "bytes": 17056307,
+        "sha256": "5e608a8e46c2515077cf297220987980538929c98f87f8636034f64d6738b5c9",
+        "decoded_seconds": 1053.8376875,
+        "declared_seconds": 1054.0,
+        "process_attempts": 2,
+        "resumed_from_bytes": 163880
+      }
+    ],
+    "graph": {
+      "baseline_packages": 258,
+      "candidate_packages": 279,
+      "crypto_bigint_versions": [
+        "0.7.10"
+      ],
+      "rsa_versions": [
+        "0.9.10"
+      ],
+      "candidate_active_packages": 251,
+      "candidate_active_native_packages": [],
+      "baseline_active_packages": 232,
+      "baseline_active_native_packages": [],
+      "inactive_optional_native_resolved_packages": [
+        "cc",
+        "ring"
+      ]
+    },
+    "rustsec_audit_exit": 1,
+    "rustsec_advisories": [
+      "RUSTSEC-2023-0071"
+    ],
+    "external_security_review": false
+  },
+  "limits": [
+    "TLS 1.2-only configuration rejected by prototype",
+    "Production crypto dependencies unchanged; original two advisories remain",
+    "No unconditional YouTube access guarantee",
+    "Acquisition prototype trials do not run ASR",
+    "Qualified binary was built before commit; identity is not a promise for later rebuilds"
+  ]
+}

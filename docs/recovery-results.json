@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "measured_date": "2026-10-28",
+  "application_version": "0.3.10",
+  "binary_sha256": "b2db95fecbd691c7fb922b68ff0a3c43c993660b35b1410416306b7618b22e3c",
+  "original_report_sha256": "324ce2b901c7aef79b8b2e38a596e853da21ae905385e378249accbf01a68365",
+  "cases": [
+    {
+      "scenario": "uninterrupted",
+      "completed_jobs": 1,
+      "attempted_jobs": 1,
+      "decoded_seconds": 52.96475,
+      "raw_files": 1,
+      "source_sha256": "9ff98eeebbfbc735a3ff93959d4d081682b4fef40aa9a5b58ff3951830cfbb3c",
+      "transcript_sha256": "2b1101dd2e4cde68f3cca41e202e228fe931d856b340299ed2be8d3be61cee11",
+      "cleanup_complete": true,
+      "video_id": "of4B3aw7MXo",
+      "chunk_seconds": 300,
+      "encoder_threads": 2,
+      "gigastt_version": "gigastt 2.21.0",
+      "producer": {
+        "binary_sha256": "b2db95fecbd691c7fb922b68ff0a3c43c993660b35b1410416306b7618b22e3c",
+        "revision": "ae1a93793f0c8d034a7d1feb7e29f90981801ba1",
+        "source_dirty": true,
+        "source_fingerprint": "00055f792ae4a203dd6326851fc7c8e7cd60b0bd",
+        "version": "0.3.10"
+      },
+      "frames": 847436,
+      "sample_rate": 16000
+    },
+    {
+      "scenario": "SIGKILL then resume",
+      "completed_jobs": 1,
+      "attempted_jobs": 1,
+      "decoded_seconds": 1053.8376875,
+      "raw_files": 36,
+      "source_sha256": "5e608a8e46c2515077cf297220987980538929c98f87f8636034f64d6738b5c9",
+      "transcript_sha256": "386c94ab2033e1655fdca93c2be8430de51903dafbbaf104c5eb44d742f39198",
+      "cleanup_complete": true,
+      "video_id": "bedsdFbhqhw",
+      "chunk_seconds": 30,
+      "encoder_threads": 2,
+      "gigastt_version": "gigastt 2.21.0",
+      "producer": {
+        "binary_sha256": "b2db95fecbd691c7fb922b68ff0a3c43c993660b35b1410416306b7618b22e3c",
+        "revision": "ae1a93793f0c8d034a7d1feb7e29f90981801ba1",
+        "source_dirty": true,
+        "source_fingerprint": "00055f792ae4a203dd6326851fc7c8e7cd60b0bd",
+        "version": "0.3.10"
+      },
+      "frames": 16861403,
+      "sample_rate": 16000
+    }
+  ],
+  "forced_termination": {
+    "exit_code": -9,
+    "stdout_bytes": 0,
+    "prefix_bytes": 163880,
+    "completed": true
+  },
+  "limits": [
+    "One observation per scenario; not a representative access success rate",
+    "Different recordings and checkpoint sizes; no timing ranking",
+    "Raw evidence retained locally; clean checkout lacks original artifacts",
+    "Input coverage is not speech accuracy"
+  ]
+}

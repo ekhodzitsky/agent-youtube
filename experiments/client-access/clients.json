@@ -1,0 +1,509 @@
+[
+  {
+    "name": "sabr-ios",
+    "source_repo": "mthwJsmith--sabr-rs",
+    "client_id": 5,
+    "headers": {
+      "User-Agent": "com.google.ios.youtube/19.45.4 (iPhone16,2; U; CPU iOS 18_1_0 like Mac OS X;)"
+    },
+    "body": {
+      "context": {
+        "client": {
+          "clientName": "IOS",
+          "clientVersion": "19.45.4",
+          "deviceMake": "Apple",
+          "deviceModel": "iPhone16,2",
+          "osName": "iPhone",
+          "osVersion": "18.1.0.22B83",
+          "hl": "en",
+          "gl": "US"
+        }
+      },
+      "contentCheckOk": true,
+      "racyCheckOk": true
+    }
+  },
+  {
+    "name": "sabr-android",
+    "source_repo": "mthwJsmith--sabr-rs",
+    "client_id": 3,
+    "headers": {
+      "User-Agent": "com.google.android.youtube/19.44.38 (Linux; U; Android 14; en_US; Pixel 8) gzip"
+    },
+    "body": {
+      "context": {
+        "client": {
+          "clientName": "ANDROID",
+          "clientVersion": "19.44.38",
+          "deviceMake": "Google",
+          "deviceModel": "Pixel 8",
+          "osName": "Android",
+          "osVersion": "14",
+          "hl": "en",
+          "gl": "US",
+          "androidSdkVersion": 34
+        }
+      },
+      "contentCheckOk": true,
+      "racyCheckOk": true
+    }
+  },
+  {
+    "name": "cast-ios",
+    "source_repo": "mthwJsmith--ytcast-open",
+    "client_id": 5,
+    "headers": {
+      "User-Agent": "com.google.ios.youtube/21.02.3 (iPhone16,2; U; CPU iOS 18_1_0 like Mac OS X;)",
+      "X-YouTube-Client-Name": "5",
+      "X-YouTube-Client-Version": "21.02.3"
+    },
+    "body": {
+      "context": {
+        "client": {
+          "clientName": "IOS",
+          "clientVersion": "21.02.3",
+          "deviceMake": "Apple",
+          "deviceModel": "iPhone16,2",
+          "osName": "iPhone",
+          "osVersion": "18.1.0.22B83",
+          "hl": "en",
+          "gl": "US",
+          "timeZone": "UTC",
+          "utcOffsetMinutes": 0
+        }
+      },
+      "contentCheckOk": true,
+      "racyCheckOk": true,
+      "playbackContext": {
+        "contentPlaybackContext": {
+          "html5Preference": "HTML5_PREF_WANTS"
+        }
+      }
+    }
+  },
+  {
+    "name": "pytubefix-visionos",
+    "source_repo": "JuanBindez--pytubefix",
+    "client_id": 101,
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15",
+      "X-Youtube-Client-Name": "101"
+    },
+    "body": {
+      "context": {
+        "client": {
+          "clientName": "VISIONOS",
+          "clientVersion": "1.02",
+          "deviceMake": "Apple",
+          "platform": "MOBILE",
+          "osName": "visionOS",
+          "osVersion": "26.5.23O471",
+          "deviceModel": "RealityDevice17,1"
+        }
+      },
+      "contentCheckOk": "true"
+    }
+  },
+  {
+    "name": "cast-ios-no-client-headers",
+    "source_repo": "mthwJsmith--ytcast-open",
+    "client_id": 5,
+    "headers": {
+      "User-Agent": "com.google.ios.youtube/21.02.3 (iPhone16,2; U; CPU iOS 18_1_0 like Mac OS X;)"
+    },
+    "body": {
+      "context": {
+        "client": {
+          "clientName": "IOS",
+          "clientVersion": "21.02.3",
+          "deviceMake": "Apple",
+          "deviceModel": "iPhone16,2",
+          "osName": "iPhone",
+          "osVersion": "18.1.0.22B83",
+          "hl": "en",
+          "gl": "US",
+          "timeZone": "UTC",
+          "utcOffsetMinutes": 0
+        }
+      },
+      "contentCheckOk": true,
+      "racyCheckOk": true,
+      "playbackContext": {
+        "contentPlaybackContext": {
+          "html5Preference": "HTML5_PREF_WANTS"
+        }
+      }
+    },
+    "variant": "client identity headers only"
+  },
+  {
+    "name": "sabr-ios-with-client-headers",
+    "source_repo": "mthwJsmith--sabr-rs",
+    "client_id": 5,
+    "headers": {
+      "User-Agent": "com.google.ios.youtube/19.45.4 (iPhone16,2; U; CPU iOS 18_1_0 like Mac OS X;)",
+      "X-YouTube-Client-Name": "5",
+      "X-YouTube-Client-Version": "19.45.4"
+    },
+    "body": {
+      "context": {
+        "client": {
+          "clientName": "IOS",
+          "clientVersion": "19.45.4",
+          "deviceMake": "Apple",
+          "deviceModel": "iPhone16,2",
+          "osName": "iPhone",
+          "osVersion": "18.1.0.22B83",
+          "hl": "en",
+          "gl": "US"
+        }
+      },
+      "contentCheckOk": true,
+      "racyCheckOk": true
+    },
+    "variant": "client identity headers only"
+  },
+  {
+    "name": "sabr-android-with-client-headers",
+    "source_repo": "mthwJsmith--sabr-rs",
+    "client_id": 3,
+    "headers": {
+      "User-Agent": "com.google.android.youtube/19.44.38 (Linux; U; Android 14; en_US; Pixel 8) gzip",
+      "X-YouTube-Client-Name": "3",
+      "X-YouTube-Client-Version": "19.44.38"
+    },
+    "body": {
+      "context": {
+        "client": {
+          "clientName": "ANDROID",
+          "clientVersion": "19.44.38",
+          "deviceMake": "Google",
+          "deviceModel": "Pixel 8",
+          "osName": "Android",
+          "osVersion": "14",
+          "hl": "en",
+          "gl": "US",
+          "androidSdkVersion": 34
+        }
+      },
+      "contentCheckOk": true,
+      "racyCheckOk": true
+    },
+    "variant": "client identity headers only"
+  },
+  {
+    "name": "sabr-ios-new-version",
+    "source_repo": "mthwJsmith--sabr-rs",
+    "client_id": 5,
+    "headers": {
+      "User-Agent": "com.google.ios.youtube/21.02.3 (iPhone16,2; U; CPU iOS 18_1_0 like Mac OS X;)"
+    },
+    "body": {
+      "context": {
+        "client": {
+          "clientName": "IOS",
+          "clientVersion": "21.02.3",
+          "deviceMake": "Apple",
+          "deviceModel": "iPhone16,2",
+          "osName": "iPhone",
+          "osVersion": "18.1.0.22B83",
+          "hl": "en",
+          "gl": "US"
+        }
+      },
+      "contentCheckOk": true,
+      "racyCheckOk": true
+    },
+    "variant": "matched clientVersion and User-Agent only"
+  },
+  {
+    "name": "mweb-native",
+    "source_repo": "JuanBindez--pytubefix",
+    "client_id": 2,
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (iPad; CPU OS 16_7_10 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1,gzip(gfe)",
+      "X-Youtube-Client-Name": "2"
+    },
+    "body": {
+      "context": {
+        "client": {
+          "clientName": "MWEB",
+          "clientVersion": "2.20260708.05.00",
+          "hl": "en",
+          "gl": "US",
+          "userAgent": "Mozilla/5.0 (iPad; CPU OS 16_7_10 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1,gzip(gfe)"
+        }
+      },
+      "contentCheckOk": true,
+      "racyCheckOk": true
+    },
+    "web_bootstrap": true,
+    "native_token": true,
+    "hls_probe": false
+  },
+  {
+    "name": "safari-hls",
+    "source_repo": "JuanBindez--pytubefix",
+    "client_id": 1,
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.5 Safari/605.1.15,gzip(gfe)",
+      "X-Youtube-Client-Name": "1"
+    },
+    "body": {
+      "context": {
+        "client": {
+          "clientName": "WEB",
+          "clientVersion": "2.20260708.00.00",
+          "hl": "en",
+          "gl": "US",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.5 Safari/605.1.15,gzip(gfe)"
+        }
+      },
+      "contentCheckOk": true,
+      "racyCheckOk": true
+    },
+    "web_bootstrap": true,
+    "native_token": false,
+    "hls_probe": true
+  },
+  {
+    "name": "mweb-watch-native",
+    "source_repo": "JuanBindez--pytubefix",
+    "client_id": 2,
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (iPad; CPU OS 16_7_10 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1,gzip(gfe)",
+      "X-Youtube-Client-Name": "2"
+    },
+    "body": {
+      "context": {
+        "client": {
+          "clientName": "MWEB",
+          "clientVersion": "2.20260708.05.00",
+          "hl": "en",
+          "gl": "US",
+          "userAgent": "Mozilla/5.0 (iPad; CPU OS 16_7_10 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1,gzip(gfe)"
+        }
+      },
+      "contentCheckOk": true,
+      "racyCheckOk": true
+    },
+    "web_bootstrap": true,
+    "native_token": true,
+    "hls_probe": false,
+    "player_route": "watch",
+    "variant": "initial player response from the matching mobile watch page"
+  },
+  {
+    "name": "current-tv-samsung",
+    "source_repo": "yt-dlp/yt-dlp@fa9886678eb65103303c627b8e013f13f8999b41",
+    "client_id": 7,
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (SMART-TV; Linux; Tizen 2.4.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/2.4.0 TV Safari/538.1",
+      "X-YouTube-Client-Name": "7",
+      "X-YouTube-Client-Version": "5.20260707"
+    },
+    "body": {
+      "context": {
+        "client": {
+          "clientName": "TVHTML5",
+          "clientVersion": "5.20260707",
+          "deviceMake": "Samsung",
+          "deviceModel": "UKS9800",
+          "userAgent": "Mozilla/5.0 (SMART-TV; Linux; Tizen 2.4.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/2.4.0 TV Safari/538.1",
+          "osName": "Tizen",
+          "osVersion": "2.4.0",
+          "hl": "en",
+          "gl": "US"
+        }
+      },
+      "contentCheckOk": true,
+      "racyCheckOk": true
+    },
+    "signature_bootstrap": true
+  },
+  {
+    "name": "current-web-embedded",
+    "source_repo": "yt-dlp/yt-dlp@fa9886678eb65103303c627b8e013f13f8999b41",
+    "client_id": 56,
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.5 Safari/605.1.15,gzip(gfe)",
+      "X-YouTube-Client-Name": "56",
+      "X-YouTube-Client-Version": "2.20260708.00.00"
+    },
+    "body": {
+      "context": {
+        "client": {
+          "clientName": "WEB_EMBEDDED_PLAYER",
+          "clientVersion": "2.20260708.00.00",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.5 Safari/605.1.15,gzip(gfe)",
+          "hl": "en",
+          "gl": "US",
+          "clientScreen": "EMBED"
+        },
+        "thirdParty": {
+          "embedUrl": "https://www.youtube.com/"
+        }
+      },
+      "contentCheckOk": true,
+      "racyCheckOk": true
+    },
+    "signature_bootstrap": true
+  },
+  {
+    "name": "current-android-vr",
+    "source_repo": "yt-dlp/yt-dlp@fa9886678eb65103303c627b8e013f13f8999b41",
+    "client_id": 28,
+    "headers": {
+      "User-Agent": "com.google.android.apps.youtube.vr.oculus/1.65.10 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip",
+      "X-YouTube-Client-Name": "28",
+      "X-YouTube-Client-Version": "1.65.10"
+    },
+    "body": {
+      "context": {
+        "client": {
+          "clientName": "ANDROID_VR",
+          "clientVersion": "1.65.10",
+          "deviceMake": "Oculus",
+          "deviceModel": "Quest 3",
+          "androidSdkVersion": 32,
+          "userAgent": "com.google.android.apps.youtube.vr.oculus/1.65.10 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip",
+          "osName": "Android",
+          "osVersion": "12L",
+          "hl": "en",
+          "gl": "US"
+        }
+      },
+      "contentCheckOk": true,
+      "racyCheckOk": true
+    }
+  },
+  {
+    "name": "web-watch-native",
+    "source_repo": "historical local client-context probe",
+    "client_id": 1,
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.10 Safari/605.1.1",
+      "X-Youtube-Client-Name": "1"
+    },
+    "body": {
+      "context": {
+        "client": {
+          "clientName": "WEB",
+          "clientVersion": "2.20260708.05.00",
+          "hl": "en",
+          "gl": "US",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.10 Safari/605.1.1"
+        }
+      },
+      "contentCheckOk": true,
+      "racyCheckOk": true
+    },
+    "web_bootstrap": true,
+    "native_token": true,
+    "hls_probe": false,
+    "player_route": "watch"
+  },
+  {
+    "name": "prepared-tv-samsung",
+    "source_repo": "yt-dlp/yt-dlp@fa9886678eb65103303c627b8e013f13f8999b41",
+    "client_id": 7,
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (SMART-TV; Linux; Tizen 2.4.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/2.4.0 TV Safari/538.1",
+      "X-YouTube-Client-Name": "7",
+      "X-YouTube-Client-Version": "5.20260707"
+    },
+    "body": {
+      "context": {
+        "client": {
+          "clientName": "TVHTML5",
+          "clientVersion": "5.20260707",
+          "deviceMake": "Samsung",
+          "deviceModel": "UKS9800",
+          "userAgent": "Mozilla/5.0 (SMART-TV; Linux; Tizen 2.4.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/2.4.0 TV Safari/538.1",
+          "osName": "Tizen",
+          "osVersion": "2.4.0",
+          "hl": "en",
+          "timeZone": "UTC",
+          "utcOffsetMinutes": 0
+        }
+      },
+      "contentCheckOk": true,
+      "racyCheckOk": true,
+      "playbackContext": {
+        "contentPlaybackContext": {
+          "html5Preference": "HTML5_PREF_WANTS"
+        }
+      }
+    },
+    "signature_bootstrap": true,
+    "anonymous_session": true
+  },
+  {
+    "name": "prepared-web-embedded",
+    "source_repo": "yt-dlp/yt-dlp@fa9886678eb65103303c627b8e013f13f8999b41",
+    "client_id": 56,
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.5 Safari/605.1.15,gzip(gfe)",
+      "X-YouTube-Client-Name": "56",
+      "X-YouTube-Client-Version": "2.20260708.00.00"
+    },
+    "body": {
+      "context": {
+        "client": {
+          "clientName": "WEB_EMBEDDED_PLAYER",
+          "clientVersion": "2.20260708.00.00",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.5 Safari/605.1.15,gzip(gfe)",
+          "hl": "en",
+          "clientScreen": "EMBED",
+          "timeZone": "UTC",
+          "utcOffsetMinutes": 0
+        },
+        "thirdParty": {
+          "embedUrl": "https://www.youtube.com/"
+        }
+      },
+      "contentCheckOk": true,
+      "racyCheckOk": true,
+      "playbackContext": {
+        "contentPlaybackContext": {
+          "html5Preference": "HTML5_PREF_WANTS"
+        }
+      }
+    },
+    "signature_bootstrap": true,
+    "anonymous_session": true,
+    "embedded_context": true
+  },
+  {
+    "name": "prepared-visionos",
+    "source_repo": "JuanBindez--pytubefix",
+    "client_id": 101,
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15",
+      "X-Youtube-Client-Name": "101"
+    },
+    "body": {
+      "context": {
+        "client": {
+          "clientName": "VISIONOS",
+          "clientVersion": "1.02",
+          "deviceMake": "Apple",
+          "platform": "MOBILE",
+          "osName": "visionOS",
+          "osVersion": "26.5.23O471",
+          "deviceModel": "RealityDevice17,1",
+          "timeZone": "UTC",
+          "utcOffsetMinutes": 0
+        }
+      },
+      "contentCheckOk": "true",
+      "playbackContext": {
+        "contentPlaybackContext": {
+          "html5Preference": "HTML5_PREF_WANTS"
+        }
+      }
+    },
+    "signature_bootstrap": true,
+    "anonymous_session": true
+  }
+]

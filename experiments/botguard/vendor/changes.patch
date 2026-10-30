@@ -1,0 +1,213 @@
+--- a/boa_engine/Cargo.toml
++++ b/boa_engine/Cargo.toml
+@@ -14,6 +14,7 @@
+ rust-version = "1.91.0"
+ name = "boa_engine"
+ version = "0.22.0"
++publish = false
+ authors = ["boa-dev"]
+ build = false
+ autolib = false
+@@ -36,7 +37,6 @@
+ ]
+ license = "Unlicense OR MIT"
+ repository = "https://github.com/boa-dev/boa"
+-resolver = "2"
+ 
+ [package.metadata.docs.rs]
+ all-features = true
+@@ -473,9 +473,6 @@
+ version = "1.1.0"
+ optional = true
+ 
+-[target.x86_64-unknown-linux-gnu.dev-dependencies.jemallocator]
+-version = "0.5.4"
+-
+ [lints.clippy]
+ dbg_macro = "warn"
+ print_stderr = "warn"
+--- a/boa_engine/src/builtins/function/mod.rs
++++ b/boa_engine/src/builtins/function/mod.rs
+@@ -1086,6 +1086,7 @@
+         let global = frame.realm.environment();
+         frame.environments.push_function(
+             scope,
++            frame.code_block().function_scope_bindings,
+             FunctionSlots::new(this, function_object.clone(), None),
+             global,
+         );
+@@ -1194,6 +1195,7 @@
+         let global = frame.realm.environment();
+         frame.environments.push_function(
+             scope,
++            frame.code_block().function_scope_bindings,
+             FunctionSlots::new(
+                 this.clone().map_or(ThisBindingStatus::Uninitialized, |o| {
+                     ThisBindingStatus::Initialized(o.into())
+--- a/boa_engine/src/bytecompiler/function.rs
++++ b/boa_engine/src/bytecompiler/function.rs
+@@ -225,7 +225,8 @@
+         compiler.params = parameters.clone();
+         compiler.parameter_scope = scopes.parameter_scope();
+ 
+-        let code = compiler.finish();
++        let mut code = compiler.finish();
++        code.function_scope_bindings = scopes.function_scope().num_bindings_non_local();
+ 
+         Gc::new(code)
+     }
+--- a/boa_engine/src/bytecompiler/mod.rs
++++ b/boa_engine/src/bytecompiler/mod.rs
+@@ -2773,6 +2773,7 @@
+         CodeBlock {
+             length: self.length,
+             register_count,
++            function_scope_bindings: 0,
+             this_mode: self.this_mode,
+             parameter_length: self.params.as_ref().len() as u32,
+             mapped_arguments_binding_indices,
+--- a/boa_engine/src/environments/runtime/declarative/function.rs
++++ b/boa_engine/src/environments/runtime/declarative/function.rs
+@@ -20,11 +20,19 @@
+ 
+ impl FunctionEnvironment {
+     /// Creates a new `FunctionEnvironment`.
+-    pub(crate) fn new(bindings_count: u32, slots: FunctionSlots, scope: Scope) -> Self {
++    pub(crate) fn new(
++        bindings_count: u32,
++        static_bindings: u32,
++        slots: FunctionSlots,
++        scope: Scope,
++    ) -> Self {
++        // Eval additions belong to the invocation that declares them, even though
++        // the compile-time name/index schema is shared by every invocation.
++        let dynamic: Vec<_> = (0..bindings_count).map(|i| i >= static_bindings).collect();
+         Self {
+             bindings: GcRefCell::new(vec![None; bindings_count as usize]),
+-            deletable_bindings: RefCell::new(vec![false; bindings_count as usize]),
+-            deleted_bindings: RefCell::new(vec![false; bindings_count as usize]),
++            deletable_bindings: RefCell::new(dynamic.clone()),
++            deleted_bindings: RefCell::new(dynamic),
+             slots: Box::new(slots),
+             scope,
+         }
+@@ -77,7 +85,7 @@
+ 
+         self.deleted_bindings
+             .borrow_mut()
+-            .resize(compile_bindings_len, false);
++            .resize(compile_bindings_len, true);
+     }
+ 
+     pub(crate) fn is_deleted_binding(&self, index: u32) -> bool {
+@@ -85,7 +93,7 @@
+             .borrow()
+             .get(index as usize)
+             .copied()
+-            .unwrap_or_default()
++            .unwrap_or(true)
+     }
+ 
+     #[track_caller]
+--- a/boa_engine/src/environments/runtime/mod.rs
++++ b/boa_engine/src/environments/runtime/mod.rs
+@@ -232,6 +232,7 @@
+     pub(crate) fn push_function(
+         &mut self,
+         scope: Scope,
++        static_bindings: u32,
+         function_slots: FunctionSlots,
+         global: &Gc<DeclarativeEnvironment>,
+     ) {
+@@ -243,6 +244,7 @@
+             DeclarativeEnvironment::new(
+                 DeclarativeEnvironmentKind::Function(FunctionEnvironment::new(
+                     num_bindings,
++                    static_bindings,
+                     function_slots,
+                     scope,
+                 )),
+@@ -519,7 +521,9 @@
+         {
+             let mut scope = function_env.compile().outer();
+             while let Some(current_scope) = scope {
+-                if let Some(binding) = current_scope.get_binding(locator.name()) {
++                if let Some(binding) = current_scope.get_binding(locator.name())
++                    && !self.is_deleted_binding(&binding)
++                {
+                     locator.set_scope(binding.scope());
+                     locator.set_binding_index(binding.binding_index());
+                     return Ok(());
+@@ -566,7 +570,8 @@
+                 Environment::Declarative(env) => {
+                     if env.poisoned() {
+                         if let Some(env) = env.kind().as_function()
+-                            && env.compile().get_binding(locator.name()).is_some()
++                            && let Some(binding) = env.compile().get_binding(locator.name())
++                            && !env.is_deleted_binding(binding.binding_index())
+                         {
+                             break;
+                         }
+--- a/boa_engine/src/object/jsobject.rs
++++ b/boa_engine/src/object/jsobject.rs
+@@ -606,7 +606,7 @@
+     /// console.log(a.toString()); // We print "1,"
+     /// ```
+     /// The spec doesn't mention what to do in this situation, but a naive implementation
+-    /// would overflow the stack recursively calling `toString()`. We follow v8 and SpiderMonkey
++    /// would overflow the stack recursively calling `toString()`. We follow v8 and `SpiderMonkey`
+     /// instead by returning a default value for the given `hint` -- either `0.` or `""`.
+     /// Example in v8: <https://repl.it/repls/IvoryCircularCertification#index.js>
+     ///
+--- a/boa_engine/src/vm/code_block.rs
++++ b/boa_engine/src/vm/code_block.rs
+@@ -135,6 +135,9 @@
+ 
+     pub(crate) register_count: u32,
+ 
++    /// Function bindings present before runtime eval extends the shared scope.
++    pub(crate) function_scope_bindings: u32,
++
+     /// `[[ThisMode]]`
+     pub(crate) this_mode: ThisMode,
+ 
+@@ -188,6 +191,7 @@
+             flags: Cell::new(flags),
+             length,
+             register_count: 0,
++            function_scope_bindings: 0,
+             this_mode: ThisMode::Global,
+             mapped_arguments_binding_indices: ThinVec::new(),
+             parameter_length: 0,
+--- a/boa_ast/Cargo.toml
++++ b/boa_ast/Cargo.toml
+@@ -14,6 +14,7 @@
+ rust-version = "1.91.0"
+ name = "boa_ast"
+ version = "0.22.0"
++publish = false
+ authors = ["boa-dev"]
+ build = false
+ autolib = false
+@@ -35,7 +36,6 @@
+ ]
+ license = "Unlicense OR MIT"
+ repository = "https://github.com/boa-dev/boa"
+-resolver = "2"
+ 
+ [package.metadata.docs.rs]
+ all-features = true
+--- a/boa_ast/src/scope_analyzer.rs
++++ b/boa_ast/src/scope_analyzer.rs
+@@ -551,6 +551,11 @@
+         self.direct_eval = contains_direct_eval || self.direct_eval;
+         if self.direct_eval {
+             scopes.escape_all_bindings();
++            // Direct eval can read arguments without a syntactic identifier in
++            // this function. For arrows, resolve the enclosing arguments object.
++            scopes
++                .parameter_scope()
++                .access_binding(&Sym::ARGUMENTS.to_js_string(self.interner), true);
+         }
+         let mut scope = scopes.parameter_scope();
+         std::mem::swap(&mut self.scope, &mut scope);

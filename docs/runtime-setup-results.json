@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-29",
+  "scope": "Linux x86_64 GNU; local pinned setup and one short real transcription",
+  "producer": {
+    "binary_sha256": "cc67d027ba227e12542172eaf6e3edcda1bb45bb942caa2476cf0fcef64461d0",
+    "revision": "19b3f9c58857674836ea6a338d75cf17d1b32667",
+    "source_dirty": true,
+    "source_fingerprint": "aae807704d328d763053deb574fb2a213158b2d6",
+    "version": "0.4.0"
+  },
+  "runtime": {
+    "version": "2.22.0",
+    "archive_sha256": "cd790191a600df48aa5c56e124953322af89df4bbd60d2c980436b0597c46194",
+    "executable_sha256": "efb3c09b0ddf7872fe47bccc91f556ae728cf01035a94efe6f8e0c0795591cd1",
+    "models_sha256": {
+      "v3_e2e_rnnt_decoder.onnx": "7b0a16d67fd2cb37061decc93c69e364a9ab27afee3c57495d55b1c974cf7231",
+      "v3_e2e_rnnt_encoder_int8.onnx": "cf51b300af47cea099e17c806f8fecce2c46e9e8deb4709ec203f8970a067389",
+      "v3_e2e_rnnt_joint.onnx": "602ff7017a93311aad34df1437c8d7f49911353c13d6eae7a6ee7b041339465c",
+      "v3_e2e_rnnt_vocab.txt": "39abae20e692998290c574e606f11a9edef2902a1995463fcff63d1490cf22b7"
+    },
+    "manifest_sha256": "2df1de1e36c54153e3910b94850f290e0db192e0ddd42d995e8f864558106b92",
+    "online_install_complete": true,
+    "offline_install_complete": true,
+    "reuse_verified": true,
+    "default_discovery_verified": true,
+    "model_load_and_inference_in_setup_result": "not_checked",
+    "post_asr_reuse_verified": true
+  },
+  "live": {
+    "video_id": "of4B3aw7MXo",
+    "decoded_seconds": 52.96475,
+    "raw_chunks": 1,
+    "transcript_sha256": "257c6528c671b6c8a311402e39fbf133f95c5445ec5d7b0adb0d63717e1fdbd8",
+    "raw_sha256": [
+      "774f6d8bb527afc8cd1d29d19e39a34563c6995bca5d74b154096fb87ecb3829"
+    ],
+    "hashes_verified": true,
+    "cleanup_complete": true,
+    "selected_managed_absolute_paths": true,
+    "speech_accuracy_assessed": false
+  },
+  "compatibility": {
+    "corrupt_runtime_refused_without_mutation_or_job_creation": true,
+    "old_0_3_14_transcript_manifest_raw_unchanged": true,
+    "corrupt_executable_refused": true
+  },
+  "checks": [
+    {
+      "check": "fmt",
+      "exit_code": 0
+    },
+    {
+      "check": "clippy",
+      "exit_code": 0
+    },
+    {
+      "check": "tests",
+      "exit_code": 0
+    },
+    {
+      "check": "msrv",
+      "exit_code": 0
+    },
+    {
+      "check": "python",
+      "exit_code": 0
+    }
+  ],
+  "rust_tests_passed": 348,
+  "rust_opt_in_ignored": 14,
+  "python_tests_passed": 49,
+  "dependency_graph": {
+    "resolved_versions_before": 258,
+    "resolved_versions_after": 265,
+    "added": [
+      [
+        "adler2",
+        "2.0.1"
+      ],
+      [
+        "crc32fast",
+        "1.5.3"
+      ],
+      [
+        "filetime",
+        "0.2.29"
+      ],
+      [
+        "flate2",
+        "1.1.10"
+      ],
+      [
+        "miniz_oxide",
+        "0.9.1"
+      ],
+      [
+        "simd-adler32",
+        "0.3.10"
+      ],
+      [
+        "tar",
+        "0.4.46"
+      ]
+    ],
+    "native_decompressor_added": false,
+    "raw_audit_exit": 1,
+    "remaining_advisories": [
+      "RUSTSEC-2026-0387",
+      "RUSTSEC-2023-0071"
+    ]
+  },
+  "prior_attempts": [
+    {
+      "operation": "online_setup",
+      "ok": false,
+      "code": "setup_failed",
+      "cause": "body read error initially lacked typed retry guidance",
+      "manifest_published": false,
+      "fixed_by": "sanitized typed body errors and a 120-second total response-body timeout; later HTTPS setup succeeded"
+    }
+  ],
+  "limitations": [
+    "Managed installer supports only Linux x86_64 GNU",
+    "Models are explicitly provisioned; fingerprints identify selected content, not semantic validity",
+    "Setup does not run inference or guarantee YouTube access",
+    "Existing TLS provider advisories remain",
+    "Qualified binary was built before commit; identity differs from future rebuilds"
+  ]
+}

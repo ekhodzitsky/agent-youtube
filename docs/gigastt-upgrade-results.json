@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-29",
+  "scope": "Linux x86_64; existing GigaAM v3 e2e_rnnt INT8 models",
+  "release_url": "https://github.com/ekhodzitsky/gigastt/releases/tag/v2.22.0",
+  "integrity": {
+    "version": "2.22.0",
+    "archive_sha256": "cd790191a600df48aa5c56e124953322af89df4bbd60d2c980436b0597c46194",
+    "published_checksum_matches": true
+  },
+  "recognizer_binary_sha256": "efb3c09b0ddf7872fe47bccc91f556ae728cf01035a94efe6f8e0c0795591cd1",
+  "doctor_ok": true,
+  "source_video_id": "of4B3aw7MXo",
+  "decoded_seconds": 52.96475,
+  "frames": 847436,
+  "recognizer_version": "gigastt 2.22.0",
+  "producer": {
+    "binary_sha256": "60d2d363913f94ace08c2fc6c58ac09bb4e984a6e0337826750519a9818baf85",
+    "revision": "8fcc8615ca1505f996a86d75bb676c9b21dfe1d3",
+    "source_dirty": true,
+    "source_fingerprint": "3d1c61594748291d34588bf98f6b35d147a089fa",
+    "version": "0.3.14"
+  },
+  "model_fingerprint": {
+    "v3_e2e_rnnt_decoder.onnx": "7b0a16d67fd2cb37061decc93c69e364a9ab27afee3c57495d55b1c974cf7231",
+    "v3_e2e_rnnt_encoder_int8.onnx": "cf51b300af47cea099e17c806f8fecce2c46e9e8deb4709ec203f8970a067389",
+    "v3_e2e_rnnt_joint.onnx": "602ff7017a93311aad34df1437c8d7f49911353c13d6eae7a6ee7b041339465c",
+    "v3_e2e_rnnt_vocab.txt": "39abae20e692998290c574e606f11a9edef2902a1995463fcff63d1490cf22b7"
+  },
+  "raw_chunks": 1,
+  "raw_sha256": [
+    "774f6d8bb527afc8cd1d29d19e39a34563c6995bca5d74b154096fb87ecb3829"
+  ],
+  "transcript_sha256": "257c6528c671b6c8a311402e39fbf133f95c5445ec5d7b0adb0d63717e1fdbd8",
+  "hashes_verified": true,
+  "cleanup_complete": true,
+  "completed_job_reused_without_transcript_change": true,
+  "accuracy_assessed": false,
+  "minisign_verified": false
+}

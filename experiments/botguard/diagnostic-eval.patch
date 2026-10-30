@@ -1,0 +1,19 @@
+--- a/src/environments/runtime/mod.rs
++++ b/src/environments/runtime/mod.rs
+@@ -462,0 +463,10 @@
++        // Diagnostic counterfactual only: bypass an uninitialized eval-added
++        // binding named eval. This is not a general ECMAScript fix.
++        if locator.name().to_std_string_escaped() == "eval"
++            && let BindingLocatorScope::Stack(index) = locator.scope()
++            && let Environment::Declarative(env) = self.environment_expect(index)
++            && env.get(locator.binding_index()).is_none()
++        {
++            locator.set_scope(BindingLocatorScope::GlobalObject);
++            locator.set_binding_index(0);
++        }
+@@ -488 +498,4 @@
+-                            if env.is_deleted_binding(b.binding_index()) {
++                            if env.is_deleted_binding(b.binding_index())
++                                || (locator.name().to_std_string_escaped() == "eval"
++                                    && env.get(b.binding_index()).is_none())
++                            {

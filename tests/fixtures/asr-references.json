@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "dataset": "google/fleurs",
+  "revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+  "language": "ru_ru",
+  "split": "dev",
+  "license": "CC-BY-4.0",
+  "attribution": "FLEURS: Few-shot Learning Evaluation of Universal Representations of Speech (Conneau et al., 2022); Google dataset contributors.",
+  "source": "https://huggingface.co/datasets/google/fleurs/tree/70bb2e84b976b7e960aa89f1c648e09c59f894dd/data/ru_ru",
+  "archive_url": "https://huggingface.co/datasets/google/fleurs/resolve/70bb2e84b976b7e960aa89f1c648e09c59f894dd/data/ru_ru/audio/dev.tar.gz",
+  "archive_sha256": "4dc533cd0f312f749bd6d0fe968f3183288d938e07ed97dc141d9f10570457f9",
+  "reference_provenance": "Published FLEURS read-speech prompts/transcriptions. Not independently corrected or word-aligned in this repository.",
+  "normalization": "Unicode lowercase, ё to е, alphanumeric tokens; orthographic numbers are not expanded.",
+  "cases": [
+    {
+      "id": "1652-12991791007873426296",
+      "file": "12991791007873426296.wav",
+      "sha256": "149622a4fe6489d8eaafe2b95e3db1f930e9814a9642c41d632e246ca4271a08",
+      "samples": 132480,
+      "reference": "Основной религией в Молдавии является православное христианство.",
+      "tags": [
+        "read_speech",
+        "short"
+      ],
+      "gender": "FEMALE"
+    },
+    {
+      "id": "1591-15831057629221328872",
+      "file": "15831057629221328872.wav",
+      "sha256": "16b857080b8c90663fa152a8c5b8f563dbdc9fe83ecb9d295a580d4b035f6aaf",
+      "samples": 221760,
+      "reference": "Бывший спикер палаты Ньют Гингрич, губернатор Техаса Рик Перри и конгресмен Мишель Бахман заняли четвертое, пятое и шестое места соответственно.",
+      "tags": [
+        "proper_names"
+      ],
+      "gender": "MALE"
+    },
+    {
+      "id": "1617-8615352657490921896",
+      "file": "8615352657490921896.wav",
+      "sha256": "dd3918c7caf6852ed13554eeb2af1af2826c933db841ce33f3822848f9691ace",
+      "samples": 205440,
+      "reference": "Национальный парк Крюгера расположен на северо-востоке Южной Африки, вдоль границы с Мозамбиком на востоке, с Зимбабве на севере, его южной границей служит Крокодилова река.",
+      "tags": [
+        "geographic_names"
+      ],
+      "gender": "FEMALE"
+    },
+    {
+      "id": "1618-1024552646813367065",
+      "file": "1024552646813367065.wav",
+      "sha256": "f9e20b0e47f79eed52ce8050dcfcfac0a4fc838412300b8b63624ce4d7778770",
+      "samples": 272640,
+      "reference": "В северной части, то есть на хребте Сентинел, находятся самые высокие горы Антарктиды — массив Винсон, самая высшая точка которого достигает 4892 м и называется пик Винсон.",
+      "tags": [
+        "numbers",
+        "units"
+      ],
+      "gender": "MALE"
+    },
+    {
+      "id": "1568-1277872989383182246",
+      "file": "1277872989383182246.wav",
+      "sha256": "f4006aaf35f61184c76589a342a276e31a66c0f96fdb1ced8b1d552a6bee0b6f",
+      "samples": 288000,
+      "reference": "Хотя слово \"Gypsy\" широко используется, особенно среди нецыган, оно часто считается обидным из-за ассоциаций, связанных с негативными стереотипами и неверными представлениями о цыганском народе.",
+      "tags": [
+        "foreign_term"
+      ],
+      "gender": "FEMALE"
+    }
+  ],
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "changes": "Audio is not vendored. Qualification converts float WAV to PCM16 using ryf; seeded noise is an explicitly synthetic derivative. Published reference strings remain verbatim."
+}

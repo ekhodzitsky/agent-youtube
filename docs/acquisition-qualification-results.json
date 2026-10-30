@@ -1,0 +1,203 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-29",
+  "version": "0.3.13",
+  "binary_sha256": "ed64dfe3199a91d0e4a4e2097262333bcca13600a31f3aa91a125ba9bced63bd",
+  "release_probe_sha256": "8d647bd69043ba954f85d410575a3b762b64c48d5456ef3117b49d84db2da33e",
+  "corpus_sha256": "cd05b3590f803f5ba97b8d45ca1fbf7415d3f11409b61bddf408327a979faf53",
+  "harness_provenance": {
+    "qualify.py": "83cd264cb43f196d839eab30324b46eac0fecbe01f974d2a1942548025328726",
+    "probe.rs": "37ddbc1472cb16e9b78a0d19c70fdb5de4a267d6da19309b6d634d210338c04f",
+    "sweep.py": "8af93b3575686f470d7ef3e479e3bf6151f0f3d0517faa775b5a7514c44ff6a4"
+  },
+  "finished": true,
+  "scenario": "fresh",
+  "trial_timeout_seconds": 600,
+  "series_budget_seconds": 2700,
+  "minimum_trial_spacing_seconds": 5,
+  "counts": {
+    "scheduled": 15,
+    "attempted": 15,
+    "complete": 14,
+    "failed": 1,
+    "skipped": 0
+  },
+  "complete_over_attempted": 0.9333333333333333,
+  "complete_over_scheduled": 0.9333333333333333,
+  "failures": {
+    "youtube_source_unavailable": 1
+  },
+  "total_decoded_seconds": 56054.2938125,
+  "maximum_decoded_seconds": 16011.598375,
+  "trials": [
+    {
+      "video_id": "of4B3aw7MXo",
+      "complete": true,
+      "reason": null,
+      "timeout": false,
+      "process_exit_code": 0,
+      "bytes": 858695,
+      "source_sha256": "9ff98eeebbfbc735a3ff93959d4d081682b4fef40aa9a5b58ff3951830cfbb3c",
+      "decoded_seconds": 52.96475,
+      "declared_seconds": 53.0
+    },
+    {
+      "video_id": "2teKcIDANI4",
+      "complete": true,
+      "reason": null,
+      "timeout": false,
+      "process_exit_code": 0,
+      "bytes": 13802520,
+      "source_sha256": "cdf5d1ebdcf887551a7298b47fdfd363ab2c206436de2d2aa1602ede445b9384",
+      "decoded_seconds": 852.7993125,
+      "declared_seconds": 853.0
+    },
+    {
+      "video_id": "a2hbJlPxj4M",
+      "complete": true,
+      "reason": null,
+      "timeout": false,
+      "process_exit_code": 0,
+      "bytes": 222653848,
+      "source_sha256": "03aa68c5dd636ee05f023ce2a51dfd2013d3968058353ca4326b9d0774e36631",
+      "decoded_seconds": 13757.6838125,
+      "declared_seconds": 13758.0
+    },
+    {
+      "video_id": "BaW_jenozKc",
+      "complete": false,
+      "reason": "youtube_source_unavailable",
+      "timeout": false,
+      "process_exit_code": 0
+    },
+    {
+      "video_id": "jNQXAC9IVRw",
+      "complete": true,
+      "reason": null,
+      "timeout": false,
+      "process_exit_code": 0,
+      "bytes": 309288,
+      "source_sha256": "a01b38c896d27707ef852301f1ccc6c39cebe792852c868109e85753ef159e47",
+      "decoded_seconds": 19.063625,
+      "declared_seconds": 19.0
+    },
+    {
+      "video_id": "aqz-KE-bpKQ",
+      "complete": true,
+      "reason": null,
+      "timeout": false,
+      "process_exit_code": 0,
+      "bytes": 30767611,
+      "source_sha256": "595acb084489cf9bee90547335de299189114b341445c2f2d62b168c4b77a513",
+      "decoded_seconds": 634.624,
+      "declared_seconds": 635.0
+    },
+    {
+      "video_id": "M7lc1UVf-VE",
+      "complete": true,
+      "reason": null,
+      "timeout": false,
+      "process_exit_code": 0,
+      "bytes": 21747280,
+      "source_sha256": "4454ec9f1eda741c85652aeb4a7620026ed477aed353a7c308fb66bd119b16ab",
+      "decoded_seconds": 1343.692375,
+      "declared_seconds": 1344.0
+    },
+    {
+      "video_id": "aircAruvnKk",
+      "complete": true,
+      "reason": null,
+      "timeout": false,
+      "process_exit_code": 0,
+      "bytes": 18126904,
+      "source_sha256": "718cc5edeea3eb85d9049a0745f660dfc973ecd4bc32e62b0fdf92cae5c01b0c",
+      "decoded_seconds": 1119.9913125,
+      "declared_seconds": 1120.0
+    },
+    {
+      "video_id": "Ilg3gGewQ5U",
+      "complete": true,
+      "reason": null,
+      "timeout": false,
+      "process_exit_code": 0,
+      "bytes": 12410001,
+      "source_sha256": "9f5b1332ed823604c72022cf756408c60204fb0200798ffb1ada3d8f662788eb",
+      "decoded_seconds": 766.746125,
+      "declared_seconds": 767.0
+    },
+    {
+      "video_id": "rfscVS0vtbw",
+      "complete": true,
+      "reason": null,
+      "timeout": false,
+      "process_exit_code": 0,
+      "bytes": 259130892,
+      "source_sha256": "27f7f9dafe01ce1bf46fd211b54a9cbf1c1d68b6f2dfe034707315ca6190df9b",
+      "decoded_seconds": 16011.598375,
+      "declared_seconds": 16012.0
+    },
+    {
+      "video_id": "VMj-3S1tku0",
+      "complete": true,
+      "reason": null,
+      "timeout": false,
+      "process_exit_code": 0,
+      "bytes": 141641738,
+      "source_sha256": "37ca83770a29732eb39c084731953c188909d92d327dbd23226b9279870ef06b",
+      "decoded_seconds": 8751.94925,
+      "declared_seconds": 8752.0
+    },
+    {
+      "video_id": "zjkBMFhNj_g",
+      "complete": true,
+      "reason": null,
+      "timeout": false,
+      "process_exit_code": 0,
+      "bytes": 58064721,
+      "source_sha256": "6f910748ea507c6b24d74ab9e2cff2b3f1a1935f59d6778cf41c08c4c0eb17a8",
+      "decoded_seconds": 3587.7384375,
+      "declared_seconds": 3588.0
+    },
+    {
+      "video_id": "IiKtcKEdUFE",
+      "complete": true,
+      "reason": null,
+      "timeout": false,
+      "process_exit_code": 0,
+      "bytes": 84739123,
+      "source_sha256": "de6dee141d2d27520cd3ccfb7e8dbc4287e09c3d0528689e9509b5e221b489db",
+      "decoded_seconds": 5235.9605,
+      "declared_seconds": 5236.0
+    },
+    {
+      "video_id": "LXb3EKWsInQ",
+      "complete": true,
+      "reason": null,
+      "timeout": false,
+      "process_exit_code": 0,
+      "bytes": 5080048,
+      "source_sha256": "77871aeac8f83c064daefaca66950425dcfcaf726799c880e37d4e8487367f50",
+      "decoded_seconds": 313.8409375,
+      "declared_seconds": 314.0
+    },
+    {
+      "video_id": "kqtD5dpn9C8",
+      "complete": true,
+      "reason": null,
+      "timeout": false,
+      "process_exit_code": 0,
+      "bytes": 58354130,
+      "source_sha256": "eddee34b4cdfa95978902f1c6214c9f7c37f34992b0eec9c7a5d044f5dd2780c",
+      "decoded_seconds": 3605.641,
+      "declared_seconds": 3606.0
+    }
+  ],
+  "limits": [
+    "one network, one finite series; not longitudinal cohort",
+    "production downloader through release-mode research hook; no ASR",
+    "no reference/tool comparison in this series",
+    "Frozen before TLS regression-only commit; production runtime unchanged",
+    "Success requires identity, exact declared byte count, SHA256 and complete validated decoded WAV; no ASR in this sweep",
+    "Old longitudinal cohort remains separate; no overall availability guarantee"
+  ]
+}

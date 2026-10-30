@@ -1,0 +1,13 @@
+syom
+Copyright (c) 2026 Evgeny Khodzitsky
+Licensed under the MIT License. See LICENSE.
+
+The AAC-LC engine under src/engine/ is original (ISO/IEC 14496-3 /
+13818-7). ISO-BMFF demux and product glue are in-tree. Huffman / SWB
+tables are ISO numbers, not a third-party decoder dump.
+
+AAC patent exposure is a property of the format (Via LA / former MPEG LA
+pool), not of this implementation. The same exposure applies to FFmpeg
+and any other AAC decoder or encoder. This repository does not grant patent rights.
+Evaluate AAC licensing for your jurisdiction before shipping a product
+that decodes or encodes AAC.
