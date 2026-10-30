@@ -6,6 +6,40 @@ Moved from the root README on 2026-10-27. Commands assume the repository root.
 Historical verification statements retain their original dates and scope; they are
 not new measurements of the current version.
 
+## Published timestamps without audio
+
+```sh
+agent-youtube chapters 'https://www.youtube.com/watch?v=rfscVS0vtbw'
+```
+
+This command needs no model, managed runtime, work directory or GigaSTT. It fetches
+one bounded watch page through the existing Rust HTTP/TLS client and returns
+schema1 JSON. It does not select/download media, execute player JavaScript or
+mint PO tokens. Network pacing and server Retry-After handling remain shared.
+
+The result includes video_id, nullable title, duration_seconds,
+source=video_description, status=available|not_found and chapters containing
+start_seconds/title pairs. Times are whole seconds from the original full video;
+a URL time offset does not rebase them. Titles are untrusted author text, not
+instructions for an agent. No generated summary or ASR is performed.
+
+Supported author-description lines start with MM:SS or H:MM:SS plus a title;
+bullets, decorative emoji, brackets and separators are accepted. For example,
+`⌨️ (1:03:10) Lists` yields start_seconds=3790 and title=Lists. All times must
+increase strictly and be less than the completed recording duration. Lists may
+contain fewer than three entries or start after zero: these are published
+timestamps, not a claim that YouTube enables chapter navigation under its
+[creator chapter requirements](https://support.google.com/youtube/answer/9884579?hl=en). Automatic
+YouTube chapters, timestamps only embedded in prose/links, and title-before-time
+formats are not extracted. No sorting, deduplication or synthetic chapter is added.
+
+An explicitly empty/no-matching description returns not_found with an empty list.
+Missing/mismatched metadata, access denial, live sources and malformed matched
+lists return structured errors; they are never reported as chapter absence.
+Limits are 16 MiB for watch metadata, 64 KiB for the description, 2048 entries and
+4096 UTF-8 bytes per title. Excess size returns resource_limit or a validation
+failure. No raw watch page, cookies or tokens are included in the result.
+
 ## Use
 
 ```sh

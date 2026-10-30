@@ -7,6 +7,16 @@ contracts, and freshly opened primary upstream READMEs. This is a workflow compa
 not a measured overall ranking. Upstream links describe the inspected projects'
 documentation, not a guarantee about every version or configuration.
 
+## Current README source recheck — 2026-10-30
+
+Reopened the three primary upstream READMEs below for the 0.8.0 root refresh:
+caption retrieval still documents manual/generated text; yt-dlp documents default
+continuation of partial files/fragments; Whisper documents multilingual local
+recognition and its FFmpeg prerequisite. No new matched performance, caption
+retrieval or competitor inference trial is claimed. The root comparison concerns
+obtaining recording text. The new local chapters command separately extracts
+author-description timestamps without ASR and is not caption retrieval.
+
 ## Why these alternatives
 
 An agent needs either existing text or new recognition from audio. The two

@@ -8,6 +8,18 @@ JSON or canonical transcripts. Source is public; crates.io publication stays dis
 
 ## Unreleased
 
+## 0.8.0 — 2026-10-30
+
+- Add `chapters URL`: return author-published description timestamps and titles
+  as schema1 JSON from one bounded watch-page request. No audio acquisition,
+  PO-token/player evaluation, work directory, recognizer or model setup is needed.
+  Include provenance and distinguish not_found from denied/malformed metadata.
+  Validate video identity, completed duration, timestamp order/ranges and limits;
+  never invent chapters or label automatic navigation as author-written.
+- Refresh the public root README against agent-dev-kb README standard v1 with
+  the metadata-only first useful result, current scope and scoped historical
+  recovery measurements. Record missing coverage/current benchmark evidence.
+
 ## 0.7.0 — 2026-10-30
 
 - Establish the independent agent-youtube crate, executable and Rust library

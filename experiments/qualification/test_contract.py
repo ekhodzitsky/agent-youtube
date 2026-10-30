@@ -10,6 +10,19 @@ SPEC.loader.exec_module(CONTRACT)
 
 
 class ContractTests(unittest.TestCase):
+    def test_chapters_provenance_and_absence_cannot_misrepresent_results(self):
+        result = dict(video_id='a2hbJlPxj4M', title=None, duration_seconds=180,
+                      source='video_description', status='available',
+                      chapters=[dict(start_seconds=0, title='Introduction')])
+        value = dict(schema_version=1, ok=True, command='chapters', result=result)
+        self.assertTrue(self.check.is_valid(value))
+        for change in [dict(chapters=[]), dict(source='generated'),
+                       dict(status='not_found'), dict(secret='not allowed'),
+                       dict(chapters=[dict(start_seconds=-1, title='Invalid')])]:
+            with self.subTest(change=change):
+                self.assertFalse(self.check.is_valid({**value, 'result': {**result, **change}}))
+        self.assertTrue(self.check.is_valid({**value, 'result': {**result, 'status': 'not_found', 'chapters': []}}))
+
     @classmethod
     def setUpClass(cls):
         cls.check = CONTRACT.validator()

@@ -1,4 +1,4 @@
-# Current readiness and support — 0.7.0
+# Current readiness and support — 0.8.0
 
 This is the current decision entry point. Dated qualification reports are evidence
 for their exact source, binary, model, network and scenario; they are not silently
@@ -16,7 +16,8 @@ upgraded to new-release measurements. See the [changelog](../CHANGELOG.md).
 
 | Area | Supported/qualified scope | Outside the claim |
 | --- | --- | --- |
-| Input | One completed accessible YouTube recording, audio-only AAC/MP4, unique original track when metadata exists | Playlists, live recording, captions, WebM/Opus-only, DRM, account/age/region authorization |
+| Transcription input | One completed accessible YouTube recording, audio-only AAC/MP4, unique original track when metadata exists | Playlists, live recording, captions, WebM/Opus-only, DRM, account/age/region authorization |
+| Metadata | Author-description timestamp/title lines from one accessible completed recording; no media selection or ASR | Automatic chapters, linked/prose timestamps and title-before-time forms |
 | Output | One result JSON; stderr JSONL; canonical transcript and exact raw ASR; compact/metadata/full modes and offline exports | Word accuracy, source-language detection, diarization or complete recognition of every utterance |
 | Runtime | Local pinned GigaSTT 2.22.0, GigaAM v3 e2e_rnnt INT8; syom/bandlimit/ryf media path | Entire ASR stack being pure Rust: ONNX Runtime has native components |
 | Platform | Linux x86_64 GNU on the tested host/network; local filesystem with locks/hard links/fsync | macOS Web/Windows/other architectures, all Linux distributions/filesystems/proxies/CDNs |
@@ -25,6 +26,14 @@ upgraded to new-release measurements. See the [changelog](../CHANGELOG.md).
 | Scheduling | New CLI job waits budgeted at 3600 seconds; active work excluded; old saved policies inherited | Overall one-hour runtime cap, an always-on daemon or coordination across unrelated users/hosts |
 
 ## Current fixes and evidence
+
+0.8.0 adds metadata-only chapters: author-description timestamp/title pairs with
+explicit source and absence/error distinctions. No ASR, model or audio acquisition
+is used. Current local network check on 2026-10-30 returned 35 timestamps for
+rfscVS0vtbw (16,012 seconds); it is a single watch-page result, not an availability
+rate. Loopback tests cover malformed/absent metadata, HTTP403/429, Retry-After,
+wrong video identity and the closed result schema. Historical ASR measurements
+below retain their original versions. [Usage](usage.md#published-timestamps-without-audio).
 
 0.7.0 establishes independent crate, CLI, cache and job-ownership namespaces.
 Manifest schema2 uses application_version; checkpoints require the

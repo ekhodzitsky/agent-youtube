@@ -1,3 +1,4 @@
+mod chapters;
 #[cfg(test)]
 mod faults;
 mod source;

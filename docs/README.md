@@ -26,10 +26,13 @@ of Git. See the installation guide for vendored codec provenance.
 
 ## Current release and operation
 
+- [Published timestamps without audio](usage.md#published-timestamps-without-audio):
+  chapters command, author-description provenance, absence/errors and limits.
+
 - [Independent source migration audit](migration-audit.md): identity, storage,
   machine-contract, Git and privacy boundaries for 0.7.0.
 
-- [Readiness and support — 0.7.0](readiness.md): current disposition, evidence map,
+- [Readiness and support — 0.8.0](readiness.md): current disposition, evidence map,
   security/license limits, operational checks and rollback.
 - [Local release preparation](private-release.md): complete source/binary
   artifacts and identity/notices manifests without uploading; crate publication is disabled.

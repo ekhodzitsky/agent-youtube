@@ -8,6 +8,41 @@ use std::{
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
 #[test]
+fn help_exposes_metadata_only_chapters_command() {
+    let output = Fixture::new().command().arg("--help").output().unwrap();
+    assert!(output.status.success());
+    let value: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert!(
+        value["result"]["help"]
+            .as_str()
+            .unwrap()
+            .contains("agent-youtube chapters URL")
+    );
+}
+
+#[test]
+fn chapters_rejects_job_options_and_bad_urls_before_network_access() {
+    for arguments in [
+        vec!["chapters"],
+        vec!["chapters", "file:///tmp/input"],
+        vec![
+            "chapters",
+            "https://youtu.be/a2hbJlPxj4M",
+            "--work-dir",
+            "unused",
+        ],
+        vec!["chapters", "https://youtu.be/a2hbJlPxj4M", "--force"],
+    ] {
+        let fixture = Fixture::new();
+        let output = fixture.command().args(arguments).output().unwrap();
+        assert!(!output.status.success());
+        let value: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(value["error"]["code"], "invalid_arguments");
+        assert_eq!(fs::read_dir(&fixture.0).unwrap().count(), 0);
+    }
+}
+
+#[test]
 fn public_help_uses_independent_application_identity() {
     let output = Fixture::new().command().arg("--help").output().unwrap();
     assert!(output.status.success());

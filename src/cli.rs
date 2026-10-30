@@ -20,6 +20,7 @@ use std::{
 const HELP: &str = "agent-youtube — JSON-only local Russian YouTube transcription
 
 Usage:
+  agent-youtube chapters URL
   agent-youtube transcribe URL --work-dir DIR [options]
   agent-youtube status --work-dir DIR
   agent-youtube resume --work-dir DIR [--response compact|metadata|full]
@@ -118,6 +119,17 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
         }
     }
     match command {
+        "chapters" => {
+            if force || positional.len() != 1 {
+                return Err("chapters requires exactly one YouTube URL and no options".into());
+            }
+            reject_remaining(&flags)?;
+            let url = positional[0].to_str().ok_or("URL must be UTF-8")?;
+            let result = downloader
+                .chapters(url, &cancelled)
+                .map_err(|error| context(error, "youtube_metadata_invalid"))?;
+            protocol::success(command, result)?;
+        }
         "setup" => {
             if force || !positional.is_empty() {
                 return Err("setup accepts options only".into());

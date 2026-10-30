@@ -10,11 +10,57 @@ license is now present at the root, CI is dispatch-only and hosted Actions are
 disabled. Crates.io publication stays disabled. Sections below preserve dated
 reviews, including superseded privacy/license findings; see current readiness.
 
+## README v1 acceptance — 0.8.0, 2026-10-30
+
+The current root adapts agent-dev-kb docs/readme-v1/{README,template}.md at
+revision d92256be2cb2c92c686bd5c1de2341a61ba1a0cb. The opening describes only
+implemented metadata/transcription operations; the broader project name does not
+promise channel, playlist, caption or search commands. Detailed setup, retry,
+export, migration and licensing guidance remain in existing guides.
+
+| V1 check | Result | Evidence / boundary |
+| --- | --- | --- |
+| Purpose | Pass | English opening identifies JSON CLI, author timestamps, local Russian recognition and recovery |
+| Hook | Pass | Complete metadata command and observed 35-entry result; early first useful operation |
+| First run | Pass for command behavior | Current 0.8.0 local Rust CLI fetched rfscVS0vtbw and returned 35 timestamps, duration 16012 seconds, first Introduction at 0 seconds; source install command reviewed, not rerun on a clean host |
+| Alternatives | Pass for documented scope | Three primary upstream READMEs reopened on 2026-10-30; text-source/model choices, no measured superiority claim |
+| Benchmarks | Partial for current-release scope | Named historical 0.3.10 / GigaSTT 2.21.0 completion/recovery observations retained with exact units and versions; no fresh 0.8.0 ASR, comparative speed or representative success-rate measurement |
+| Badges | Partial | Accurate source/MIT/declared source-build MSRV and disabled CI; line/branch coverage unmeasured, hosted MSRV qualification disabled |
+| Constraints | Pass | Access/TLS maturity, Russian ASR, description provenance, absent captions/playlists/live support, ownership migration and resource limits explicit |
+| Presentation | Pass for structural review | Concise root, at most three navigation links, narrow tables, locally rendered Markdown and parsed SVG badges; no browser pixel-review claim |
+
+The metadata result is one source observation, not a new availability guarantee.
+Watch-page request handling, absence, malformed lists/metadata, video identity,
+HTTP403/429, retry guidance and closed response schema are exercised offline.
+No new audio or ASR run is needed to verify the chapter-only quick start.
+Coverage and missing current-release recognition benchmarks remain measurement
+work; polished documentation does not establish unrestricted v1 evidence coverage.
+
+## Badge sources
+
+The root badges describe the main source checkout, not an uploaded binary release
+or a hosted test run. SVG labels make no third-party requests.
+
+| Badge | Source and meaning |
+| --- | --- |
+| Source 0.8.0 | Cargo.toml package version; crates.io publication is disabled |
+| License MIT | Root LICENSE; dependencies and model terms remain separate |
+| CI disabled | GitHub Actions disabled by owner instruction; workflow remains dispatch-only |
+| Minimum Rust 1.94 for source builds | Manifest rust-version; prior local MSRV qualification, not a passing hosted 0.8.0 claim |
+
+Downloads badge: inapplicable to this distribution state. There is no crates.io
+package or uploaded downloadable release artifact with a meaningful distribution
+count; public Git source/tag access is not a user/install count. docs.rs is not
+used. Coverage badge: applicable but omitted because no measured line/branch report
+exists. Neither a fabricated number nor a decorative unknown badge fills that gap.
+
+## Historical verification records
+
 Baseline: agent-youtube 0.3.3, source commit `2afc6e3`, reviewed 2026-10-27 against
 root README standard v1. This documentation change does not publish a release,
 change recognition, or certify new live access.
 
-## Badge sources
+## Historical badge sources
 
 Badges are local SVG status labels, not live dashboards. They make no third-party
 request. Update them with their sources when state changes.

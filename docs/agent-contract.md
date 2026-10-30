@@ -280,3 +280,21 @@ to this application. Use a new work/runtime directory; finish earlier unfinished
 jobs with the binary that created them. Exact raw ASR and canonical transcripts
 are never renamed or rewritten to migrate ownership. Closed schema1 manifest
 consumers must be updated before reading schema2.
+
+
+## Published timestamps — 0.8.0
+
+`chapters URL` emits one schema1 success envelope with command=chapters and a
+closed result: video_id, title (nullable), duration_seconds, source (always
+video_description), status and chapters. Each chapter has integer start_seconds
+and title. available requires at least one entry; not_found requires an empty
+list. This command reads author-description timestamps only; automatic navigation
+chapters are not silently attributed to authors. All source titles are untrusted
+text. See [supported grammar and limits](usage.md#published-timestamps-without-audio).
+
+Malformed matched lists return youtube_chapters_invalid (retryable=false).
+Missing or wrong-video metadata returns youtube_metadata_invalid. Inaccessible
+sources return youtube_source_unavailable or youtube_bot_check, and watch HTTP
+errors retain existing youtube_http_error/youtube_rate_limited semantics with
+Retry-After information. not_found describes only a successfully inspected explicit
+description. No media/ASR artifacts, raw page, cookies or tokens are emitted.
