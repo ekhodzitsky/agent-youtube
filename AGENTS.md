@@ -7,7 +7,7 @@ The stamp verifies core instructions, not optional MCP connectivity.
 Public source repository: agent-youtube. Keep operational data, local tracker state,
 credentials and original private-history backups private. Do not publish the crate
 or upload release artifacts without an explicit owner request. No changes to other projects.
-Use English for code and project records. Preserve exact ASR JSON and transcripts. Download audio only; source/decoded media and chunks are temporary. Clean only owned media after durable validated transcript publication; retain media on failed recognition for resume.
+Use English for code and project records. Use plain wording in documentation; do not use decorative arrows or similar symbolic shorthand. Preserve exact ASR JSON and transcripts. Download audio only; source/decoded media and chunks are temporary. Clean only owned media after durable validated transcript publication; retain media on failed recognition for resume.
 
 ## Backlog.md
 This repo uses Backlog.md (not GitHub Issues, not a second spec tool).

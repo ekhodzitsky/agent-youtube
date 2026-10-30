@@ -1,6 +1,6 @@
 # agent-youtube
 
-YouTube → transcripts for AI agents.
+YouTube transcripts for AI agents.
 
 [![Source version: 0.8.2](docs/assets/version.svg)](Cargo.toml)
 [![License: MIT](docs/assets/license.svg)](LICENSE)
@@ -51,7 +51,7 @@ A run on 2026-10-30 returned 35 timestamps. First `result.chapters` entry:
 {"start_seconds":0,"title":"Introduction"}
 ```
 
-[Commands and job lifecycle](docs/usage.md) · [JSON contract](docs/agent-contract.md)
+[Commands and job lifecycle](docs/usage.md) | [JSON contract](docs/agent-contract.md)
 
 ## Built for agents
 
@@ -93,9 +93,9 @@ No paid transcription service is required.
 
 | Tool | Text comes from | Choose it for |
 |---|---|---|
-| **agent-youtube** | Audio → local GigaSTT (`e2e_rnnt`) | JSON job control, checkpoints and saved transcript artifacts |
+| **agent-youtube** | Audio transcribed locally with GigaSTT (`e2e_rnnt`) | JSON job control, checkpoints and saved transcript artifacts |
 | **youtube-transcript-api** | Existing manual or automatic captions | Text retrieval without speech recognition |
-| **yt-dlp + Whisper** | Audio → local multilingual ASR | Broader language and model choice |
+| **yt-dlp + Whisper** | Audio transcribed locally with multilingual ASR | Broader language and model choice |
 
 Whisper also runs locally; yt-dlp already resumes downloads.
 [Comparison and sources](docs/comparison.md). No measured claim of superior
@@ -132,5 +132,5 @@ YouTube can refuse access. Disk and memory limits still apply; timestamps and re
 The TLS provider remains experimental; unrestricted production-security approval
 is outstanding. [Support, security limits and migration](docs/readiness.md).
 
-[Documentation](docs/README.md) · [Help](docs/usage.md#troubleshooting) ·
-[Development](docs/development.md) · [Changelog](CHANGELOG.md) · [MIT license](LICENSE)
+[Documentation](docs/README.md) | [Help](docs/usage.md#troubleshooting) ·
+[Development](docs/development.md) | [Changelog](CHANGELOG.md) | [MIT license](LICENSE)
