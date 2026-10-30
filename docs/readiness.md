@@ -1,4 +1,4 @@
-# Current readiness and support — 0.9.0
+# Current readiness and support — 0.9.1
 
 This is the current decision entry point. Dated qualification reports are evidence
 for their exact source, binary, model, network and scenario; they are not silently
@@ -26,6 +26,17 @@ upgraded to new-release measurements. See the [changelog](../CHANGELOG.md).
 | Scheduling | New CLI job waits budgeted at 3600 seconds; active work excluded; old saved policies inherited | Overall one-hour runtime cap, an always-on daemon or coordination across unrelated users/hosts |
 
 ## Current fixes and evidence
+
+0.9.1 corrects a five-second total HTTP-body deadline that aborted progressing
+responses. The body budget is now 30 seconds, within the existing 45-second
+per-call budget; response byte caps, certificate validation, cooldowns and source
+identity checks remain active. Structured body failures identify response_body,
+a fixed reason and body_bytes_received (diagnostic bytes, not committed media).
+A six-second continuously progressing loopback body failed before and passes
+after. The failed English job resumed and completed fresh acquisition, full decode
+and real ASR at 19.063625 seconds; a fresh Russian job completed at 52.96475 seconds.
+Both published validated transcripts and cleaned owned media afterward. The same
+network's yt-dlp reference also fully downloaded and decoded both recordings. [Current-network qualification](verification.md#http-body-timeout-qualification--091-2026-10-30).
 
 0.9.0 adds explicit e2e_rnnt, ml_ctc and ml_ctc_large selection, variant-specific
 model fingerprints and safe refusal on model changes. CTC models support Russian,

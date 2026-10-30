@@ -37,7 +37,9 @@ impl Http {
             .timeout_resolve(Some(Duration::from_secs(10)))
             .timeout_connect(Some(Duration::from_secs(10)))
             .timeout_recv_response(Some(Duration::from_secs(15)))
-            .timeout_recv_body(Some(Duration::from_secs(5)))
+            // This is the total body budget, not an idle-read timeout. Keep
+            // progressing bounded responses viable on slower routes.
+            .timeout_recv_body(Some(Duration::from_secs(30)))
             .timeout_per_call(Some(Duration::from_secs(45)))
             .build()
             .new_agent();
@@ -419,6 +421,34 @@ pub fn check(cancelled: &AtomicBool) -> Result<()> {
     }
     Ok(())
 }
+fn body_failure(
+    error: std::io::Error,
+    received: usize,
+) -> Box<dyn std::error::Error + Send + Sync> {
+    let typed = error
+        .get_ref()
+        .and_then(|e| e.downcast_ref::<ureq::Error>());
+    let reason = if matches!(typed, Some(ureq::Error::Timeout(_))) {
+        "timeout"
+    } else {
+        match error.kind() {
+            std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock => "timeout",
+            std::io::ErrorKind::UnexpectedEof => "unexpected_eof",
+            std::io::ErrorKind::ConnectionReset => "connection_reset",
+            std::io::ErrorKind::ConnectionAborted => "connection_aborted",
+            std::io::ErrorKind::InvalidData => "invalid_data",
+            std::io::ErrorKind::Interrupted => "interrupted",
+            _ => "io_error",
+        }
+    };
+    crate::protocol::failure_details(
+        "http_transport",
+        Some(true),
+        "HTTP response body failed; media retained for resume",
+        serde_json::json!({"transport_phase":"response_body","reason":reason,"body_bytes_received":received}),
+    )
+}
+
 pub fn read(
     response: &mut Response<Body>,
     limit: usize,
@@ -429,13 +459,9 @@ pub fn read(
     let mut buffer = [0; 32 * 1024];
     loop {
         check(cancelled)?;
-        let n = reader.read(&mut buffer).map_err(|_| {
-            crate::protocol::failure(
-                "http_transport",
-                Some(true),
-                "HTTP response body failed; media retained for resume",
-            )
-        })?;
+        let n = reader
+            .read(&mut buffer)
+            .map_err(|error| body_failure(error, result.len()))?;
         if n == 0 {
             break;
         }
@@ -458,6 +484,79 @@ pub fn pause(millis: u64, cancelled: &AtomicBool) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn progressing_body_can_finish_after_the_old_five_second_budget() {
+        use std::{io::Write, net::TcpListener};
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let origin = format!("http://{}", listener.local_addr().unwrap());
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut request = [0; 4096];
+            assert!(stream.read(&mut request).unwrap() > 0);
+            stream
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 6\r\nConnection: close\r\n\r\n")
+                .unwrap();
+            for _ in 0..6 {
+                std::thread::sleep(Duration::from_secs(1));
+                if stream.write_all(b"x").is_err() {
+                    break;
+                }
+            }
+        });
+        let http = Http::new(&origin).unwrap();
+        let cancelled = AtomicBool::new(false);
+        let mut response = http.request(&origin, None, &[], &cancelled).unwrap();
+        let result = read(&mut response, 1024, &cancelled);
+        server.join().unwrap();
+        assert_eq!(result.unwrap(), b"xxxxxx");
+    }
+
+    #[test]
+    fn body_timeout_diagnostics_are_typed_and_do_not_copy_private_messages() {
+        for error in [
+            std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "https://private.example/?token=secret",
+            ),
+            ureq::Error::Timeout(ureq::Timeout::RecvBody).into_io(),
+        ] {
+            let error = body_failure(error, 7);
+            let failure = error.downcast_ref::<crate::protocol::Failure>().unwrap();
+            assert_eq!(failure.details()["reason"], "timeout");
+            assert_eq!(failure.details()["body_bytes_received"], 7);
+            assert_eq!(failure.retryable, Some(true));
+            let json = serde_json::to_string(failure.details()).unwrap();
+            assert!(!json.contains("private") && !json.contains("secret"));
+        }
+    }
+
+    #[test]
+    fn body_disconnect_reports_phase_and_received_bytes_without_private_data() {
+        use std::{io::Write, net::TcpListener};
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let origin = format!("http://{}", listener.local_addr().unwrap());
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut request = [0; 4096];
+            assert!(stream.read(&mut request).unwrap() > 0);
+            stream
+                .write_all(
+                    b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\nConnection: close\r\n\r\ndata",
+                )
+                .unwrap();
+        });
+        let http = Http::new(&origin).unwrap();
+        let cancelled = AtomicBool::new(false);
+        let mut response = http.request(&origin, None, &[], &cancelled).unwrap();
+        let error = read(&mut response, 1024, &cancelled).unwrap_err();
+        let failure = error.downcast_ref::<crate::protocol::Failure>().unwrap();
+        assert_eq!(failure.code, "http_transport");
+        assert_eq!(failure.details()["transport_phase"], "response_body");
+        assert_eq!(failure.details()["reason"], "unexpected_eof");
+        assert_eq!(failure.details()["body_bytes_received"], 4);
+        server.join().unwrap();
+    }
+
     #[test]
     fn production_agent_client_hello_only_offers_qualified_groups() {
         use std::net::TcpListener;

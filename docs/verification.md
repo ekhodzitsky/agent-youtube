@@ -10,6 +10,50 @@ license is now present at the root, CI is dispatch-only and hosted Actions are
 disabled. Crates.io publication stays disabled. Sections below preserve dated
 reviews, including superseded privacy/license findings; see current readiness.
 
+## HTTP body timeout qualification — 0.9.1, 2026-10-30
+
+The preceding live http_transport failures were reproduced with typed diagnostics:
+a response read timed out after receiving 698,458 bytes. Ureq's timeout_recv_body
+is a total response-body budget, not an inactivity timeout; the previous five
+seconds could expire while bytes kept arriving. The implementation now allows
+30 seconds for a bounded body, retaining the 45-second overall per-call budget.
+No provider, cipher policy, certificate validation, URL scope, byte limit, retry
+count, source identity or cooldown rule was relaxed.
+
+A loopback server sends one byte per second for six seconds. The old configuration
+fails with reason=timeout after five received bytes; the fixed configuration reads
+the complete six-byte body. Other regressions verify truncated-body phase/byte
+counts and sanitize typed timeout errors without copying messages or URLs.
+http_transport from bounded body reads includes transport_phase=response_body,
+reason from a fixed allowlist and body_bytes_received. These are bytes from the
+failed attempt, not durable acquisition progress. No response contents are logged.
+
+The reference was yt-dlp 2026.10.26, published 2026-10-26, official Python zipapp
+SHA-256 e51e69e89489f199530f13d32a4342da3ddb2cf34842f364603a066db05afbf3,
+checked against the GitHub asset digest. With ignored user config, no cache,
+bestaudio[ext=m4a] and default clients (no PO-provider plugin), both full downloads
+succeeded on this host/network. FFmpeg as a research oracle decoded both complete
+files without errors: 19.0635625 seconds and 52.9879375 seconds. Native and reference
+may select different valid AAC/MP4 representations; differing container hashes
+are not treated as proof of corruption or as a speed comparison.
+
+The failed native English job retained its receipt/owned data and was resumed with
+the fix. It downloaded all 309,288 bytes, decoded 19.063625 seconds, completed real
+GigaSTT ml_ctc recognition and published a validated transcript with full contiguous
+input coverage. Cleanup completed after publication. This observation is a fresh
+network acquisition from the retained failed source, not the cached-recording
+loopback qualification in 0.9.0. A fresh Russian job acquired all 858,695 bytes,
+decoded 52.96475 seconds and completed GigaSTT ml_ctc_large recognition with full
+contiguous sample coverage and post-publication cleanup. Native and reference
+files have different hashes and slightly different decoded durations; exact
+compressed-packet/PCM equivalence was not checked. No identical-byte or matched
+speed claim is made. Both native runs used development
+binary SHA-256 c5ed3acb49006b6fbd99af9a715d63096c8e79754ea784e5dd9df2b3cc9a8e0d,
+source fingerprint 67db1462845e3dc81ce2daed61c3c3f559d611ef, based on 1dcde85 with
+source_dirty=true. These observations establish their exact runs, not universal
+access. Local fmt, strict all-target Clippy, 386 Rust tests (18 opt-in ignored),
+72 Python tests and the 28-document check passed. Hosted Actions remained disabled.
+
 ## Multilingual integration qualification — 0.9.0, 2026-10-30
 
 GigaSTT stays pinned to 2.22.0. Setup, doctor and transcribe now select e2e_rnnt,
@@ -106,7 +150,7 @@ or a hosted test run. SVG labels make no third-party requests.
 
 | Badge | Source and meaning |
 | --- | --- |
-| Source 0.9.0 | Cargo.toml package version; crates.io publication is disabled |
+| Source 0.9.1 | Cargo.toml package version; crates.io publication is disabled |
 | License MIT | Root LICENSE; dependencies and model terms remain separate |
 | CI disabled | GitHub Actions disabled by owner instruction; workflow remains dispatch-only |
 | Minimum Rust 1.94 for source builds | Manifest rust-version; prior local MSRV qualification, not a passing hosted 0.8.0 claim |

@@ -15,6 +15,16 @@ JSON or canonical transcripts. Source is public; crates.io publication stays dis
   while this adapter currently fixes the Russian e2e_rnnt model.
   Documentation only; runtime behavior is unchanged.
 
+## 0.9.1 — 2026-10-30
+
+- Allow progressing bounded HTTP bodies to finish within 30 seconds instead of
+  the previous five-second total-body deadline. Retain the 45-second per-call
+  budget and existing byte, trust, cooldown and audio identity limits.
+- Report bounded body-read failures with a sanitized phase, typed reason and
+  attempt byte count. Do not log raw error messages, response content or URLs.
+  Regressions reproduce the old progressing-body timeout, truncated input and
+  private-message redaction. No new dependencies or job/schema migration.
+
 ## 0.9.0 — 2026-10-30
 
 - Add --model-variant e2e_rnnt|ml_ctc|ml_ctc_large to setup, doctor and transcribe.

@@ -2,7 +2,7 @@
 
 YouTube transcripts for AI agents.
 
-[![Source version: 0.9.0](docs/assets/version.svg)](Cargo.toml)
+[![Source version: 0.9.1](docs/assets/version.svg)](Cargo.toml)
 [![License: MIT](docs/assets/license.svg)](LICENSE)
 [![CI: disabled](docs/assets/ci.svg)](.github/workflows/check.yml)
 [![Minimum Rust for source builds: 1.94](docs/assets/msrv.svg)](docs/verification.md#badge-sources)
@@ -103,19 +103,18 @@ recognition accuracy or YouTube access.
 
 ## Recovery evidence
 
-Linux, **0.9.0 development build**, GigaSTT **2.22.0**, 2026-10-30.
-Complete cached recordings served locally; real recognition, cancellation after
-the first ASR result, then resume in a new process:
+Linux, **0.9.1 development build**, GigaSTT **2.22.0**, 2026-10-30.
+Full YouTube audio acquisition, decoding and real recognition:
 
-| Recording / model | Decoded audio | Completed jobs |
+| Recording / scenario | Decoded audio | Completed jobs |
 |---|---:|---:|
-| English / ml_ctc | 19.064 s | 1 / 1 |
-| Russian / ml_ctc_large | 52.988 s | 1 / 1 |
+| English / resume after HTTP-body timeout | 19.064 s | 1 / 1 |
+| Russian / fresh job | 52.965 s | 1 / 1 |
 
-Both preserved the first exact ASR result and published validated transcripts.
-These checks measure recovery, not word accuracy or fresh YouTube access;
-both separate live acquisition attempts failed with a transport error.
-[Method and reproduction](docs/verification.md#multilingual-integration-qualification--090-2026-10-30).
+Both published validated transcripts with contiguous input coverage. The failed
+English job continued after correcting an overly short response-body deadline.
+These checks measure completion, not word accuracy or universal YouTube access.
+[Method and reference comparison](docs/verification.md#http-body-timeout-qualification--091-2026-10-30).
 [Earlier recovery results](docs/benchmarks.md#job-recovery-qualification).
 
 ## Language support

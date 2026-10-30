@@ -46,6 +46,10 @@ For an external agent, make decisions from structured fields rather than `messag
 | `interrupted`, or process death without complete JSON | Query status; resume only when the job is idle and indicates resume |
 | Unknown code or `retryable: null` | Preserve data and inspect the failure; do not loop blindly |
 
+Since 0.9.1, bounded HTTP-body read failures can include details.transport_phase
+(response_body), a fixed reason, and body_bytes_received. The byte count describes
+the failed response attempt; it does not mean media bytes were committed.
+
 Starting with 0.8.2, HTTP403 during Web preparation or token refresh can select
 another compatible client when no cooldown is present. Audio identity and the
 retained prefix must still match. HTTP429 and server Retry-After guidance stop
