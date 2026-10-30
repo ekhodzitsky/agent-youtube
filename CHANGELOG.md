@@ -8,6 +8,14 @@ JSON or canonical transcripts. Source is public; crates.io publication stays dis
 
 ## Unreleased
 
+## 0.8.1 — 2026-10-30
+
+- Report chapter watch-request failures as metadata failures without claiming
+  nonexistent retained media or resume artifacts. Preserve typed transport/TLS
+  codes, retryability, status and Retry-After information. Cover truncated HTTP
+  bodies with a failing-before/passing-after CLI/schema regression. A live 0.8.0
+  repeat exposed the temporary body-read failure; it is retained in the evidence.
+
 ## 0.8.0 — 2026-10-30
 
 - Add `chapters URL`: return author-published description timestamps and titles

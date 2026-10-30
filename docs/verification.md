@@ -10,7 +10,7 @@ license is now present at the root, CI is dispatch-only and hosted Actions are
 disabled. Crates.io publication stays disabled. Sections below preserve dated
 reviews, including superseded privacy/license findings; see current readiness.
 
-## README v1 acceptance — 0.8.0, 2026-10-30
+## README v1 acceptance — 0.8.1, 2026-10-30
 
 The current root adapts agent-dev-kb docs/readme-v1/{README,template}.md at
 revision d92256be2cb2c92c686bd5c1de2341a61ba1a0cb. The opening describes only
@@ -32,7 +32,11 @@ export, migration and licensing guidance remain in existing guides.
 The metadata result is one source observation, not a new availability guarantee.
 Watch-page request handling, absence, malformed lists/metadata, video identity,
 HTTP403/429, retry guidance and closed response schema are exercised offline.
-No new audio or ASR run is needed to verify the chapter-only quick start.
+No new audio or ASR run is needed to verify the chapter-only quick start. A later
+0.8.0 request failed with retryable http_transport while reading the watch page;
+this is retained as an observed failure, not omitted from availability evidence.
+0.8.1 corrects the inherited media-retention wording for metadata errors and
+preserves error codes, retryability and server guidance; it adds no access guarantee.
 Coverage and missing current-release recognition benchmarks remain measurement
 work; polished documentation does not establish unrestricted v1 evidence coverage.
 
@@ -43,7 +47,7 @@ or a hosted test run. SVG labels make no third-party requests.
 
 | Badge | Source and meaning |
 | --- | --- |
-| Source 0.8.0 | Cargo.toml package version; crates.io publication is disabled |
+| Source 0.8.1 | Cargo.toml package version; crates.io publication is disabled |
 | License MIT | Root LICENSE; dependencies and model terms remain separate |
 | CI disabled | GitHub Actions disabled by owner instruction; workflow remains dispatch-only |
 | Minimum Rust 1.94 for source builds | Manifest rust-version; prior local MSRV qualification, not a passing hosted 0.8.0 claim |

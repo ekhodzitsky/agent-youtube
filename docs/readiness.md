@@ -1,4 +1,4 @@
-# Current readiness and support — 0.8.0
+# Current readiness and support — 0.8.1
 
 This is the current decision entry point. Dated qualification reports are evidence
 for their exact source, binary, model, network and scenario; they are not silently
@@ -26,6 +26,12 @@ upgraded to new-release measurements. See the [changelog](../CHANGELOG.md).
 | Scheduling | New CLI job waits budgeted at 3600 seconds; active work excluded; old saved policies inherited | Overall one-hour runtime cap, an always-on daemon or coordination across unrelated users/hosts |
 
 ## Current fixes and evidence
+
+0.8.1 corrects the inherited media-retention wording for metadata-only request
+failures, preserving transport/TLS error codes and retry guidance. A repeated
+0.8.0 live request failed with retryable http_transport during body reading; the
+failed observation is retained alongside the successful example. No availability
+rate is inferred from these observations.
 
 0.8.0 adds metadata-only chapters: author-description timestamp/title pairs with
 explicit source and absence/error distinctions. No ASR, model or audio acquisition

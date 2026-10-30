@@ -2,7 +2,7 @@
 
 A JSON-only YouTube CLI for agents and scripts. Retrieve author-published timestamps without downloading audio, or turn Russian speech into local transcripts through GigaSTT, with checkpoints for interrupted jobs and exact recognizer output retained.
 
-[![Source version: 0.8.0](docs/assets/version.svg)](Cargo.toml)
+[![Source version: 0.8.1](docs/assets/version.svg)](Cargo.toml)
 [![License: MIT](docs/assets/license.svg)](LICENSE)
 [![CI: disabled](docs/assets/ci.svg)](.github/workflows/check.yml)
 [![Minimum Rust for source builds: 1.94](docs/assets/msrv.svg)](docs/verification.md#badge-sources)
@@ -69,7 +69,7 @@ INT8, 2026-10-28. The measured outcome is validated completion, not word accurac
 
 Both cleaned owned media after publication; the interrupted job recovered its
 saved prefix. These two observations are not a representative success rate,
-speed ranking or fresh 0.8.0 ASR qualification.
+speed ranking or fresh 0.8.1 ASR qualification.
 [Inputs, original results, methodology and reproduction](docs/benchmarks.md#job-recovery-qualification).
 
 ## Limits

@@ -13,7 +13,31 @@ impl Downloader {
     pub fn chapters(&self, url: &str, cancelled: &AtomicBool) -> Result<Value> {
         let id = crate::pipeline::video_id(url)
             .map_err(|error| protocol::context(error, "invalid_arguments"))?;
-        let (page, _) = self.watch_page(&id, &self.http.origin, WEB_USER_AGENT, cancelled)?;
+        let (page, _) = self
+            .watch_page(&id, &self.http.origin, WEB_USER_AGENT, cancelled)
+            .map_err(|error| {
+                let Some(failure) = error.downcast_ref::<protocol::Failure>() else {
+                    return invalid_metadata();
+                };
+                let mut details = json!({"stage":"metadata"});
+                for key in [
+                    "http_status",
+                    "retry_after",
+                    "retry_after_seconds",
+                    "transport_phase",
+                    "reason",
+                ] {
+                    if let Some(value) = failure.details().get(key) {
+                        details[key] = value.clone();
+                    }
+                }
+                protocol::failure_details(
+                    failure.code,
+                    failure.retryable,
+                    "YouTube metadata request failed",
+                    details,
+                )
+            })?;
         let player = embedded_json(&page, "ytInitialPlayerResponse", "playabilityStatus")
             .map_err(|_| invalid_metadata())?;
         extract(&player, &id)

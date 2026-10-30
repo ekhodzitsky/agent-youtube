@@ -73,7 +73,7 @@ fn invoke(status: u16, body: String) -> (Value, bool) {
         } else {
             ""
         };
-        write!(stream, "HTTP/1.1 {status} Fixture\r\nContent-Length: {}\r\n{retry}Connection: close\r\n\r\n{body}", body.len()).unwrap();
+        write!(stream, "HTTP/1.1 {status} Fixture\r\nContent-Length: {}\r\n{retry}Connection: close\r\n\r\n{body}", if body == "truncated-body-fixture" { body.len() + 20 } else { body.len() }).unwrap();
         // The listener closes after the single metadata response. No audio/API is served.
     });
     let output = Command::new(std::env::current_exe().unwrap())
@@ -140,4 +140,18 @@ fn metadata_only_chapters_success_absence_and_failures_match_schema() {
             assert_eq!(failure["error"]["details"]["retry_after_seconds"], 12);
         }
     }
+}
+
+#[test]
+fn metadata_body_failure_does_not_claim_retained_media() {
+    let (failure, ok) = invoke(200, "truncated-body-fixture".into());
+    assert!(!ok);
+    assert_eq!(failure["error"]["code"], "http_transport");
+    assert_eq!(failure["error"]["retryable"], true);
+    assert!(
+        !failure["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("media")
+    );
 }
