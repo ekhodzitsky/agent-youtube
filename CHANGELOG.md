@@ -8,6 +8,21 @@ JSON or canonical transcripts. Source is public; crates.io publication stays dis
 
 ## Unreleased
 
+## 0.11.0 — 2026-10-31
+
+- Add JSONL batch transcription with caller IDs, immutable batch membership and
+  options, independent durable jobs, ordered metadata-only results and resumable
+  partial failures. Repeating the command verifies completed transcripts without
+  repeating acquisition or recognition. New batches require an empty owned root.
+- Bound parallel pipelines with --jobs (1..8, default 1) and serialize recognition
+  within each batch. Cancellation of one job stays local; Ctrl+C stops scheduling
+  the whole batch and preserves owned partial media. Retained child locks block
+  restart until existing jobs are idle. Server retry guidance remains enforced.
+- Keep existing job, transcript and ASR formats unchanged. Batch JSON uses schema1;
+  incomplete batches return a nonzero exit and per-item errors in details.batch.
+  No new runtime dependency. The existing 0.10.1 binary lacks the new command;
+  use a 0.11.0 source build until a new binary release is published.
+
 ## 0.10.1 — 2026-10-31
 
 - Provide a Linux x86_64 GNU binary archive with executable identity, project and

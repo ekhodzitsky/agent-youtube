@@ -1,4 +1,4 @@
-# Current readiness and support — 0.10.1
+# Current readiness and support — 0.11.0
 
 This is the current decision entry point. Dated qualification reports are evidence
 for their exact source, binary, model, network and scenario; they are not silently
@@ -10,7 +10,11 @@ upgraded to new-release measurements. See the [changelog](../CHANGELOG.md).
 | Agent integration | JSON-only CLI; closed machine schema and executable conformance checks |
 | Unrestricted production-security approval | Not granted: independent review of the selected TLS path remains outstanding |
 | Public source distribution | Experimental source in the independent agent-youtube repository; CLI is agent-youtube |
-| Crates.io / prebuilt release uploads | Not enabled; publish=false and local-only artifact preparation |
+| Distribution | Crates.io disabled (publish=false); signed experimental Linux binary 0.10.1 published; newer source features require a source build |
+
+Source 0.11.0 adds JSONL batch orchestration; the published binary remains 0.10.1.
+Batch concurrency is bounded and recognition is serial within each invocation.
+Independent batch processes do not share a global machine resource budget.
 
 ## Support boundary
 

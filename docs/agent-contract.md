@@ -6,6 +6,29 @@ Moved from the root README on 2026-10-27. Commands assume the repository root.
 Historical verification statements retain their original dates and scope; they are
 not new measurements of the current version.
 
+## Batch records
+
+Since 0.11.0, batch accepts JSONL records with id and url and returns schema1
+metadata. [Usage and continuation](usage.md#batch-transcription) define input bounds,
+immutability and resource limits. Success has command=batch and result conforming
+to batch_report in the [schema](../schemas/contract.schema.json). Items remain in
+input order even when completion order differs. It does not embed ASR or transcript
+text. IDs are untrusted caller text and are never filesystem paths.
+
+Partial failure returns code=batch_incomplete, exit 1, and the complete report in
+error.details.batch; cancellation returns code=interrupted and exit 130 with the
+same report when orderly shutdown succeeds. Each item has state=succeeded, failed
+or pending. Failed items preserve their original typed error and retry guidance;
+inspect these before retrying. Pending items have next_action=repeat_batch. A batch
+is completed only if all item pipelines publish validated transcripts and complete
+owned-media cleanup. Progress start/finish records use stage=batch and include id
+and work_dir. Other pipeline events retain their existing fields and can interleave.
+Unverified teardown preserves process_teardown_failed or web_runtime_teardown_failed
+with retryable=null and the batch report; it stops siblings rather than being
+reported as a user interruption. Fatal storage, locking or worker failures may
+instead return a normal schema1 error
+without a fresh report; saved job evidence is preserved for subsequent invocation.
+
 ## Agent JSON contract
 
 Since 0.10.0, setup without --model-dir downloads the selected pinned model into

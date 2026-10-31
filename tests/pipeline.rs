@@ -2492,6 +2492,10 @@ elif '--help' in args:
     flags = '--format --output --model-variant' if os.environ.get('FAKE_INCOMPATIBLE') else '--format --output --offline --model-variant --pool-size --retries --punctuation --itn --log-level --model-dir --encoder-intra-threads'
     print(' '.join(f for f in flags.split() if f != os.environ.get('FAKE_MISSING_FLAG')))
 elif name == 'gigastt':
+    if os.environ.get('FAKE_ASR_EXCLUSIVE'):
+        import fcntl
+        slot = (root / 'asr-exclusive.lock').open('w')
+        fcntl.flock(slot, fcntl.LOCK_EX | fcntl.LOCK_NB)
     batch = args[0] == 'transcribe-batch'
     files = sorted(pathlib.Path(args[1]).glob('*.wav')) if batch else [pathlib.Path(args[1])]
     failed = False
@@ -3806,4 +3810,228 @@ fn research_multilingual_recordings_resume_with_real_gigastt() {
         )
         .unwrap();
     }
+}
+
+fn batch_command(fixture: &Fixture, input: &Path) -> Command {
+    let mut command = Command::new("/usr/bin/python3");
+    command
+        .arg(fixture.root.join("agent-youtube-test"))
+        .env("AGENT_YOUTUBE_TEST_ROOT", &fixture.root)
+        .arg("batch")
+        .arg(input)
+        .arg("--work-dir")
+        .arg(fixture.root.join("batch"))
+        .arg("--model-dir")
+        .arg(fixture.root.join("models"))
+        .arg("--gigastt")
+        .arg(fixture.root.join("gigastt"))
+        .args([
+            "--chunk-seconds",
+            "10",
+            "--retry-window-seconds",
+            "0",
+            "--jobs",
+            "2",
+        ]);
+    command
+}
+
+#[test]
+fn batch_isolates_failures_and_reuses_verified_jobs_across_processes() {
+    let fixture = Fixture::new();
+    let input = fixture.root.join("items.jsonl");
+    fs::write(&input, format!("{{\"id\":\"../lecture\",\"url\":{URL:?}}}\n{{\"id\":\"bad\",\"url\":\"https://example.com/private?token=secret\"}}\n{{\"id\":\"second\",\"url\":{URL:?}}}\n")).unwrap();
+    let first = batch_command(&fixture, &input).output().unwrap();
+    assert!(!first.status.success());
+    let value: serde_json::Value = batch_json(&first);
+    assert_eq!(value["error"]["code"], "batch_incomplete", "{value}");
+    assert_eq!(value["error"]["retryable"], false);
+    let batch = &value["error"]["details"]["batch"];
+    assert_eq!(batch["succeeded"], 2);
+    assert_eq!(batch["failed"], 1);
+    assert_eq!(batch["items"][0]["id"], "../lecture");
+    assert_eq!(batch["items"][1]["error"]["code"], "batch_url_invalid");
+    assert!(!String::from_utf8_lossy(&first.stdout).contains("token=secret"));
+    assert!(!fixture.root.join("lecture").exists());
+    for item in [0, 2] {
+        let dir = PathBuf::from(batch["items"][item]["work_dir"].as_str().unwrap());
+        assert!(dir.join("transcript.json").is_file());
+        assert_eq!(batch["items"][item]["reused"], false);
+    }
+    let before = batch_asr_calls(&fixture);
+    let again = batch_command(&fixture, &input).output().unwrap();
+    let again: serde_json::Value = batch_json(&again);
+    let saved = &again["error"]["details"]["batch"];
+    assert_eq!(saved["succeeded"], 2, "{again}");
+    assert_eq!(saved["items"][0]["reused"], true);
+    assert_eq!(batch_asr_calls(&fixture), before);
+    let report: serde_json::Value =
+        serde_json::from_slice(&fs::read(fixture.root.join("batch/batch-result.json")).unwrap())
+            .unwrap();
+    assert_eq!(&report, saved);
+    let mut documents = Vec::new();
+    contract::collect(&first, &mut documents);
+    contract::validate(&documents);
+    fs::write(&input, format!("{{\"id\":\"changed\",\"url\":{URL:?}}}\n")).unwrap();
+    let changed = batch_command(&fixture, &input).output().unwrap();
+    let changed: serde_json::Value = batch_json(&changed);
+    assert_eq!(changed["error"]["code"], "batch_identity_mismatch");
+    assert_eq!(batch_asr_calls(&fixture), before);
+}
+
+fn batch_json(output: &Output) -> serde_json::Value {
+    let start = output.stdout.iter().position(|b| *b == b'{').unwrap();
+    serde_json::Deserializer::from_slice(&output.stdout[start..])
+        .into_iter()
+        .next()
+        .unwrap()
+        .unwrap()
+}
+
+#[test]
+fn batch_serializes_real_recognizer_processes_and_reports_success_contract() {
+    let fixture = Fixture::new();
+    let input = fixture.root.join("items.jsonl");
+    fs::write(
+        &input,
+        format!("{{\"id\":\"one\",\"url\":{URL:?}}}\n{{\"id\":\"two\",\"url\":{URL:?}}}\n"),
+    )
+    .unwrap();
+    let output = batch_command(&fixture, &input)
+        .env("FAKE_ASR_EXCLUSIVE", "1")
+        .env("FAKE_SLEEP", "0.1")
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let value = batch_json(&output);
+    assert_eq!(value["result"]["succeeded"], 2);
+    assert_eq!(value["result"]["recognition_workers"], 1);
+    assert_eq!(batch_asr_calls(&fixture), 2);
+    let mut documents = Vec::new();
+    contract::collect(&output, &mut documents);
+    contract::validate(&documents);
+}
+
+#[test]
+fn cancelling_one_batch_job_does_not_cancel_its_sibling() {
+    use std::time::{Duration, Instant};
+    let fixture = Fixture::new();
+    let input = fixture.root.join("items.jsonl");
+    fs::write(
+        &input,
+        format!("{{\"id\":\"one\",\"url\":{URL:?}}}\n{{\"id\":\"two\",\"url\":{URL:?}}}\n"),
+    )
+    .unwrap();
+    let mut command = batch_command(&fixture, &input);
+    command
+        .env("FAKE_SLEEP", "0.5")
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    let child = command.spawn().unwrap();
+    let deadline = Instant::now() + Duration::from_secs(15);
+    let job = loop {
+        let call = fixture.calls("gigastt", "fixture-file").into_iter().next();
+        if let Some(call) = call {
+            let audio = PathBuf::from(call["args"][1].as_str().unwrap());
+            break audio
+                .ancestors()
+                .find(|p| p.join("job.json").is_file())
+                .unwrap()
+                .to_path_buf();
+        }
+        assert!(Instant::now() < deadline, "recognizer did not start");
+        std::thread::sleep(Duration::from_millis(20));
+    };
+    let cancelled = Command::new(env!("CARGO_BIN_EXE_agent-youtube"))
+        .arg("cancel")
+        .arg("--work-dir")
+        .arg(&job)
+        .output()
+        .unwrap();
+    assert!(cancelled.status.success());
+    let result = child.wait_with_output().unwrap();
+    assert!(!result.status.success());
+    let value = batch_json(&result);
+    let batch = &value["error"]["details"]["batch"];
+    assert_eq!(batch["succeeded"], 1, "{value}");
+    assert_eq!(batch["failed"], 1);
+    assert_eq!(batch["state"], "partial");
+    let calls = batch_asr_calls(&fixture);
+    let again = batch_command(&fixture, &input).output().unwrap();
+    assert!(
+        again.status.success(),
+        "{}",
+        String::from_utf8_lossy(&again.stderr)
+    );
+    assert_eq!(batch_asr_calls(&fixture), calls + 1);
+}
+
+fn batch_asr_calls(fixture: &Fixture) -> usize {
+    fixture
+        .calls("gigastt", "transcribe-batch")
+        .into_iter()
+        .filter(|call| {
+            !call["args"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|a| a == "--help")
+        })
+        .count()
+}
+
+#[test]
+fn interrupted_batch_preserves_jobs_and_resumes_after_process_restart() {
+    use std::time::{Duration, Instant};
+    let fixture = Fixture::new();
+    let input = fixture.root.join("items.jsonl");
+    fs::write(
+        &input,
+        (0..3)
+            .map(|id| format!("{{\"id\":\"{id}\",\"url\":{URL:?}}}\n"))
+            .collect::<String>(),
+    )
+    .unwrap();
+    let child = batch_command(&fixture, &input)
+        .env("FAKE_SLEEP", "10")
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(15);
+    while fixture.calls("gigastt", "fixture-file").is_empty() {
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert_eq!(unsafe { libc::kill(child.id() as i32, libc::SIGINT) }, 0);
+    let output = child.wait_with_output().unwrap();
+    assert_eq!(output.status.code(), Some(130));
+    let value = batch_json(&output);
+    assert_eq!(value["error"]["code"], "interrupted");
+    let report = &value["error"]["details"]["batch"];
+    assert_eq!(report["state"], "interrupted");
+    assert!(report["pending"].as_u64().unwrap() >= 1);
+    let started: Vec<_> = report["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|i| i["state"] == "failed")
+        .collect();
+    assert!(!started.is_empty());
+    assert!(started.iter().any(|item| {
+        PathBuf::from(item["work_dir"].as_str().unwrap())
+            .join("media/source.audio")
+            .is_file()
+    }));
+    let resumed = batch_command(&fixture, &input).output().unwrap();
+    assert!(
+        resumed.status.success(),
+        "{}",
+        String::from_utf8_lossy(&resumed.stderr)
+    );
+    assert_eq!(batch_json(&resumed)["result"]["succeeded"], 3);
 }

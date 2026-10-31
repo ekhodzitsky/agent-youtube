@@ -20,6 +20,7 @@ use std::{
 const HELP: &str = "agent-youtube — JSON-only local YouTube transcription
 
 Usage:
+  agent-youtube batch INPUT.jsonl --work-dir DIR [--jobs 1..8] [tool/model options]
   agent-youtube chapters URL
   agent-youtube transcribe URL --work-dir DIR [options]
   agent-youtube status --work-dir DIR
@@ -30,6 +31,7 @@ Usage:
   agent-youtube export TRANSCRIPT.json --format json|md|txt|srt|vtt --output FILE [--force]
 
 Options:
+  --jobs N                    batch pipeline workers, 1..8 (default 1); recognition stays serial
   --retry-window-seconds N    automatic recovery wait budget (default 3600; 0 disables)
   --response compact|metadata|full  transcribe response (default compact, schema2; full preserves schema1)
   --model-variant NAME        e2e_rnnt (default), ml_ctc or ml_ctc_large
@@ -111,6 +113,7 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
                 "--format",
                 "--output",
                 "--response",
+                "--jobs",
             ]
             .contains(&name.as_str())
             {
@@ -203,9 +206,28 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
             export_file(&input, &output, format, force, &cancelled)
                 .map_err(|e| context(e, "export_failed"))?;
         }
-        "transcribe" | "doctor" => {
+        "transcribe" | "doctor" | "batch" => {
+            let batch_input = if command == "batch" {
+                if positional.len() != 1 {
+                    return Err("batch requires exactly one JSONL input path".into());
+                }
+                Some(PathBuf::from(&positional[0]))
+            } else {
+                None
+            };
+            let workers = if command == "batch" {
+                flags
+                    .remove("--jobs")
+                    .map(|v| v.to_string_lossy().parse::<usize>())
+                    .transpose()?
+                    .unwrap_or(1)
+            } else {
+                1
+            };
             if command == "doctor" && flags.contains_key("--retry-window-seconds") {
-                return Err("--retry-window-seconds is only accepted by transcribe".into());
+                return Err(
+                    "--retry-window-seconds is only accepted by transcribe or batch".into(),
+                );
             }
             let response = if command == "transcribe" {
                 flags
@@ -232,12 +254,12 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
                     .ok_or("URL must be UTF-8")?
                     .to_owned()
             } else {
-                if !positional.is_empty() {
+                if command != "batch" && !positional.is_empty() {
                     return Err("doctor does not accept positional arguments".into());
                 }
                 "https://www.youtube.com/watch?v=a2hbJlPxj4M".into()
             };
-            let work_dir = if command == "transcribe" {
+            let work_dir = if command == "transcribe" || command == "batch" {
                 PathBuf::from(take_required(&mut flags, "--work-dir")?)
             } else {
                 take_path(&mut flags, "--work-dir", "runs/doctor")
@@ -286,6 +308,7 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
                 .unwrap_or(300);
             let retry_window_seconds = match flags.remove("--retry-window-seconds") {
                 Some(value) => value.to_string_lossy().parse()?,
+                None if command == "batch" => 3600,
                 None if command == "transcribe" => {
                     crate::job::retry_window(&work_dir, &url)?.unwrap_or(3600)
                 }
@@ -319,6 +342,12 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
                 gigastt,
             };
             reject_remaining(&flags)?;
+            if let Some(input) = batch_input {
+                let report = crate::batch::run(&input, options, workers, downloader, cancelled)
+                    .map_err(|e| context(e, "batch_failed"))?;
+                protocol::success("batch", report)?;
+                return Ok(());
+            }
             let pipeline = Pipeline::with_downloader(options, cancelled.clone(), downloader)?;
             if command == "doctor" {
                 let version = pipeline

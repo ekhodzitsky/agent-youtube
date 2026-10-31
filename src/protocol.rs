@@ -105,7 +105,7 @@ pub fn success(command: &str, result: Value) -> Result<()> {
     writeln!(out)?;
     Ok(())
 }
-fn error_record(error: &(dyn std::error::Error + 'static), cancelled: bool) -> Value {
+pub(crate) fn error_record(error: &(dyn std::error::Error + 'static), cancelled: bool) -> Value {
     let typed = error.downcast_ref::<Failure>();
     let cancelled = cancelled
         && !typed.is_some_and(|e| {

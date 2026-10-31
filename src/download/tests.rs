@@ -4019,3 +4019,30 @@ fn anonymous_direct_clients_reject_unqualified_protocols_and_honor_player_cooldo
         }
     }
 }
+
+#[test]
+fn independent_jobs_keep_their_own_bootstrap_and_web_worker_lifetime() {
+    let players = Arc::new(AtomicUsize::new(0));
+    let observed = players.clone();
+    let server = Server::new(move |request, origin| {
+        if request.path.starts_with("/youtubei/") {
+            observed.fetch_add(1, Ordering::SeqCst);
+            Reply::bytes(serde_json::to_vec(&player(origin, 4)).unwrap())
+        } else {
+            range(&request, b"abcd")
+        }
+    });
+    let downloader = server.downloader();
+    let one = downloader.for_job();
+    let two = downloader.for_job();
+    assert!(!Arc::ptr_eq(&one.runtime, &two.runtime));
+    let cancelled = AtomicBool::new(false);
+    one.metadata(ID, &cancelled).unwrap();
+    two.metadata(ID, &cancelled).unwrap();
+    assert!(downloader.bootstrap.lock().unwrap().is_none());
+    one.download(ID, &server.prefix(), &cancelled).unwrap();
+    assert!(two.bootstrap.lock().unwrap().is_some());
+    two.download(ID, &server.prefix().with_file_name("second"), &cancelled)
+        .unwrap();
+    assert_eq!(players.load(Ordering::SeqCst), 2);
+}

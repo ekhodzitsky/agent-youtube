@@ -1,6 +1,6 @@
 [package]
 name = "agent-youtube"
-version = "0.10.1"
+version = "0.11.0"
 edition = "2024"
 rust-version = "1.94"
 publish = false
@@ -9,7 +9,7 @@ license = "MIT"
 readme = "README.md"
 repository = "https://github.com/ekhodzitsky/agent-youtube"
 documentation = "https://github.com/ekhodzitsky/agent-youtube/blob/main/docs/README.md"
-description = "JSON-only CLI for agents: resumable YouTube audio downloads and local Russian transcription with GigaSTT"
+description = "JSON-only CLI for agents: resumable YouTube audio downloads and local multilingual transcription with GigaSTT"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

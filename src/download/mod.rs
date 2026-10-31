@@ -116,6 +116,15 @@ struct Receipt {
 }
 
 impl Downloader {
+    /// Isolate video/session caches and interpreter lifetime for an independent job.
+    /// HTTP pooling and the per-user persistent request gate remain shared.
+    pub(crate) fn for_job(&self) -> Self {
+        Self {
+            http: self.http.clone(),
+            runtime: Arc::new(Mutex::new(None)),
+            bootstrap: Arc::new(Mutex::new(None)),
+        }
+    }
     pub fn youtube() -> Result<Self> {
         Ok(Self {
             http: Http::new("https://www.youtube.com")?,

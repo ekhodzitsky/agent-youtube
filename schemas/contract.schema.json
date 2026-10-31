@@ -6,6 +6,9 @@
       "$ref": "#/$defs/failure"
     },
     {
+      "$ref": "#/$defs/batch"
+    },
+    {
       "$ref": "#/$defs/transcribe2"
     },
     {
@@ -711,7 +714,8 @@
             "complete",
             "resource",
             "retry",
-            "waiting"
+            "waiting",
+            "batch"
           ]
         },
         "message": {
@@ -1515,6 +1519,169 @@
               }
             }
           ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "ok",
+        "command",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    "batch_report": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "enum": [
+            "completed",
+            "partial",
+            "interrupted"
+          ]
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "succeeded": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pending": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "workers": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "recognition_workers": {
+          "const": 1
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "work_dir": {
+                "type": "string"
+              },
+              "state": {
+                "enum": [
+                  "succeeded",
+                  "failed",
+                  "pending"
+                ]
+              },
+              "reused": {
+                "type": "boolean"
+              },
+              "cleanup_complete": {
+                "const": true
+              },
+              "artifacts": {
+                "type": "object",
+                "properties": {
+                  "transcript": {
+                    "type": "string"
+                  },
+                  "manifest": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "transcript",
+                  "manifest"
+                ],
+                "additionalProperties": false
+              },
+              "error": {
+                "type": "object"
+              },
+              "next_action": {
+                "const": "repeat_batch"
+              }
+            },
+            "required": [
+              "id",
+              "work_dir",
+              "state"
+            ],
+            "additionalProperties": false,
+            "oneOf": [
+              {
+                "properties": {
+                  "state": {
+                    "const": "succeeded"
+                  }
+                },
+                "required": [
+                  "artifacts",
+                  "reused",
+                  "cleanup_complete"
+                ]
+              },
+              {
+                "properties": {
+                  "state": {
+                    "const": "failed"
+                  }
+                },
+                "required": [
+                  "error"
+                ]
+              },
+              {
+                "properties": {
+                  "state": {
+                    "const": "pending"
+                  }
+                },
+                "required": [
+                  "next_action"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "state",
+        "total",
+        "succeeded",
+        "failed",
+        "pending",
+        "workers",
+        "recognition_workers",
+        "items"
+      ],
+      "additionalProperties": false
+    },
+    "batch": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "ok": {
+          "const": true
+        },
+        "command": {
+          "const": "batch"
+        },
+        "result": {
+          "$ref": "#/$defs/batch_report"
         }
       },
       "required": [

@@ -67,11 +67,18 @@ struct DecodedAudio {
     legacy: Option<audio::Wav>,
 }
 
+#[derive(Default)]
+pub(crate) struct RecognitionGate {
+    lock: std::sync::Mutex<()>,
+    aborted: AtomicBool,
+}
+
 pub struct Pipeline {
     options: Options,
     runner: Runner,
     sequence: AtomicU64,
     downloader: Downloader,
+    recognition_gate: Option<Arc<RecognitionGate>>,
 }
 
 pub fn video_id(url: &str) -> Result<String> {
@@ -165,7 +172,47 @@ impl Pipeline {
             runner: Runner::new(cancelled).with_timeout(std::time::Duration::from_secs(timeout)),
             sequence: AtomicU64::new(0),
             downloader,
+            recognition_gate: None,
         })
+    }
+    pub(crate) fn with_recognition_gate(mut self, gate: Arc<RecognitionGate>) -> Self {
+        self.recognition_gate = Some(gate);
+        self
+    }
+    fn recognition_slot(&self) -> Result<Option<std::sync::MutexGuard<'_, ()>>> {
+        let Some(gate) = &self.recognition_gate else {
+            return Ok(None);
+        };
+        loop {
+            if self.runner.cancelled.load(Ordering::SeqCst) {
+                return Err("interrupted while waiting for recognition".into());
+            }
+            if gate.aborted.load(Ordering::SeqCst) {
+                return Err(crate::protocol::failure(
+                    "process_teardown_failed",
+                    None,
+                    "recognition stopped after unverified worker teardown",
+                ));
+            }
+            match gate.lock.try_lock() {
+                Ok(guard) => {
+                    if gate.aborted.load(Ordering::SeqCst) {
+                        return Err(crate::protocol::failure(
+                            "process_teardown_failed",
+                            None,
+                            "recognition stopped after unverified worker teardown",
+                        ));
+                    }
+                    return Ok(Some(guard));
+                }
+                Err(std::sync::TryLockError::WouldBlock) => {
+                    std::thread::sleep(std::time::Duration::from_millis(20))
+                }
+                Err(std::sync::TryLockError::Poisoned(_)) => {
+                    return Err("recognition gate is poisoned".into());
+                }
+            }
+        }
     }
     fn command(
         &self,
@@ -867,7 +914,21 @@ impl Pipeline {
             },
             segments: Vec::new(),
         };
-        self.recognize(&runner, &mut checkpoint, &mut audio, &header)?;
+        {
+            let _slot = self.recognition_slot()?;
+            let result = self.recognize(&runner, &mut checkpoint, &mut audio, &header);
+            if result
+                .as_ref()
+                .err()
+                .and_then(|e| e.downcast_ref::<crate::protocol::Failure>())
+                .is_some_and(|e| e.code == "process_teardown_failed")
+                && let Some(gate) = &self.recognition_gate
+            {
+                gate.aborted.store(true, Ordering::SeqCst);
+                self.runner.cancelled.store(true, Ordering::SeqCst);
+            }
+            result?;
+        }
         drop(audio);
         let manifest = checkpoint.ensure_manifest(&runner.cancelled)?;
         checkpoint.cleanup_media().map_err(|e| crate::protocol::failure_details("cleanup_pending", Some(true), e, serde_json::json!({"transcript":output,"manifest":manifest,"transcript_published":true,"cleanup_complete":false})))?;

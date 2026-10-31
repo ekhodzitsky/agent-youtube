@@ -2,7 +2,7 @@
 
 YouTube transcripts for AI agents.
 
-[![Source version: 0.10.1](docs/assets/version.svg)](Cargo.toml)
+[![Source version: 0.11.0](docs/assets/version.svg)](Cargo.toml)
 [![License: MIT](docs/assets/license.svg)](LICENSE)
 [![CI: disabled](docs/assets/ci.svg)](.github/workflows/check.yml)
 [![Minimum Rust for source builds: 1.94](docs/assets/msrv.svg)](docs/verification.md#badge-sources)
@@ -38,6 +38,17 @@ agent-youtube export runs/first-job/transcript.json --format md --output transcr
 agent-youtube status --work-dir runs/first-job
 agent-youtube resume --work-dir runs/first-job
 ```
+
+**Process a list of videos.** In 0.11.0 source builds, submit JSONL records such as
+`{"id":"lecture","url":"https://www.youtube.com/watch?v=jNQXAC9IVRw"}`:
+
+```sh
+agent-youtube batch videos.jsonl --work-dir runs/course --jobs 2
+```
+
+Each item has its own resumable job. Repeat the command to continue;
+completed transcripts are verified and reused. [Batch results and limits](docs/usage.md#batch-transcription).
+The published 0.10.1 binary does not include this command; [build from source](docs/installation.md#build-from-source).
 
 **Get the author's chapters.** No speech model or audio download needed:
 

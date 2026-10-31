@@ -10,6 +10,38 @@ license is now present at the root, CI is dispatch-only and hosted Actions are
 disabled. Crates.io publication stays disabled. Sections below preserve dated
 reviews, including superseded privacy/license findings; see current readiness.
 
+## JSONL batch qualification — 0.11.0, 2026-10-31
+
+Local gates pass: 408 Rust tests, 18 opt-in ignored; strict Clippy, formatting,
+74 Python qualification checks and 28 documentation link targets. Loopback CLI
+fixtures exercise partial failures, immutable membership/options, duplicate and
+bounded input, safe ID paths, root/result symlinks, retained locks, cancellation,
+process restart and validated reuse. The fake recognizer uses a nonblocking OS
+lock to fail if two recognition processes overlap. Cancelling one item leaves its
+sibling running; Ctrl+C stops the batch and a new process completes saved jobs.
+Per-job download state and Web worker lifetime are isolated; HTTP pooling and the
+persistent per-user server cooldown remain shared.
+
+A retained 0.11.0 development executable (dirty working tree before commit) with
+source fingerprint c9fd7c643d201412ddd9e01ce9794f18b6189011 and SHA-256
+7e4b8ea8b791f5a9ea839556cf9b9dd9fc36b9dfd28f413adc9fbad2429bc70f
+processed a three-item batch with two workers and GigaSTT 2.22.0 / ml_ctc:
+
+| Item | Video ID | Decoded duration | Contiguous 16 kHz frames | Result |
+| --- | --- | ---: | ---: | --- |
+| English | jNQXAC9IVRw | 19.063625 s | 305018 | Completed |
+| Russian | of4B3aw7MXo | 52.964750 s | 847436 | Completed |
+| Invalid URL | No YouTube ID | Not downloaded | None | batch_url_invalid, nonretryable |
+
+Both valid jobs verified the complete download, decoded audio, raw ASR hashes and
+transcript hash, then cleaned owned media. Repeating the same command reused both
+validated transcripts with no metadata/download/decode/recognition events. Both
+invocations returned exit 1 for the invalid item, with ordered results and counts;
+45 emitted JSON records and both reports matched the schema. These are functional
+checks on two short videos in the current network, not word accuracy, performance
+or general availability measurements. The published binary remains 0.10.1;
+0.11.0 batch support currently requires a source build.
+
 ## Automatic setup qualification — 0.10.0, 2026-10-30
 
 Normal setup now provisions the pinned runtime and selected model automatically
@@ -191,7 +223,7 @@ or a hosted test run. SVG labels make no third-party requests.
 
 | Badge | Source and meaning |
 | --- | --- |
-| Source 0.10.1 | Cargo.toml package version; crates.io publication is disabled |
+| Source 0.11.0 | Cargo.toml package version; crates.io publication is disabled |
 | License MIT | Root LICENSE; dependencies and model terms remain separate |
 | CI disabled | GitHub Actions disabled by owner instruction; workflow remains dispatch-only |
 | Minimum Rust 1.94 for source builds | Manifest rust-version; prior local MSRV qualification, not a passing hosted 0.8.0 claim |

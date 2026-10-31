@@ -6,6 +6,70 @@ Moved from the root README on 2026-10-27. Commands assume the repository root.
 Historical verification statements retain their original dates and scope; they are
 not new measurements of the current version.
 
+## Batch transcription
+
+Available in 0.11.0 source builds. The published 0.10.1 binary does not include it.
+After runtime setup, create a UTF-8 JSONL file (one object per line, no blank lines):
+
+```jsonl
+{"id":"intro","url":"https://www.youtube.com/watch?v=jNQXAC9IVRw"}
+{"id":"lecture","url":"https://www.youtube.com/watch?v=rfscVS0vtbw"}
+```
+
+```sh
+agent-youtube batch videos.jsonl --work-dir runs/course --jobs 2
+```
+
+The command accepts the transcribe tool/model, chunk, recognition resource and
+retry-window options. It returns metadata and artifact paths, never transcript text.
+--response, --force and --offline are not accepted. Runtime setup remains a separate
+command. --jobs is 1..8 (default 1); download/decode pipelines can overlap, while
+one GigaSTT recognition process runs at a time within this batch. Independent batch
+processes or standalone jobs do not share this limit. --asr-memory-mib remains an
+observed per-recognizer budget; disk and CPU for parallel pipelines still matter.
+
+Every nonempty unique ID is returned unchanged and is hashed for its job directory;
+IDs are never interpreted as paths. IDs are at most 128 UTF-8 bytes without control
+characters; URLs are at most 4096 bytes. The input is bounded to 8 MiB and 10000
+items. Malformed JSON, unknown fields or duplicate IDs reject the complete input
+before starting jobs. An invalid video URL is an independent item failure; its raw
+contents are not echoed in the public error. These batch limits do not cap the
+length of an individual recording.
+
+A successful invocation returns schema1, command=batch and a result with state,
+total, succeeded, failed, pending, workers, recognition_workers and ordered items.
+Each successful item contains id, work_dir, reused, cleanup_complete and artifacts
+with transcript/manifest paths. An incomplete batch exits 1 with batch_incomplete;
+the same report is in error.details.batch. Each failed item contains its own error
+code, message, retryable value and details, including server retry guidance when
+available. Pending items have next_action=repeat_batch. Ctrl+C exits 130 with code
+interrupted, stops new work and retains the report in the same location.
+
+Repeat the same batch command to continue. --jobs may change; input order, IDs,
+URLs, original working directory and all pipeline options must remain unchanged.
+To change the batch membership or options, use a new work directory. Individual
+transcript/checkpoint formats remain compatible with status, cancel and resume:
+
+```sh
+agent-youtube status --work-dir /absolute/job/path/from/batch/result
+agent-youtube cancel --work-dir /absolute/job/path/from/batch/result
+```
+
+Cancelling one job does not cancel siblings. The existing per-job retry policy
+applies; the default recovery waiting budget is 3600 seconds for each job and is
+not renewed by repeating a batch. Different items may finish out of order. An
+unverified child teardown stops further scheduling. A surviving child or externally
+active saved job causes batch_jobs_busy on restart (retryable, next_action=
+wait_and_repeat_batch); the command does not start another worker over its data.
+The batch root OS lock rejects concurrent batch writers.
+
+Private durable files: batch.json binds the invocation, jobs/ contains standard job
+roots, results/ contains atomic per-item receipts, and batch-result.json contains
+the latest completed invocation report. After abrupt process death, that report
+may be absent or stale; rerunning derives completion from validated job evidence,
+not from cached receipts. Exact ASR JSON and transcripts are preserved. Owned media
+is removed only after validated transcript publication, as for a single job.
+
 ## Published timestamps without audio
 
 ```sh

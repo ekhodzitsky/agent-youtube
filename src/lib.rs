@@ -4,6 +4,7 @@
 mod agent;
 mod asr_output;
 mod audio;
+mod batch;
 mod boundaries;
 mod checkpoint;
 pub mod cli;
