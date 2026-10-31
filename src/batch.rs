@@ -19,8 +19,11 @@ use std::{
     },
 };
 
+pub(crate) const MAX_WORKERS: usize = 8;
 const INPUT_LIMIT: u64 = 8 * 1024 * 1024;
 const ITEM_LIMIT: usize = 10_000;
+const ID_LIMIT: usize = 128;
+const URL_LIMIT: usize = 4096;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -29,6 +32,12 @@ struct Item {
     url: String,
 }
 
+pub(crate) fn input_description() -> Value {
+    json!({"format":"jsonl","max_bytes":INPUT_LIMIT,"max_items":ITEM_LIMIT,"blank_lines":"reject","duplicate_ids":"reject","url_validation":"per_item",
+        "record_schema":{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{
+            "id":{"type":"string","minLength":1,"maxLength":ID_LIMIT,"x-max-utf8-bytes":ID_LIMIT,"x-validation":"nonblank_without_unicode_controls"},
+            "url":{"type":"string","maxLength":URL_LIMIT,"x-max-utf8-bytes":URL_LIMIT}},"required":["id","url"],"additionalProperties":false}})
+}
 fn invalid() -> Box<dyn std::error::Error + Send + Sync> {
     protocol::failure(
         "batch_input_invalid",
@@ -50,9 +59,9 @@ fn read_items(input: &Path) -> Result<Vec<Item>> {
     for line in text.lines() {
         let item: Item = serde_json::from_str(line).map_err(|_| invalid())?;
         if item.id.trim().is_empty()
-            || item.id.len() > 128
+            || item.id.len() > ID_LIMIT
             || item.id.chars().any(char::is_control)
-            || item.url.len() > 4096
+            || item.url.len() > URL_LIMIT
             || !ids.insert(item.id.clone())
             || items.len() == ITEM_LIMIT
         {
@@ -80,7 +89,7 @@ pub(crate) fn run(
     downloader: Downloader,
     cancelled: Arc<AtomicBool>,
 ) -> Result<Value> {
-    if !(1..=8).contains(&workers) {
+    if !(1..=MAX_WORKERS).contains(&workers) {
         return Err(protocol::failure(
             "batch_workers_invalid",
             Some(false),

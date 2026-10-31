@@ -2,7 +2,7 @@
 
 YouTube transcripts for AI agents.
 
-[![Source version: 0.12.0](docs/assets/version.svg)](Cargo.toml)
+[![Source version: 0.13.0](docs/assets/version.svg)](Cargo.toml)
 [![License: MIT](docs/assets/license.svg)](LICENSE)
 [![CI: disabled](docs/assets/ci.svg)](.github/workflows/check.yml)
 [![Minimum Rust for source builds: 1.94](docs/assets/msrv.svg)](docs/verification.md#badge-sources)
@@ -16,6 +16,15 @@ Choose Russian recognition or a multilingual model for English, Russian,
 Kazakh, Kyrgyz and Uzbek. [Models and setup](#language-support).
 
 ## Examples
+
+**Discover commands without parsing help text.** In 0.13.0 source builds:
+
+```sh
+agent-youtube describe transcribe
+```
+
+Returns typed arguments, defaults, constraints, output schemas and recovery guidance.
+[Machine discovery](docs/usage.md#machine-discovery) requires no models or network.
 
 **Turn a video into text.** After the [one-time setup](#install):
 

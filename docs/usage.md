@@ -6,6 +6,54 @@ Moved from the root README on 2026-10-27. Commands assume the repository root.
 Historical verification statements retain their original dates and scope; they are
 not new measurements of the current version.
 
+## Machine discovery
+
+Available in 0.13.0 source builds. The published binary remains 0.10.1.
+
+```sh
+agent-youtube describe
+agent-youtube describe transcribe
+```
+
+The first returns all 12 public command/diagnostic descriptions. The selector
+returns one command; use help or version to describe their flag-based invocations.
+Use each entry's argv prefix and aliases, rather than guessing a literal command
+from its name. Neither invocation loads models, resolves runtime paths, inspects
+credentials or makes HTTP requests. No HOME or setup is required. A successful
+result describes the interface; runtime_validation=not_performed means that model
+availability, inference and YouTube access have not been checked.
+
+The schema1 envelope has command=describe. result.description_version=1 versions
+this discovery format separately from the package and response schemas. Each entry
+has name, argv, aliases, input_schema, constraints, success_variants and
+error_schema_ref. The input schema describes logical UTF-8 CLI values, not a new
+JSON-input endpoint. Required fields and extra-field rejection are explicit.
+For each property, x-cli-position identifies the positional index after argv;
+x-cli-flag identifies its option. Integer values become decimal argv strings;
+options take a separate value token. Batch input includes x-file-input with its
+JSONL record schema, byte/item limits and per-item URL validation; export identifies
+canonical transcript JSON as its input format. A boolean true emits its switch and false
+omits it. The -- separator allows positionals that would otherwise look like flags.
+
+Only fixed values have default annotations. x-default-policy explains saved retry
+policy, managed runtime/model selection, automatic encoder threads and optional
+range bounds. Do not blindly materialize dynamic defaults: an omitted range stays
+whole-video work, and a saved retry policy may override its new-job fallback.
+Runtime/model incompatibilities, filesystem state and decoded range resolution
+remain execution checks. Custom youtube-video-url format and timestamp frame
+counter/order rules and JSONL UTF-8 byte/control checks require semantic validation
+beyond plain JSON Schema.
+
+success_variants identifies response schema versions and response modes;
+output_schema embeds the existing Draft 2020-12 CLI result/event schemas with a
+closed set of locally resolved definitions. No schema URL needs fetching. Filtered
+schemas also accept global help responses. Ordinary help preempts validation only
+when reached as a help token; option values and arguments after -- stay literal,
+and an earlier parse error is not overridden. Version flags are standalone.
+Recovery guidance explains retryable=true/false/null and saved-job/batch workflows;
+actual error details, server waits and next_action remain authoritative. Discovery
+never promises that every schema-valid request will succeed in the current state.
+
 ## Recognition time ranges
 
 Available in 0.12.0 source builds; no new binary release is published for this feature.

@@ -23,6 +23,9 @@ use std::{
 };
 
 pub use crate::storage::read_text;
+pub(crate) const CHUNK_SECONDS_MIN: u32 = 10;
+pub(crate) const CHUNK_SECONDS_MAX: u32 = 600;
+pub(crate) const BOUNDARY_WINDOW_MAX_MS: u32 = 2000;
 const JSON_LIMIT: u64 = 16 * 1024 * 1024;
 const PUBLICATION_BATCH: usize = 32;
 pub(crate) const MODEL_FILES: [&str; 4] = [
@@ -154,10 +157,10 @@ impl Pipeline {
                 })
                 .transpose()?,
         )?;
-        if options.boundary_window_ms > 2000 {
+        if options.boundary_window_ms > BOUNDARY_WINDOW_MAX_MS {
             return Err("--boundary-window-ms must be between 0 and 2000".into());
         }
-        if !(10..=600).contains(&options.chunk_seconds) {
+        if !(CHUNK_SECONDS_MIN..=CHUNK_SECONDS_MAX).contains(&options.chunk_seconds) {
             return Err("--chunk-seconds must be between 10 and 600".into());
         }
         if fs::symlink_metadata(&options.work_dir).is_ok_and(|m| m.file_type().is_symlink()) {

@@ -10,6 +10,29 @@ license is now present at the root, CI is dispatch-only and hosted Actions are
 disabled. Crates.io publication stays disabled. Sections below preserve dated
 reviews, including superseded privacy/license findings; see current readiness.
 
+## Machine discovery qualification — 0.13.0, 2026-10-31
+
+Local gates pass: 421 Rust tests, 18 opt-in ignored; strict Clippy/formatting,
+74 Python checks and 28 documentation link targets. Discovery returns all 12
+public command/diagnostic descriptions or one selected description. Generated
+negative CLI requests exercise over 50 enum, numeric, timestamp and missing-field
+cases without creating work files. Formal schemas and incompatible runtime/range
+arguments are tested, including response version references and global help.
+A real loopback pipeline's saved options match the advertised fixed/default-policy
+values and its response version matches the discovered default mode.
+
+A retained 0.13.0 development executable was run with bubblewrap network isolation,
+unset HOME, empty tool PATH and no mounted models or user configuration. Host /usr/lib and /lib64 were shared (glibc 2.43); PATH and /usr/bin were empty,
+and no toolchain or recognizer was configured in that environment. Describe succeeded with zero working files
+created and zero stderr bytes. Its result was byte-identical to the same executable
+run in the ordinary environment. Embedded response and per-command input schemas
+passed local Draft 2020-12 checks. The embedded contract is included in production
+source fingerprinting so schema changes cannot retain the same source fingerprint.
+
+This verifies static discovery and CLI conformance, not model readiness, inference,
+YouTube availability or a new portability/security claim. No binary release or
+hosted workflow was triggered; the published binary remains 0.10.1.
+
 ## Recognition range qualification — 0.12.0, 2026-10-31
 
 Local gates pass: 417 Rust tests, 18 opt-in ignored; strict Clippy and formatting,
@@ -252,7 +275,7 @@ or a hosted test run. SVG labels make no third-party requests.
 
 | Badge | Source and meaning |
 | --- | --- |
-| Source 0.12.0 | Cargo.toml package version; crates.io publication is disabled |
+| Source 0.13.0 | Cargo.toml package version; crates.io publication is disabled |
 | License MIT | Root LICENSE; dependencies and model terms remain separate |
 | CI disabled | GitHub Actions disabled by owner instruction; workflow remains dispatch-only |
 | Minimum Rust 1.94 for source builds | Manifest rust-version; prior local MSRV qualification, not a passing hosted 0.8.0 claim |

@@ -1,4 +1,4 @@
-# Current readiness and support — 0.12.0
+# Current readiness and support — 0.13.0
 
 This is the current decision entry point. Dated qualification reports are evidence
 for their exact source, binary, model, network and scenario; they are not silently
@@ -12,6 +12,7 @@ upgraded to new-release measurements. See the [changelog](../CHANGELOG.md).
 | Public source distribution | Experimental source in the independent agent-youtube repository; CLI is agent-youtube |
 | Distribution | Crates.io disabled (publish=false); signed experimental Linux binary 0.10.1 published; newer source features require a source build |
 
+Source 0.13.0 adds offline machine discovery through describe.
 Source 0.11.0 adds JSONL batch orchestration; 0.12.0 adds explicit recognition
 ranges with full download/decode. The published binary remains 0.10.1.
 Batch concurrency is bounded and recognition is serial within each invocation.

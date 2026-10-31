@@ -1,3 +1,5 @@
+#[path = "support/contract.rs"]
+mod contract;
 use std::{
     fs,
     path::PathBuf,
@@ -727,5 +729,261 @@ fn invalid_time_ranges_fail_before_creating_work() {
         let value: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         assert_eq!(value["error"]["code"], "invalid_time_range", "{value}");
         assert_eq!(fs::read_dir(&fixture.0).unwrap().count(), 0);
+    }
+}
+
+#[test]
+fn describe_is_offline_read_only_and_returns_structured_input_and_output_schemas() {
+    let fixture = Fixture::new();
+    let output = fixture
+        .command()
+        .arg("describe")
+        .env_remove("HOME")
+        .env_remove("XDG_CACHE_HOME")
+        .env("GIGASTT_TOKEN", "must-not-appear")
+        .env("HTTPS_PROXY", "http://127.0.0.1:1")
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    assert!(output.stderr.is_empty());
+    let value: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(value["command"], "describe");
+    assert_eq!(value["result"]["description_version"], 1);
+    let commands = value["result"]["commands"].as_array().unwrap();
+    let transcribe = commands.iter().find(|c| c["name"] == "transcribe").unwrap();
+    assert_eq!(
+        transcribe["input_schema"]["properties"]["chunk_seconds"]["default"],
+        300
+    );
+    assert_eq!(
+        transcribe["input_schema"]["properties"]["chunk_seconds"]["minimum"],
+        10
+    );
+    assert_eq!(
+        transcribe["input_schema"]["properties"]["response"]["enum"],
+        serde_json::json!(["compact", "metadata", "full"])
+    );
+    assert!(
+        transcribe["input_schema"]["required"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|v| v == "work_dir")
+    );
+    assert!(
+        value["result"]["output_schema"]["$defs"]
+            .get("transcribe2")
+            .is_some()
+    );
+    assert!(!String::from_utf8_lossy(&output.stdout).contains("must-not-appear"));
+    let batch = commands.iter().find(|c| c["name"] == "batch").unwrap();
+    let input = &batch["input_schema"]["properties"]["input"]["x-file-input"];
+    assert_eq!(input["format"], "jsonl");
+    assert_eq!(
+        input["record_schema"]["required"],
+        serde_json::json!(["id", "url"])
+    );
+    assert_eq!(input["url_validation"], "per_item");
+    assert_eq!(fs::read_dir(&fixture.0).unwrap().count(), 0);
+    let filtered = fixture
+        .command()
+        .args(["describe", "transcribe"])
+        .output()
+        .unwrap();
+    let filtered: serde_json::Value = serde_json::from_slice(&filtered.stdout).unwrap();
+    assert_eq!(filtered["result"]["commands"].as_array().unwrap().len(), 1);
+    let rejected = fixture
+        .command()
+        .args(["describe", "--unknown-token=must-not-appear"])
+        .output()
+        .unwrap();
+    assert!(!rejected.status.success());
+    assert!(!String::from_utf8_lossy(&rejected.stdout).contains("must-not-appear"));
+    assert!(!String::from_utf8_lossy(&rejected.stderr).contains("must-not-appear"));
+    let mut documents = Vec::new();
+    contract::collect(&output, &mut documents);
+    contract::validate(&documents);
+}
+
+fn described_args(
+    command: &serde_json::Value,
+    values: &std::collections::BTreeMap<String, serde_json::Value>,
+) -> Vec<String> {
+    let mut args = command["argv"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap().to_owned())
+        .collect::<Vec<_>>();
+    let mut positional = std::collections::BTreeMap::new();
+    for (name, schema) in command["input_schema"]["properties"].as_object().unwrap() {
+        let Some(value) = values.get(name) else {
+            continue;
+        };
+        let text = value
+            .as_str()
+            .map(str::to_owned)
+            .unwrap_or_else(|| value.to_string());
+        if let Some(index) = schema["x-cli-position"].as_u64() {
+            positional.insert(index, text);
+        } else if schema["x-cli-takes-value"] == false {
+            if value == true {
+                args.push(schema["x-cli-flag"].as_str().unwrap().to_owned());
+            }
+        } else {
+            args.extend([schema["x-cli-flag"].as_str().unwrap().to_owned(), text]);
+        }
+    }
+    args.extend(positional.into_values());
+    args
+}
+
+#[test]
+fn described_invalid_parameters_are_rejected_before_runtime_side_effects() {
+    use serde_json::{Value, json};
+    let fixture = Fixture::new();
+    let data = fixture.command().arg("describe").output().unwrap();
+    let all: Value = serde_json::from_slice(&data.stdout).unwrap();
+    let mut cases = 0;
+    for command in all["result"]["commands"].as_array().unwrap() {
+        if command["argv"][0].as_str().unwrap().starts_with('-') {
+            continue;
+        }
+        let props = command["input_schema"]["properties"].as_object().unwrap();
+        let mut base = std::collections::BTreeMap::new();
+        for key in command["input_schema"]["required"].as_array().unwrap() {
+            let name = key.as_str().unwrap();
+            let value = match name {
+                "url" => json!("https://youtu.be/jNQXAC9IVRw"),
+                "format" => json!("json"),
+                "work_dir" => json!("work"),
+                "output" => json!("output.json"),
+                _ => json!("missing.jsonl"),
+            };
+            base.insert(name.to_owned(), value);
+        }
+        for (name, schema) in props {
+            let mut bad_values = Vec::new();
+            if schema["type"] == "integer" {
+                bad_values.push(json!(-1));
+                if let Some(max) = schema["maximum"].as_u64().filter(|n| *n < u64::MAX) {
+                    bad_values.push(json!(max + 1));
+                }
+            } else if schema.get("enum").is_some() || schema.get("pattern").is_some() {
+                bad_values.push(json!("__invalid__"));
+            }
+            for bad in bad_values {
+                let current = Fixture::new();
+                let mut values = base.clone();
+                values.insert(name.clone(), bad);
+                let args = described_args(command, &values);
+                let output = current.command().args(&args).output().unwrap();
+                assert!(!output.status.success(), "{args:?}");
+                let error: Value = serde_json::from_slice(&output.stdout).unwrap();
+                assert!(
+                    matches!(
+                        error["error"]["code"].as_str(),
+                        Some("invalid_arguments" | "invalid_time_range" | "batch_workers_invalid")
+                    ),
+                    "{args:?}: {error}"
+                );
+                assert_eq!(fs::read_dir(&current.0).unwrap().count(), 0, "{args:?}");
+                cases += 1;
+            }
+        }
+        for required in command["input_schema"]["required"].as_array().unwrap() {
+            let current = Fixture::new();
+            let mut values = base.clone();
+            values.remove(required.as_str().unwrap());
+            let args = described_args(command, &values);
+            let output = current.command().args(&args).output().unwrap();
+            assert!(!output.status.success(), "{args:?}");
+            assert_eq!(fs::read_dir(&current.0).unwrap().count(), 0);
+            cases += 1;
+        }
+    }
+    assert!(cases > 50, "{cases}");
+}
+
+#[test]
+fn discovery_constraints_and_filtered_schema_are_executable() {
+    use std::io::Write;
+    use std::process::Stdio;
+    let fixture = Fixture::new();
+    let output = fixture
+        .command()
+        .args(["describe", "transcribe"])
+        .output()
+        .unwrap();
+    let described: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    let properties = &described["result"]["commands"][0]["input_schema"]["properties"];
+    assert!(properties["model_variant"].get("default").is_none());
+    assert!(properties["retry_window_seconds"].get("default").is_none());
+    assert!(properties["start"].get("default").is_none());
+    let script = r#"import json,sys
+from jsonschema import Draft202012Validator
+x=json.load(sys.stdin)
+s=x['result']['output_schema']
+Draft202012Validator.check_schema(s)
+for command in x['result']['commands']:
+    Draft202012Validator.check_schema(command['input_schema'])
+    v=Draft202012Validator(command['input_schema'])
+    assert not v.is_valid({'url':'https://youtu.be/jNQXAC9IVRw','work_dir':'x','gigastt':'a','runtime_dir':'b'})
+    for variant in command['success_variants']:
+        name=variant['schema_ref'].split('/')[-1]
+        assert variant['schema_version']==s['$defs'][name]['properties']['schema_version']['const']
+Draft202012Validator(s).validate({'schema_version':1,'ok':True,'command':'help','result':{'help':'example'}})
+"#;
+    let mut child = Command::new("python3")
+        .args(["-c", script])
+        .stdin(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(&output.stdout)
+        .unwrap();
+    let verified = child.wait_with_output().unwrap();
+    assert!(
+        verified.status.success(),
+        "{}",
+        String::from_utf8_lossy(&verified.stderr)
+    );
+    for extra in [
+        vec!["--gigastt", "missing", "--runtime-dir", "missing"],
+        vec!["--start", "10", "--end", "9"],
+    ] {
+        let f = Fixture::new();
+        let failed = f
+            .command()
+            .args([
+                "transcribe",
+                "https://youtu.be/jNQXAC9IVRw",
+                "--work-dir",
+                "job",
+            ])
+            .args(extra)
+            .output()
+            .unwrap();
+        assert!(!failed.status.success());
+        assert_eq!(fs::read_dir(&f.0).unwrap().count(), 0);
+    }
+    for args in [
+        vec!["describe", "unknown"],
+        vec!["describe", "transcribe", "extra"],
+        vec!["describe", "--force"],
+        vec!["describe", "--response", "compact"],
+    ] {
+        let f = Fixture::new();
+        let failed = f.command().args(args).output().unwrap();
+        assert!(!failed.status.success());
+        assert_eq!(fs::read_dir(&f.0).unwrap().count(), 0);
     }
 }

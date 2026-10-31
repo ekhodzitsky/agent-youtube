@@ -1,3 +1,4 @@
+mod catalog;
 use crate::{
     Result,
     download::Downloader,
@@ -20,6 +21,7 @@ use std::{
 const HELP: &str = "agent-youtube — JSON-only local YouTube transcription
 
 Usage:
+  agent-youtube describe [COMMAND]
   agent-youtube batch INPUT.jsonl --work-dir DIR [--jobs 1..8] [tool/model options]
   agent-youtube chapters URL
   agent-youtube transcribe URL --work-dir DIR [options]
@@ -55,7 +57,7 @@ Exports use existing JSON and never run recognition. Existing outputs are protec
 ";
 
 pub fn run(args: Vec<OsString>, cancelled: Arc<AtomicBool>) -> Result<()> {
-    run_with_downloader(args, cancelled, Downloader::youtube()?)
+    execute(args, cancelled, None).map_err(|e| context(e, "invalid_arguments"))
 }
 /// Run against an explicitly supplied downloader for embedding and offline tests.
 pub fn run_with_downloader(
@@ -63,79 +65,63 @@ pub fn run_with_downloader(
     cancelled: Arc<AtomicBool>,
     downloader: Downloader,
 ) -> Result<()> {
-    execute(args, cancelled, downloader).map_err(|e| context(e, "invalid_arguments"))
+    execute(args, cancelled, Some(downloader)).map_err(|e| context(e, "invalid_arguments"))
 }
-fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Downloader) -> Result<()> {
-    if args.is_empty() || args[0] == "--help" || args[0] == "-h" {
+fn execute(
+    args: Vec<OsString>,
+    cancelled: Arc<AtomicBool>,
+    downloader: Option<Downloader>,
+) -> Result<()> {
+    if args.is_empty() || catalog::is_help(&args[0]) {
         protocol::success("help", serde_json::json!({"help":HELP}))?;
         return Ok(());
     }
-    if args.len() == 1 && (args[0] == "--version" || args[0] == "-V") {
+    if args.len() == 1 && catalog::is_version(&args[0]) {
         protocol::success("version", crate::agent::producer())?;
         return Ok(());
     }
     let command = args[0].to_str().ok_or("command must be UTF-8")?;
     let mut positional = Vec::new();
     let mut flags = BTreeMap::new();
-    let mut force = false;
-    let mut offline = false;
     let mut iter = args[1..].iter();
     while let Some(arg) = iter.next() {
         if arg == "--" {
             positional.extend(iter.cloned());
             break;
-        } else if arg == "--help" || arg == "-h" {
+        } else if catalog::is_help(arg) {
             protocol::success("help", serde_json::json!({"help":HELP}))?;
             return Ok(());
-        } else if arg == "--offline" {
-            if offline {
-                return Err("duplicate --offline".into());
-            }
-            offline = true;
-        } else if arg == "--force" {
-            if force {
-                return Err("duplicate --force".into());
-            }
-            force = true;
         } else if arg.to_string_lossy().starts_with('-') {
             let name = arg.to_str().ok_or("option name must be UTF-8")?.to_owned();
-            if ![
-                "--work-dir",
-                "--model-dir",
-                "--model-variant",
-                "--runtime-dir",
-                "--archive",
-                "--gigastt",
-                "--chunk-seconds",
-                "--asr-timeout-seconds",
-                "--retry-window-seconds",
-                "--asr-memory-mib",
-                "--boundary-window-ms",
-                "--encoder-threads",
-                "--format",
-                "--output",
-                "--response",
-                "--jobs",
-                "--start",
-                "--end",
-            ]
-            .contains(&name.as_str())
-            {
-                return Err(format!("unknown option {name}; see --help").into());
-            }
-            let value = iter
-                .next()
-                .ok_or_else(|| format!("missing value for {name}"))?;
-            if flags.insert(name.clone(), value.clone()).is_some() {
+            let spec = catalog::parameter(&name).ok_or("unknown option; see describe")?;
+            let value = if spec.switch() {
+                OsString::from("true")
+            } else {
+                iter.next()
+                    .ok_or_else(|| format!("missing value for {name}"))?
+                    .clone()
+            };
+            if flags.insert(name.clone(), value).is_some() {
                 return Err(format!("duplicate option {name}").into());
             }
         } else {
             positional.push(arg.clone());
         }
     }
+    let offline = flags.contains_key("--offline");
+    let force = flags.contains_key("--force");
     if offline && command != "setup" {
         return Err("--offline is only accepted by setup".into());
     }
+    catalog::validate(command, &positional, &flags)?;
+    flags.remove("--offline");
+    flags.remove("--force");
+    if command == "describe" {
+        let result = catalog::describe(positional.first().map(OsString::as_os_str))?;
+        protocol::success("describe", result)?;
+        return Ok(());
+    }
+    let downloader = downloader.map_or_else(Downloader::youtube, Ok)?;
     match command {
         "chapters" => {
             if force || positional.len() != 1 {
@@ -172,7 +158,7 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
             if command == "resume" {
                 let response = flags
                     .remove("--response")
-                    .unwrap_or_else(|| "compact".into());
+                    .unwrap_or_else(|| catalog::response_default().into());
                 validate_response(&response)?;
                 reject_remaining(&flags)?;
                 let options =
@@ -224,7 +210,7 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
                     .remove("--jobs")
                     .map(|v| v.to_string_lossy().parse::<usize>())
                     .transpose()?
-                    .unwrap_or(1)
+                    .unwrap_or(usize::try_from(catalog::number_default("--jobs")?)?)
             } else {
                 1
             };
@@ -236,16 +222,11 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
             let response = if command == "transcribe" {
                 flags
                     .remove("--response")
-                    .unwrap_or_else(|| "compact".into())
+                    .unwrap_or_else(|| catalog::response_default().into())
             } else {
-                "compact".into()
+                catalog::response_default().into()
             };
-            if !["compact", "metadata", "full"]
-                .iter()
-                .any(|v| response == *v)
-            {
-                return Err("--response must be compact, metadata or full".into());
-            }
+            validate_response(&response)?;
             if force {
                 return Err("--force is only accepted by export".into());
             }
@@ -266,7 +247,7 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
             let work_dir = if command == "transcribe" || command == "batch" {
                 PathBuf::from(take_required(&mut flags, "--work-dir")?)
             } else {
-                take_path(&mut flags, "--work-dir", "runs/doctor")
+                take_path(&mut flags, "--work-dir", catalog::DOCTOR_ROOT)
             };
             let explicit_gigastt = flags.remove("--gigastt").map(PathBuf::from);
             let runtime_dir = flags.remove("--runtime-dir").map(PathBuf::from);
@@ -294,7 +275,7 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
                 .unwrap_or_default();
             let gigastt = explicit_gigastt
                 .or_else(|| managed.as_ref().map(|s| s.gigastt.clone()))
-                .unwrap_or_else(|| PathBuf::from("gigastt"));
+                .unwrap_or_else(|| PathBuf::from(catalog::LEGACY_GIGASTT));
             let model_dir = if let Some(path) = flags.remove("--model-dir") {
                 PathBuf::from(path)
             } else if let Some(selected) = managed {
@@ -303,19 +284,18 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
                 std::env::var_os("HOME")
                     .map(PathBuf::from)
                     .ok_or("HOME is unset; specify --model-dir")?
-                    .join(".gigastt/models")
+                    .join(catalog::LEGACY_MODELS_DIR)
             };
             let chunk_seconds = flags
                 .remove("--chunk-seconds")
                 .map(|v| v.to_string_lossy().parse::<u32>())
                 .transpose()?
-                .unwrap_or(300);
+                .unwrap_or(u32::try_from(catalog::number_default("--chunk-seconds")?)?);
             let retry_window_seconds = match flags.remove("--retry-window-seconds") {
                 Some(value) => value.to_string_lossy().parse()?,
-                None if command == "batch" => 3600,
-                None if command == "transcribe" => {
-                    crate::job::retry_window(&work_dir, &url)?.unwrap_or(3600)
-                }
+                None if command == "batch" => catalog::number_default("--retry-window-seconds")?,
+                None if command == "transcribe" => crate::job::retry_window(&work_dir, &url)?
+                    .unwrap_or(catalog::number_default("--retry-window-seconds")?),
                 None => 0,
             };
             let start = flags.remove("--start");
@@ -347,12 +327,14 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
                     .remove("--asr-timeout-seconds")
                     .map(|v| v.to_string_lossy().parse())
                     .transpose()?
-                    .unwrap_or(1800),
+                    .unwrap_or(catalog::number_default("--asr-timeout-seconds")?),
                 boundary_window_ms: flags
                     .remove("--boundary-window-ms")
                     .map(|v| v.to_string_lossy().parse())
                     .transpose()?
-                    .unwrap_or(0),
+                    .unwrap_or(u32::try_from(catalog::number_default(
+                        "--boundary-window-ms",
+                    )?)?),
                 asr_memory_mib: flags
                     .remove("--asr-memory-mib")
                     .map(|v| v.to_string_lossy().parse())
@@ -427,7 +409,7 @@ fn export_file(
     })?;
     protocol::success(
         "export",
-        serde_json::json!({"output":output,"format":format!("{format:?}").to_lowercase()}),
+        serde_json::json!({"output":output,"format":format.as_str()}),
     )
 }
 
@@ -450,14 +432,9 @@ fn reject_remaining(flags: &BTreeMap<String, OsString>) -> Result<()> {
 }
 
 fn validate_response(response: &std::ffi::OsStr) -> Result<()> {
-    if !["compact", "metadata", "full"]
-        .iter()
-        .any(|v| response == *v)
-    {
-        return Err("--response must be compact, metadata or full".into());
-    }
-    Ok(())
+    catalog::validate_value("--response", response)
 }
+
 fn transcribe(
     pipeline: &Pipeline,
     response: &std::ffi::OsStr,
@@ -480,7 +457,7 @@ fn transcribe(
     write!(
         out,
         "{{\"schema_version\":{},\"ok\":true,\"command\":\"{command}\",\"result\":{{\"artifacts\":",
-        if response == "full" { 1 } else { 2 }
+        catalog::response_envelope_version(response)
     )?;
     serde_json::to_writer(
         &mut out,

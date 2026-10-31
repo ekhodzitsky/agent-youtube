@@ -4252,3 +4252,51 @@ fn batch_preserves_common_range_and_rejects_changed_bounds() {
     );
     assert_eq!(batch_asr_calls(&fixture), before);
 }
+
+#[test]
+fn discovered_defaults_match_saved_pipeline_options() {
+    let fixture = Fixture::new();
+    let original = fixture.run_command(URL);
+    let mut args: Vec<_> = original.get_args().map(|s| s.to_os_string()).collect();
+    let index = args.iter().position(|s| s == "--chunk-seconds").unwrap();
+    args.drain(index..index + 2);
+    let output = Command::new("/usr/bin/python3")
+        .args(args)
+        .env("AGENT_YOUTUBE_TEST_ROOT", &fixture.root)
+        .output()
+        .unwrap();
+    let response = batch_json(&output);
+    success(output);
+    let saved: serde_json::Value =
+        serde_json::from_slice(&fs::read(fixture.path("job.json")).unwrap()).unwrap();
+    let described = Command::new(env!("CARGO_BIN_EXE_agent-youtube"))
+        .args(["describe", "transcribe"])
+        .output()
+        .unwrap();
+    let described: serde_json::Value = serde_json::from_slice(&described.stdout).unwrap();
+    let props = &described["result"]["commands"][0]["input_schema"]["properties"];
+    for name in ["chunk_seconds", "asr_timeout_seconds", "boundary_window_ms"] {
+        assert_eq!(saved["options"][name], props[name]["default"]);
+    }
+    assert_eq!(
+        saved["options"]["retry_window_seconds"],
+        props["retry_window_seconds"]["x-default-policy"]["fallback"]
+    );
+    assert_eq!(
+        saved["options"]["model_variant"],
+        props["model_variant"]["x-default-policy"]["fallback"]
+    );
+    let variant = described["result"]["commands"][0]["success_variants"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|v| {
+            v["when"]["response"]
+                .as_array()
+                .unwrap()
+                .contains(&props["response"]["default"])
+        })
+        .unwrap();
+    assert_eq!(response["schema_version"], variant["schema_version"]);
+    assert!(saved["options"].get("range").is_none());
+}

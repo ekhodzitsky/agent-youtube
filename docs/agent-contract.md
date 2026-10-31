@@ -6,6 +6,26 @@ Moved from the root README on 2026-10-27. Commands assume the repository root.
 Historical verification statements retain their original dates and scope; they are
 not new measurements of the current version.
 
+## Command discovery
+
+Since 0.13.0, describe [COMMAND] returns a schema1 success envelope and
+result.description_version=1. It is read-only and works without HOME, a prepared
+runtime or network. Descriptions share the parser's command/option specifications,
+required fields, argument counts, typed validation, defaults and static constraints.
+Model/export choices use their actual parsers; numeric domain bounds are shared.
+Dynamic defaults are policies, not observed machine state. runtime_validation is
+not_performed; setup/doctor and actual jobs still establish their own readiness.
+
+input_schema maps logical UTF-8 properties to argv using x-cli-flag,
+x-cli-takes-value and x-cli-position. It does not enable execution from JSON.
+Semantic/runtime constraints may exceed JSON Schema expressiveness. The embedded
+output_schema reuses existing response definitions, includes referenced definitions
+and global help/error/progress records, and requires no external resolver.
+success_variants derives versions from the actual response contract; response mode
+conditions use the same envelope selector as transcription output. Recovery text
+is general guidance; per-error details and server cooldowns take precedence.
+See [discovery usage](usage.md#machine-discovery).
+
 ## Range-aware records
 
 Since 0.12.0, explicit --start/--end requests produce ranged canonical transcripts

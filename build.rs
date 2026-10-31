@@ -47,6 +47,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "build.rs",
         "Cargo.toml",
         "Cargo.lock",
+        "schemas/contract.schema.json",
         "vendor/syom",
         "vendor/bandlimit",
         "vendor/botguard",

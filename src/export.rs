@@ -11,20 +11,29 @@ pub enum Format {
     Vtt,
 }
 
+impl Format {
+    pub const ALL: [Self; 5] = [Self::Json, Self::Md, Self::Txt, Self::Srt, Self::Vtt];
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Json => "json",
+            Self::Md => "md",
+            Self::Txt => "txt",
+            Self::Srt => "srt",
+            Self::Vtt => "vtt",
+        }
+    }
+}
+
 impl FromStr for Format {
     type Err = String;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match value {
-            "json" => Ok(Self::Json),
-            "md" => Ok(Self::Md),
-            "txt" => Ok(Self::Txt),
-            "srt" => Ok(Self::Srt),
-            "vtt" => Ok(Self::Vtt),
-            _ => Err(format!(
-                "unsupported export format {value:?}; use json, md, txt, srt or vtt"
-            )),
-        }
+        Self::ALL
+            .into_iter()
+            .find(|format| format.as_str() == value)
+            .ok_or_else(|| {
+                format!("unsupported export format {value:?}; use json, md, txt, srt or vtt")
+            })
     }
 }
 

@@ -8,6 +8,22 @@ JSON or canonical transcripts. Source is public; crates.io publication stays dis
 
 ## Unreleased
 
+## 0.13.0 — 2026-10-31
+
+- Add read-only describe and describe COMMAND with typed logical CLI input schemas,
+  argument mappings, required parameters, enums/bounds, fixed/default-resolution
+  policies, constraints, response variants and field-based recovery guidance.
+  Embed the existing response contract and only the referenced schema definitions;
+  no models, configuration inspection or network are required.
+- Make the parser validate command/option specifications before runtime discovery
+  or job creation. Shared definitions drive numeric defaults, response modes,
+  diagnostic aliases, model/export choices and domain bounds. Invalid arguments
+  may now fail earlier; existing accepted invocation forms are retained.
+- Include the embedded contract in production source fingerprinting. Discovery
+  describes interface support, not installed runtime/model health or YouTube
+  access. It does not introduce JSON-input execution. No new dependency, binary
+  release, transcript or checkpoint format change.
+
 ## 0.12.0 — 2026-10-31
 
 - Add --start/--end to transcribe and batch. Accept seconds or HH:MM:SS with

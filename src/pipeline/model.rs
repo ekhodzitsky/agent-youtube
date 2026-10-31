@@ -11,6 +11,7 @@ pub enum ModelVariant {
     MlCtcLarge,
 }
 impl ModelVariant {
+    pub const ALL: [Self; 3] = [Self::E2eRnnt, Self::MlCtc, Self::MlCtcLarge];
     pub fn as_str(self) -> &'static str {
         match self {
             Self::E2eRnnt => "e2e_rnnt",
@@ -35,11 +36,9 @@ impl ModelVariant {
 impl std::str::FromStr for ModelVariant {
     type Err = Box<dyn std::error::Error + Send + Sync>;
     fn from_str(value: &str) -> Result<Self> {
-        match value {
-            "e2e_rnnt" => Ok(Self::E2eRnnt),
-            "ml_ctc" => Ok(Self::MlCtc),
-            "ml_ctc_large" => Ok(Self::MlCtcLarge),
-            _ => Err("--model-variant must be e2e_rnnt, ml_ctc or ml_ctc_large".into()),
-        }
+        Self::ALL
+            .into_iter()
+            .find(|variant| variant.as_str() == value)
+            .ok_or_else(|| "--model-variant must be e2e_rnnt, ml_ctc or ml_ctc_large".into())
     }
 }
