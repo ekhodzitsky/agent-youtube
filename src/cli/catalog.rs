@@ -556,7 +556,7 @@ fn describe_command(command: &Command, contract: &Value) -> Result<Value> {
         constraints.push(json!({"rule":"immutable_batch_inputs_and_options","phase":"runtime","recognition_workers":1}));
     }
     if command.flags.contains(&"--start") {
-        constraints.push(json!({"rule":"resolve_against_full_decoded_audio","phase":"runtime","end_past_source":"clamp","empty_selection":"range_out_of_bounds","download":"full_audio"}));
+        constraints.push(json!({"rule":"resolve_against_full_decoded_audio","phase":"runtime","end_past_source":"clamp","empty_selection":"range_out_of_bounds","download":"full_audio","decode":"full_audio","pcm_storage":"intersecting_fixed_grid_chunks"}));
     }
     let structural: Vec<Value> = command
         .rules()

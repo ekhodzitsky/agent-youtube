@@ -2886,18 +2886,24 @@ fn source_leases_survive_asr_failure_and_cleanup_only_after_publication() {
 
 #[test]
 fn incomplete_presentation_retains_source_without_transcript_or_recognition() {
-    let fixture = Fixture::new();
-    let mut input = fs::read(fixture.root.join("input.m4a")).unwrap();
-    let pos = input.windows(4).position(|w| w == b"elst").unwrap();
-    assert_eq!(input[pos + 4], 0);
-    let duration = u32::from_be_bytes(input[pos + 12..pos + 16].try_into().unwrap());
-    input[pos + 12..pos + 16].copy_from_slice(&(duration * 2).to_be_bytes());
-    fs::write(fixture.root.join("input.m4a"), &input).unwrap();
-    failure(fixture.run(), "incomplete M4A presentation");
-    assert_eq!(fs::read(fixture.path("media/source.audio")).unwrap(), input);
-    assert!(!fixture.path("media/audio.wav").exists());
-    assert!(!fixture.path("transcript.json").exists());
-    assert!(fixture.calls("gigastt", "--output").is_empty());
+    for ranged in [false, true] {
+        let fixture = Fixture::new();
+        let mut input = fs::read(fixture.root.join("input.m4a")).unwrap();
+        let pos = input.windows(4).position(|w| w == b"elst").unwrap();
+        assert_eq!(input[pos + 4], 0);
+        let duration = u32::from_be_bytes(input[pos + 12..pos + 16].try_into().unwrap());
+        input[pos + 12..pos + 16].copy_from_slice(&(duration * 2).to_be_bytes());
+        fs::write(fixture.root.join("input.m4a"), &input).unwrap();
+        let mut command = fixture.run_command(URL);
+        if ranged {
+            command.args(["--start", "0", "--end", "1"]);
+        }
+        failure(command.output().unwrap(), "incomplete M4A presentation");
+        assert_eq!(fs::read(fixture.path("media/source.audio")).unwrap(), input);
+        assert!(!fixture.path("media/audio.wav").exists());
+        assert!(!fixture.path("transcript.json").exists());
+        assert!(fixture.calls("gigastt", "--output").is_empty());
+    }
 }
 
 #[test]
@@ -4038,6 +4044,60 @@ fn interrupted_batch_preserves_jobs_and_resumes_after_process_restart() {
         String::from_utf8_lossy(&resumed.stderr)
     );
     assert_eq!(batch_json(&resumed)["result"]["succeeded"], 3);
+}
+
+#[test]
+fn ranged_jobs_keep_only_intersecting_fixed_grid_pcm() {
+    let mut documents = Vec::new();
+    for (start, end, indices, code) in [
+        ("0", Some("10"), vec![0], "process_failed"),
+        ("10", Some("11"), vec![1], "process_failed"),
+        ("9.5", Some("10.5"), vec![0, 1], "process_failed"),
+        ("10", None, vec![1], "process_failed"),
+        ("13", None, vec![], "range_out_of_bounds"),
+    ] {
+        let fixture = Fixture::new();
+        let mut command = fixture.run_command(URL);
+        command.args(["--start", start]);
+        if let Some(end) = end {
+            command.args(["--end", end]);
+        }
+        let failed = command.env("FAKE_FAIL_CHUNK", "000000").output().unwrap();
+        assert_eq!(batch_json(&failed)["error"]["code"], code);
+        for index in 0..2 {
+            assert_eq!(
+                fixture.path(&format!("chunks/{index:06}.wav")).exists(),
+                indices.contains(&index),
+                "range {start}..{end:?}, PCM chunk {index}"
+            );
+        }
+        let decoded: serde_json::Value =
+            serde_json::from_slice(&fs::read(fixture.path("media/audio.json")).unwrap()).unwrap();
+        assert_eq!(decoded["frames"], 192000);
+        assert_eq!(
+            fs::read(fixture.path("media/source.audio")).unwrap(),
+            fs::read(fixture.root.join("input.m4a")).unwrap()
+        );
+        if code == "process_failed" {
+            let resumed = Command::new(env!("CARGO_BIN_EXE_agent-youtube"))
+                .args(["resume", "--work-dir"])
+                .arg(fixture.path(""))
+                .output()
+                .unwrap();
+            assert!(
+                resumed.status.success(),
+                "{}",
+                String::from_utf8_lossy(&resumed.stderr)
+            );
+            let response: serde_json::Value = serde_json::from_slice(&resumed.stdout).unwrap();
+            assert_eq!(
+                response["result"]["transcript"]["range"]["download"],
+                "full_audio"
+            );
+            contract::collect(&resumed, &mut documents);
+        }
+    }
+    contract::validate(&documents);
 }
 
 #[test]

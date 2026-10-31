@@ -570,6 +570,27 @@ impl Pipeline {
             });
         }
         let chunk_frames = u64::from(self.options.chunk_seconds) * u64::from(audio::SAMPLE_RATE);
+        // Decode every access unit, but retain PCM only on the fixed-grid chunks
+        // intersecting the half-open requested interval. Do not resolve against
+        // the rounded metadata duration: the actual decoded EOF remains final.
+        let millis_rate = u64::from(audio::SAMPLE_RATE) / 1000;
+        let requested_start = match self.options.range {
+            Some(range) => {
+                range.validate()?;
+                range.start_millis * millis_rate
+            }
+            None => 0,
+        };
+        let retained_chunks = match self.options.range {
+            Some(range) => {
+                requested_start / chunk_frames
+                    ..range
+                        .end_millis
+                        .map(|end| (end * millis_rate).div_ceil(chunk_frames))
+                        .unwrap_or(u64::MAX)
+            }
+            None => 0..u64::MAX,
+        };
         let directory = self.options.work_dir.join("chunks");
         let header = ryf::encode_s16(&[], audio::SAMPLE_RATE)?.len() as u64;
         let saved = checkpoint.latest_decode_resume();
@@ -591,13 +612,14 @@ impl Pipeline {
             if index.checked_add(1) != Some(state.completed_chunks()) {
                 return Err(invalid("decoder state index mismatch".into()));
             }
-            for index in 0..state.completed_chunks() {
+            let completed = u64::try_from(state.completed_chunks())?;
+            for index in retained_chunks.start.min(completed)..retained_chunks.end.min(completed) {
                 let name = format!("chunks/{index:06}.wav");
                 if !checkpoint.completed(&name)? {
                     return Err(crate::checkpoint::evidence_failure(
                         "decoded_chunk_missing",
                         &self.options.work_dir.join(&name),
-                        "decoder state requires a validated prefix chunk; media preserved",
+                        "decoder state requires a validated retained PCM chunk; media preserved",
                     ));
                 }
             }
@@ -608,6 +630,12 @@ impl Pipeline {
                 .checked_mul(u64::from(audio::SAMPLE_RATE))
                 .ok_or("audio duration estimate overflow")?;
             let count = frames.div_ceil(chunk_frames);
+            let first = if requested_start >= frames {
+                count
+            } else {
+                retained_chunks.start.min(count)
+            };
+            let end = retained_chunks.end.min(count);
             let space = capacity(&directory)?;
             let allocation = |samples: u64| -> Result<u64> {
                 space.allocation(
@@ -619,16 +647,25 @@ impl Pipeline {
             };
             let last = frames - (count - 1) * chunk_frames;
             let last_allocation = allocation(last)?;
-            let mut required = allocation(chunk_frames)?
-                .checked_mul(count - 1)
-                .and_then(|n| n.checked_add(last_allocation))
-                .ok_or("PCM allocation estimate overflow")?;
+            let mut required = if first == end {
+                0
+            } else {
+                let tail = if end == count {
+                    last_allocation
+                } else {
+                    allocation(chunk_frames)?
+                };
+                allocation(chunk_frames)?
+                    .checked_mul(end - first - 1)
+                    .and_then(|n| n.checked_add(tail))
+                    .ok_or("PCM allocation estimate overflow")?
+            };
             // Work scales with saved chunks, never with an untrusted duration field.
             for index in checkpoint.chunk_indices() {
                 if runner.cancelled.load(Ordering::SeqCst) {
                     return Err("interrupted".into());
                 }
-                if (index as u64) < count
+                if (first..end).contains(&(index as u64))
                     && checkpoint.verified(&format!("chunks/{index:06}.wav"))?
                 {
                     required = required
@@ -658,6 +695,14 @@ impl Pipeline {
                         Ok(())
                     }
                     audio::DecodeEvent::Chunk(index, pcm) => {
+                        let chunk_start = (index as u64)
+                            .checked_mul(chunk_frames)
+                            .ok_or("decoded chunk offset overflow")?;
+                        if !retained_chunks.contains(&(index as u64))
+                            || pcm.len() as u64 / 2 <= requested_start.saturating_sub(chunk_start)
+                        {
+                            return Ok(());
+                        }
                         let name = format!("chunks/{index:06}.wav");
                         if checkpoint.verified(&name)? {
                             if audio::Wav::open(&self.options.work_dir.join(&name))?.frames
@@ -689,7 +734,7 @@ impl Pipeline {
                         crate::protocol::progress(
                             "decode",
                             "published decoded audio chunk",
-                            serde_json::json!({"completed_chunks":index+1,"durable":true,"scope":"recording"}),
+                            serde_json::json!({"completed_chunks":(index as u64 + 1)-retained_chunks.start,"durable":true,"scope":if self.options.range.is_some() {"selection"} else {"recording"}}),
                         );
                         Ok(())
                     }

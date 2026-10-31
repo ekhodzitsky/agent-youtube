@@ -10,6 +10,38 @@ license is now present at the root, CI is dispatch-only and hosted Actions are
 disabled. Crates.io publication stays disabled. Sections below preserve dated
 reviews, including superseded privacy/license findings; see current readiness.
 
+## Selected PCM storage qualification — 0.13.1, 2026-10-31
+
+An existing complete 182,409,911-byte recording decoded to 180,336,199 mono
+16 kHz frames (3:07:51.0124375). For 3600.123–3660.123 seconds, all selected
+PCM bytes matched a separate full streaming decode. Seven intersecting fixed-grid
+WAVs occupied 2,240,308 bytes, compared with 360,672,398 bytes of whole-recording
+PCM, excluding WAV headers. This reduces WAV storage by 99.38%; it is not a
+whole-work-directory reduction. Decoder checkpoints occupied another 41,292,867
+bytes, and compressed source storage remained unchanged.
+
+The comparison reused a local recording; no fresh network acquisition or ASR
+was performed. Both paths decoded the full presentation. The streaming reference
+discarded unselected PCM and took 80.9 seconds; range retention with durable
+checkpoints took 104.0 seconds. These are observed local times with different
+persistence work, not evidence of faster decoding. The opt-in
+real_long_range_retention_profile test repeats the comparison when
+AGENT_YOUTUBE_RANGE_PROFILE_SOURCE names a local recording longer than the
+selected interval. Output remains local.
+
+Regression checks exercise a real checkpoint/journal reopen after interruption,
+exact PCM, omitted prefix WAVs, refusal of a missing retained WAV, zero remaining
+PCM allocation, half-open chunk boundaries, cross-grid cuts, open-ended ranges,
+out-of-bounds starts and incomplete presentation rejection before recognition.
+Network download and full decoding remain unchanged; partial network acquisition
+is not implemented by this storage optimization.
+
+Final local gates passed: 423 Rust tests with 19 opt-in tests ignored, formatting,
+strict Clippy, 74 Python checks and 28 documentation link targets. The long-source
+profile above passed separately. An earlier run observed an intermittent existing
+ASR notification-test count mismatch; that unrelated test remains unchanged,
+and its subsequent pass does not establish that the intermittent failure is fixed.
+
 ## Machine discovery qualification — 0.13.0, 2026-10-31
 
 Local gates pass: 421 Rust tests, 18 opt-in ignored; strict Clippy/formatting,

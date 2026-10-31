@@ -1,6 +1,14 @@
 use super::*;
 #[cfg(unix)]
 fn fixture(frames: u64) -> (PathBuf, Pipeline, Checkpoint, audio::Wav) {
+    fixture_with_range(frames, None)
+}
+
+#[cfg(unix)]
+fn fixture_with_range(
+    frames: u64,
+    range: Option<crate::time_range::TimeRange>,
+) -> (PathBuf, Pipeline, Checkpoint, audio::Wav) {
     let root = std::env::temp_dir().join(format!(
         "agent-youtube-long-{}-{}",
         std::process::id(),
@@ -11,7 +19,7 @@ fn fixture(frames: u64) -> (PathBuf, Pipeline, Checkpoint, audio::Wav) {
     ));
     let pipeline = Pipeline::new(
         Options {
-            range: None,
+            range,
             url: "https://youtu.be/a2hbJlPxj4M".into(),
             work_dir: root.clone(),
             model_dir: root.join("models"),
@@ -30,7 +38,7 @@ fn fixture(frames: u64) -> (PathBuf, Pipeline, Checkpoint, audio::Wav) {
     let checkpoint = Checkpoint::open(
         &root,
         Config {
-            range: None,
+            range,
             url: pipeline.options.url.clone(),
             model_dir: root.join("models"),
             model_variant: Default::default(),
@@ -337,6 +345,205 @@ fn direct_decode_checks_space_before_decoding_and_resumes_owned_chunks() {
         })
         .unwrap();
     assert_eq!(decoded.frames, 192001);
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[cfg(unix)]
+#[test]
+fn ranged_decode_retains_only_selected_pcm_and_resumes_without_prefix_wavs() {
+    let range = crate::time_range::TimeRange {
+        start_millis: 10000,
+        end_millis: Some(20000),
+    };
+    let (root, pipeline, mut checkpoint, wav) = fixture_with_range(1, Some(range));
+    drop(wav);
+    let source = root.join("input.m4a");
+    let samples: Vec<_> = (0..22 * 16000 + 1)
+        .map(|i| 0.2 * (i as f32 * 0.19).sin())
+        .collect();
+    fs::write(
+        &source,
+        syom::encode_with(
+            &[&samples],
+            16000,
+            &syom::EncodeOptions::default()
+                .with_bitrate_bps(64000)
+                .with_container(syom::EncodeContainer::M4a),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    let mut expected = Vec::new();
+    let frames = audio::decode_chunks(&source, 160000, &pipeline.runner.cancelled, |index, pcm| {
+        if index == 1 {
+            expected.extend_from_slice(pcm);
+        }
+        Ok(())
+    })
+    .unwrap();
+    let space = |available_bytes| storage::DiskSpace {
+        available_bytes,
+        allocation_unit: 4096,
+        available_files: None,
+    };
+    let mut queries = 0;
+    let error = pipeline
+        .extract_audio_with_space(&pipeline.runner, &mut checkpoint, &source, Some(22), |_| {
+            queries += 1;
+            // Fits one selected WAV, but not the complete 22-second recording.
+            if queries == 2 {
+                pipeline.runner.cancelled.store(true, Ordering::SeqCst);
+            }
+            Ok(space(323584))
+        })
+        .err()
+        .unwrap();
+    assert!(pipeline.runner.cancelled.load(Ordering::SeqCst), "{error}");
+    assert!(!root.join("chunks/000000.wav").exists());
+    assert!(!root.join("chunks/000002.wav").exists());
+    assert!(!root.join("media/audio.json").exists());
+    assert_eq!(
+        checkpoint.latest_decode_resume().unwrap().0,
+        1,
+        "the selected chunk must have a durable exact decoder checkpoint"
+    );
+    let selected = fs::read(root.join("chunks/000001.wav")).unwrap();
+    assert_eq!(
+        ryf::f32_to_s16le(&ryf::read(root.join("chunks/000001.wav")).unwrap().channels[0]),
+        expected
+    );
+    // Reopen the actual journal and resume after the selected chunk. A missing
+    // prefix WAV is intentional, while the selected saved WAV remains required.
+    drop(checkpoint);
+    let saved: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("state.json")).unwrap()).unwrap();
+    let mut checkpoint = Checkpoint::open(
+        &root,
+        serde_json::from_value(saved["config"].clone()).unwrap(),
+    )
+    .unwrap();
+    pipeline.runner.cancelled.store(false, Ordering::SeqCst);
+    fs::rename(
+        root.join("chunks/000001.wav"),
+        root.join("selected.saved.wav"),
+    )
+    .unwrap();
+    let missing = pipeline
+        .extract_audio_with_space(&pipeline.runner, &mut checkpoint, &source, Some(22), |_| {
+            panic!("missing retained PCM must fail before querying space")
+        })
+        .err()
+        .unwrap();
+    assert_eq!(
+        missing
+            .downcast_ref::<crate::protocol::Failure>()
+            .unwrap()
+            .code,
+        "checkpoint_artifact_missing"
+    );
+    fs::rename(
+        root.join("selected.saved.wav"),
+        root.join("chunks/000001.wav"),
+    )
+    .unwrap();
+    let decoded = pipeline
+        .extract_audio_with_space(&pipeline.runner, &mut checkpoint, &source, Some(22), |_| {
+            Ok(space(0))
+        })
+        .unwrap();
+    assert_eq!(decoded.frames, frames);
+    assert_eq!(decoded.frames, samples.len() as u64);
+    assert_eq!(fs::read(root.join("chunks/000001.wav")).unwrap(), selected);
+    assert!(!root.join("chunks/000000.wav").exists());
+    assert!(!root.join("chunks/000002.wav").exists());
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[cfg(unix)]
+#[test]
+#[ignore = "two full decodes of an owner-provided long source; local disk and PCM qualification"]
+fn real_long_range_retention_profile() {
+    use sha2::{Digest, Sha256};
+    let input = PathBuf::from(std::env::var_os("AGENT_YOUTUBE_RANGE_PROFILE_SOURCE").unwrap());
+    let range = crate::time_range::TimeRange {
+        start_millis: 3600123,
+        end_millis: Some(3660123),
+    };
+    let (root, pipeline, mut checkpoint, wav) = fixture_with_range(1, Some(range));
+    drop(wav);
+    let source = root.join("input.m4a");
+    fs::copy(&input, &source).unwrap();
+    let chunk_frames = 160000;
+    let start = range.start_millis * 16;
+    let end = range.end_millis.unwrap() * 16;
+    let mut expected = Sha256::new();
+    let begin = std::time::Instant::now();
+    let frames = audio::decode_chunks(
+        &source,
+        chunk_frames,
+        &pipeline.runner.cancelled,
+        |index, pcm| {
+            let offset = index as u64 * chunk_frames;
+            let left = start.max(offset);
+            let right = end.min(offset + pcm.len() as u64 / 2);
+            if left < right {
+                expected
+                    .update(&pcm[((left - offset) * 2) as usize..((right - offset) * 2) as usize]);
+            }
+            Ok(())
+        },
+    )
+    .unwrap();
+    let baseline_ms = begin.elapsed().as_millis();
+    assert!(
+        frames > end,
+        "qualification requires a source longer than the selected interval"
+    );
+    let begin = std::time::Instant::now();
+    let decoded = pipeline
+        .extract_audio(&pipeline.runner, &mut checkpoint, &source, None)
+        .unwrap();
+    let ranged_ms = begin.elapsed().as_millis();
+    assert_eq!(decoded.frames, frames);
+    let mut actual = Sha256::new();
+    audio::copy_pcm_span(
+        &root,
+        chunk_frames,
+        start,
+        end - start,
+        &pipeline.runner.cancelled,
+        |pcm| {
+            actual.update(pcm);
+            Ok(())
+        },
+    )
+    .unwrap();
+    let expected = format!("{:x}", expected.finalize());
+    assert_eq!(format!("{:x}", actual.finalize()), expected);
+    let retained_pcm_bytes: u64 = fs::read_dir(root.join("chunks"))
+        .unwrap()
+        .map(|entry| entry.unwrap())
+        .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "wav"))
+        .map(|entry| entry.metadata().unwrap().len())
+        .sum();
+    let checkpoint_bytes: u64 = fs::read_dir(root.join("chunks"))
+        .unwrap()
+        .map(|entry| entry.unwrap())
+        .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "json"))
+        .map(|entry| entry.metadata().unwrap().len())
+        .sum();
+    assert!(retained_pcm_bytes < frames * 2);
+    eprintln!(
+        "range_retention_profile {}",
+        serde_json::json!({
+        "source_bytes":fs::metadata(&source).unwrap().len(),"source_sha256":storage::digest(&source).unwrap(),"source_frames":frames,
+            "range_start_millis":range.start_millis,"range_end_millis":range.end_millis,
+            "selected_pcm_sha256":expected,"full_pcm_bytes":frames*2,
+            "retained_wav_bytes":retained_pcm_bytes,"decoder_checkpoint_bytes":checkpoint_bytes,
+            "full_decode_ms":baseline_ms,"ranged_retention_decode_ms":ranged_ms,
+            "download":"full_audio","decode":"full_audio","pcm_equal":true
+        })
+    );
     fs::remove_dir_all(root).unwrap();
 }
 

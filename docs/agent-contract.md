@@ -178,8 +178,10 @@ Stderr contains only JSON lines with `schema_version`, `event` (`progress` or
 `error`) and a message or error object. Progress has a stable `stage` and available
 numeric counters (`completed_chunks`, `total_chunks`, `downloaded_bytes`,
 `total_bytes`, `processed_seconds`, `total_seconds`) or RSS/budget measurements.
-Recognition counters have `scope: "pending_batch"`; assembly/decoder counters
-refer to the recording. Recognition observations use `durable: false`; validated adopted results use
+Recognition counters have `scope: "pending_batch"`. For ranged jobs, decoder
+publication counters use `scope: "selection"` and count retained fixed-grid WAVs;
+they do not count every decoded source chunk. Whole-video decoder counters refer
+to the recording. Recognition observations use `durable: false`; validated adopted results use
 `durable: true`. `assemble` is canonical assembly after recognition, not inference.
 Process diagnostics stay in owned log files.
 A `cleanup_pending` error has `details.transcript_published: true`, artifact paths

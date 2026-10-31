@@ -73,10 +73,15 @@ recording end is clamped; a start at/past that end fails with range_out_of_bound
 and preserves downloaded/decoded media. Decoded duration determines actual bounds,
 not rounded YouTube metadata or the timestamp of the last recognized word.
 
-This first implementation downloads and decodes the complete audio and verifies
+The implementation downloads and decodes the complete audio and verifies
 its duration. Only the selected samples reach GigaSTT; it does not save network
-traffic or full decode work. No new recognition or text-normalization engine is
-introduced. CPU/disk for complete decoding still apply. Pause-adjusted internal
+traffic or full decode work. Starting with 0.13.1, new decoding retains WAVs only
+for fixed-grid chunks intersecting the selected interval. A cut inside a chunk
+retains that complete chunk; exact cropping still happens before recognition.
+Decoder state remains resumable without WAVs outside the interval. Existing
+owned WAVs are preserved until normal cleanup after validated publication.
+Compressed source storage, decoder checkpoints and full decoding CPU still apply.
+No new recognition or text-normalization engine is introduced. Pause-adjusted internal
 cuts remain within the selected interval, including fractional and cross-grid cuts.
 
 Timestamps in words, passages, Markdown and SRT/VTT remain relative to the original

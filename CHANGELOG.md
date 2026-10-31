@@ -8,6 +8,17 @@ JSON or canonical transcripts. Source is public; crates.io publication stays dis
 
 ## Unreleased
 
+## 0.13.1 — 2026-10-31
+
+- Retain decoded WAVs only for fixed-grid chunks intersecting --start/--end.
+  Keep complete audio acquisition, full decoding and duration verification;
+  network traffic and decoding CPU are unchanged. Exact GigaSTT input and
+  original timestamps are preserved, including cuts inside decoder chunks.
+- Budget pending PCM disk space for the selected chunks and resume exact decoder
+  state without requiring intentionally omitted WAVs. Missing retained chunks
+  still fail verification. Existing owned media stays until validated transcript
+  publication. No dependency, JSON/checkpoint format or binary release change.
+
 ## 0.13.0 — 2026-10-31
 
 - Add read-only describe and describe COMMAND with typed logical CLI input schemas,
