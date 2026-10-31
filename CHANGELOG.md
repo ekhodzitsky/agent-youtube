@@ -8,6 +8,27 @@ JSON or canonical transcripts. Source is public; crates.io publication stays dis
 
 ## Unreleased
 
+## 0.12.0 — 2026-10-31
+
+- Add --start/--end to transcribe and batch. Accept seconds or HH:MM:SS with
+  millisecond precision; keep timestamps on the original video timeline. Download
+  and validate the complete audio, then send only selected PCM to GigaSTT.
+- Persist requested ranges in job/checkpoint identity. Resume reuses saved bounds;
+  changed bounds require a new work directory even after successful publication.
+  Ranged checkpoints use schema5 so older binaries reject their ASR span semantics;
+  whole-video checkpoints keep schema4.
+  Clamp the end to actual decoded audio; reject empty or out-of-bounds selections
+  without deleting owned media. Pause-adjusted cuts remain inside the selection.
+- Ranged canonical transcripts and coverage artifacts use schema2 with explicit
+  requested and actual frame bounds; whole-video files retain schema1 unchanged.
+  Compact responses keep their schema2 envelope and add human-readable range
+  metadata and range-scoped coverage/gap diagnostics. Exports retain original
+  timestamps; Markdown and VTT also identify the processed range.
+- Rust Options/Transcript literals now need range: None for whole-video work;
+  Outcome exposes the optional resolved range. Old saved JSON
+  invocations/configurations default to no range. No dependency changes or binary
+  release; the published 0.10.1 executable does not include these source features.
+
 ## 0.11.0 — 2026-10-31
 
 - Add JSONL batch transcription with caller IDs, immutable batch membership and

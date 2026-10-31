@@ -18,6 +18,7 @@ mod process_memory;
 pub mod protocol;
 mod runtime;
 pub mod storage;
+pub mod time_range;
 pub mod transcript;
 mod web;
 

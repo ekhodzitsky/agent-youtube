@@ -19,6 +19,8 @@ Labels: `audit`, `research`. `remoteOperations` and `autoCommit` stay false.
 ## Development branch
 Use `main` as the single development branch. Commit and push completed work directly
 to `main`. Create a feature branch or pull request only when the owner explicitly asks.
+Accumulate substantial updates before publishing a new binary release; do not cut
+one for every feature. Continue source versioning and changelog updates during development.
 Run development checks locally. Do not trigger GitHub Actions unless the owner explicitly
 asks to resume hosted CI. Commits and pushes remain authorized; workflows stay manual-only.
 

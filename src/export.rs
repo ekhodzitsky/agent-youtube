@@ -166,8 +166,24 @@ impl<W: std::io::Write> Renderer<W> {
         if format == Format::Md {
             let title = header.source.title.as_deref().unwrap_or("Transcript");
             write!(writer, "# {}\n\n", normalized(title))?;
+            if let Some(range) = header.range {
+                writeln!(
+                    writer,
+                    "Recognition range: {:.3} to {:.3} seconds in the original video.\n",
+                    range.start_frame as f64 / 16000.0,
+                    range.end_frame as f64 / 16000.0
+                )?;
+            }
         } else if format == Format::Vtt {
             writer.write_all(b"WEBVTT\n\n")?;
+            if let Some(range) = header.range {
+                writeln!(
+                    writer,
+                    "NOTE Recognition range: {:.3} to {:.3} seconds in the original video.\n",
+                    range.start_frame as f64 / 16000.0,
+                    range.end_frame as f64 / 16000.0
+                )?;
+            }
         }
         Ok(Self {
             writer,

@@ -339,6 +339,7 @@ mod tests {
     fn cancellation_is_scoped_to_the_current_locked_generation() {
         let (root, _checkpoint) = crate::checkpoint::tests::fixture();
         let options = Options {
+            range: None,
             url: "https://youtu.be/a2hbJlPxj4M".into(),
             work_dir: root.clone(),
             model_dir: root.join("models"),

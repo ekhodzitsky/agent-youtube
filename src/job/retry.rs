@@ -389,6 +389,7 @@ mod tests {
         let (root, retry) = fixture();
         write(&retry.path, retry.state.as_ref().unwrap()).unwrap();
         let options = crate::pipeline::Options {
+            range: None,
             url: "https://youtu.be/a2hbJlPxj4M".into(),
             work_dir: root.clone(),
             model_dir: root.join("models"),

@@ -2512,6 +2512,10 @@ elif name == 'gigastt':
             assert (wav.getnchannels(), wav.getsampwidth(), wav.getframerate()) == (1, 2, 16000)
             duration = wav.getnframes() / wav.getframerate()
         result = {'duration': duration + float(os.environ.get('FAKE_DURATION_OFFSET', '0')), 'text': ('x' * int(os.environ['FAKE_TEXT_SIZE'])) if os.environ.get('FAKE_TEXT_SIZE') else 'Привет, мир!', 'upstream_extra': 'retain me', 'words': [{'word': 'Привет,', 'start': 0.0, 'end': 0.5, 'confidence': 0.9, 'speaker': 0}, {'word': 'мир!', 'start': 0.5, 'end': min(1.0, duration), 'confidence': 0.8, 'speaker': 0}]}
+        if os.environ.get('FAKE_CAPTURE_PCM'):
+            import hashlib
+            with wave.open(str(audio), 'rb') as wav:
+                result['fixture_pcm_sha256'] = hashlib.sha256(wav.readframes(wav.getnframes())).hexdigest()
         if os.environ.get('FAKE_SLEEP'):
             import time
             time.sleep(float(os.environ['FAKE_SLEEP']))
@@ -4034,4 +4038,217 @@ fn interrupted_batch_preserves_jobs_and_resumes_after_process_restart() {
         String::from_utf8_lossy(&resumed.stderr)
     );
     assert_eq!(batch_json(&resumed)["result"]["succeeded"], 3);
+}
+
+#[test]
+fn selected_range_uses_exact_cross_chunk_pcm_and_resumes_with_absolute_times() {
+    use sha2::{Digest, Sha256};
+    let fixture = Fixture::new();
+    let failed = fixture
+        .run_command(URL)
+        .args(["--start", "00:00:09", "--end", "11"])
+        .env("FAKE_FAIL_CHUNK", "000000")
+        .output()
+        .unwrap();
+    let failure = batch_json(&failed);
+    assert_eq!(failure["error"]["code"], "process_failed", "{failure}");
+    let state: serde_json::Value =
+        serde_json::from_slice(&fs::read(fixture.path("state.json")).unwrap()).unwrap();
+    assert_eq!(state["schema_version"], 5);
+    let a = ryf::read(fixture.path("chunks/000000.wav")).unwrap();
+    let b = ryf::read(fixture.path("chunks/000001.wav")).unwrap();
+    let mut samples = a.channels[0][9 * 16000..].to_vec();
+    samples.extend_from_slice(&b.channels[0][..16000]);
+    let pcm = ryf::f32_to_s16le(&samples);
+    let expected = format!("{:x}", Sha256::digest(pcm));
+    let resumed = Command::new(env!("CARGO_BIN_EXE_agent-youtube"))
+        .args(["resume", "--work-dir"])
+        .arg(fixture.path(""))
+        .env("FAKE_CAPTURE_PCM", "1")
+        .output()
+        .unwrap();
+    assert!(
+        resumed.status.success(),
+        "{}",
+        String::from_utf8_lossy(&resumed.stderr)
+    );
+    let raw: serde_json::Value =
+        serde_json::from_slice(&fs::read(fixture.path("raw/000000.json")).unwrap()).unwrap();
+    assert_eq!(raw["duration"], 2.0);
+    assert_eq!(raw["fixture_pcm_sha256"], expected);
+    assert!(!fixture.path("raw/000001.json").exists());
+    let t: serde_json::Value =
+        serde_json::from_slice(&fs::read(fixture.path("transcript.json")).unwrap()).unwrap();
+    assert_eq!(t["schema_version"], 2);
+    assert_eq!(t["segments"][0]["start"], 9.0);
+    assert_eq!(t["range"]["start_frame"], 144000);
+    assert_eq!(t["range"]["end_frame"], 176000);
+    let response: serde_json::Value = serde_json::from_slice(&resumed.stdout).unwrap();
+    assert_eq!(
+        response["result"]["transcript"]["range"]["start_seconds"],
+        9.0
+    );
+    assert_eq!(
+        response["result"]["transcript"]["coverage"]["frames"],
+        32000
+    );
+    let original = fs::read(fixture.path("transcript.json")).unwrap();
+    let invocation = fs::read(fixture.path("job.json")).unwrap();
+    let changed = fixture
+        .run_command(URL)
+        .args(["--start", "8", "--end", "11"])
+        .output()
+        .unwrap();
+    assert_eq!(
+        batch_json(&changed)["error"]["code"],
+        "checkpoint_settings_mismatch"
+    );
+    assert_eq!(fs::read(fixture.path("transcript.json")).unwrap(), original);
+    assert_eq!(fs::read(fixture.path("job.json")).unwrap(), invocation);
+    let no_range = fixture.run_command(URL).output().unwrap();
+    assert_eq!(
+        batch_json(&no_range)["error"]["code"],
+        "checkpoint_settings_mismatch"
+    );
+    let mut documents = Vec::new();
+    contract::collect(&resumed, &mut documents);
+    contract::validate(&documents);
+}
+
+#[test]
+fn range_end_clamps_to_decoded_audio_and_empty_selection_retains_media() {
+    let fixture = Fixture::new();
+    let output = fixture
+        .run_command(URL)
+        .args(["--start", "10", "--end", "90", "--response", "full"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let response = batch_json(&output);
+    let t = &response["result"]["transcript"];
+    assert_eq!(t["range"]["requested"]["end_millis"], 90000);
+    assert_eq!(t["range"]["end_frame"], 192000);
+    assert_eq!(t["range"]["end_frame"], t["range"]["source_frames"]);
+    assert_eq!(t["schema_version"], 2);
+    assert_eq!(t["segments"][0]["start"], 10.0);
+    let mut docs = Vec::new();
+    contract::collect(&output, &mut docs);
+    for name in ["transcript.json", "manifest.json", "coverage.json"] {
+        docs.push(serde_json::from_slice(&fs::read(fixture.path(name)).unwrap()).unwrap());
+    }
+    contract::validate(&docs);
+    let outside = Fixture::new();
+    let failed = outside
+        .run_command(URL)
+        .args(["--start", "13"])
+        .output()
+        .unwrap();
+    assert_eq!(batch_json(&failed)["error"]["code"], "range_out_of_bounds");
+    assert!(outside.path("media/source.audio").is_file());
+    assert!(outside.calls("gigastt", "fixture-file").is_empty());
+}
+#[test]
+fn ranged_pause_boundaries_and_subtitle_exports_keep_original_video_time() {
+    let fixture = Fixture::new();
+    let output = fixture
+        .run_command(URL)
+        .args([
+            "--start",
+            "1.001",
+            "--end",
+            "11.501",
+            "--boundary-window-ms",
+            "1000",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let coverage: serde_json::Value =
+        serde_json::from_slice(&fs::read(fixture.path("coverage.json")).unwrap()).unwrap();
+    assert_eq!(coverage["chunks"], 2);
+    assert_eq!(coverage["range"]["start_frame"], 16016);
+    for format in ["json", "md", "srt", "vtt"] {
+        let path = fixture.root.join(format!("ranged.{format}"));
+        let exported = Command::new(env!("CARGO_BIN_EXE_agent-youtube"))
+            .arg("export")
+            .arg(fixture.path("transcript.json"))
+            .arg("--format")
+            .arg(format)
+            .arg("--output")
+            .arg(&path)
+            .output()
+            .unwrap();
+        assert!(
+            exported.status.success(),
+            "{}",
+            String::from_utf8_lossy(&exported.stderr)
+        );
+        let text = fs::read_to_string(path).unwrap();
+        if format == "json" {
+            let x: serde_json::Value = serde_json::from_str(&text).unwrap();
+            assert_eq!(x["range"]["start_seconds"], 1.001);
+        } else if format == "md" {
+            assert!(text.contains("Recognition range: 1.001"));
+        } else {
+            assert!(text.contains(if format == "srt" {
+                "00:00:01,001"
+            } else {
+                "00:00:01.001"
+            }));
+        }
+    }
+}
+
+#[test]
+fn batch_preserves_common_range_and_rejects_changed_bounds() {
+    let fixture = Fixture::new();
+    let input = fixture.root.join("ranged.jsonl");
+    fs::write(
+        &input,
+        format!("{{\"id\":\"one\",\"url\":{URL:?}}}\n{{\"id\":\"two\",\"url\":{URL:?}}}\n"),
+    )
+    .unwrap();
+    let output = batch_command(&fixture, &input)
+        .args(["--start", "9", "--end", "11"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let response = batch_json(&output);
+    assert_eq!(response["result"]["succeeded"], 2);
+    for item in response["result"]["items"].as_array().unwrap() {
+        assert_eq!(item["range"]["start_seconds"], 9.0);
+        assert_eq!(item["range"]["end_seconds"], 11.0);
+        let path = PathBuf::from(item["artifacts"]["transcript"].as_str().unwrap());
+        let t: serde_json::Value = serde_json::from_slice(&fs::read(path).unwrap()).unwrap();
+        assert_eq!(t["range"]["start_frame"], 144000);
+        assert_eq!(t["range"]["end_frame"], 176000);
+    }
+    let before = batch_asr_calls(&fixture);
+    let again = batch_command(&fixture, &input)
+        .args(["--start", "9", "--end", "11"])
+        .output()
+        .unwrap();
+    assert!(again.status.success());
+    assert_eq!(batch_asr_calls(&fixture), before);
+    let changed = batch_command(&fixture, &input)
+        .args(["--start", "8", "--end", "11"])
+        .output()
+        .unwrap();
+    assert_eq!(
+        batch_json(&changed)["error"]["code"],
+        "batch_identity_mismatch"
+    );
+    assert_eq!(batch_asr_calls(&fixture), before);
 }

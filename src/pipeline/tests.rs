@@ -11,6 +11,7 @@ fn fixture(frames: u64) -> (PathBuf, Pipeline, Checkpoint, audio::Wav) {
     ));
     let pipeline = Pipeline::new(
         Options {
+            range: None,
             url: "https://youtu.be/a2hbJlPxj4M".into(),
             work_dir: root.clone(),
             model_dir: root.join("models"),
@@ -29,6 +30,7 @@ fn fixture(frames: u64) -> (PathBuf, Pipeline, Checkpoint, audio::Wav) {
     let checkpoint = Checkpoint::open(
         &root,
         Config {
+            range: None,
             url: pipeline.options.url.clone(),
             model_dir: root.join("models"),
             model_variant: Default::default(),

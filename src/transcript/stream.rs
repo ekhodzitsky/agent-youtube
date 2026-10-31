@@ -14,6 +14,7 @@ use std::{
 struct Segments<'a, I> {
     values: RefCell<I>,
     duration: f64,
+    range: Option<crate::time_range::SelectedRange>,
     failure: &'a RefCell<Option<Box<dyn std::error::Error + Send + Sync>>>,
 }
 
@@ -27,6 +28,12 @@ impl<I: Iterator<Item = Result<Segment>>> Serialize for Segments<'_, I> {
         for value in self.values.borrow_mut().by_ref() {
             let segment = match value.and_then(|segment| {
                 segment.validate(previous, self.duration)?;
+                if let Some(range) = self.range
+                    && (segment.start < range.start_frame as f64 / 16000.0
+                        || segment.end > range.end_frame as f64 / 16000.0)
+                {
+                    return Err("segment exceeds recognition range".into());
+                }
                 Ok(segment)
             }) {
                 Ok(segment) => segment,
@@ -57,6 +64,8 @@ pub(crate) fn write_streaming(
         language: &'a str,
         duration: f64,
         engine: &'a Engine,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        range: Option<crate::time_range::SelectedRange>,
         segments: S,
     }
     let failure = RefCell::new(None);
@@ -70,9 +79,11 @@ pub(crate) fn write_streaming(
             language: &header.language,
             duration: header.duration,
             engine: &header.engine,
+            range: header.range,
             segments: Segments {
                 values: RefCell::new(segments),
                 duration: header.duration,
+                range: header.range,
                 failure: &failure,
             },
         },
@@ -93,29 +104,34 @@ struct SegmentScan<'a, F> {
 }
 
 impl<'de, F: FnMut(&Segment) -> Result<()>> DeserializeSeed<'de> for SegmentScan<'_, F> {
-    type Value = f64;
+    type Value = (Option<f64>, f64);
     fn deserialize<D: de::Deserializer<'de>>(
         self,
         deserializer: D,
-    ) -> std::result::Result<f64, D::Error> {
+    ) -> std::result::Result<(Option<f64>, f64), D::Error> {
         deserializer.deserialize_seq(self)
     }
 }
 impl<'de, F: FnMut(&Segment) -> Result<()>> Visitor<'de> for SegmentScan<'_, F> {
-    type Value = f64;
+    type Value = (Option<f64>, f64);
     fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("transcript segments")
     }
-    fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> std::result::Result<f64, A::Error> {
+    fn visit_seq<A: SeqAccess<'de>>(
+        self,
+        mut seq: A,
+    ) -> std::result::Result<(Option<f64>, f64), A::Error> {
         let mut previous = 0.0;
+        let mut first = None;
         while let Some(segment) = seq.next_element::<Segment>()? {
             segment
                 .validate(previous, f64::MAX)
                 .map_err(de::Error::custom)?;
+            first.get_or_insert(segment.start);
             previous = segment.end;
             (self.callback)(&segment).map_err(de::Error::custom)?;
         }
-        Ok(previous)
+        Ok((first, previous))
     }
 }
 impl<'de, F: FnMut(&Segment) -> Result<()>> DeserializeSeed<'de> for Scan<'_, F> {
@@ -143,6 +159,7 @@ impl<'de, F: FnMut(&Segment) -> Result<()>> Visitor<'de> for Scan<'_, F> {
                 $target = Some(map.next_value()?);
             }};
         }
+        let mut range: Option<Option<crate::time_range::SelectedRange>> = None;
         while let Some(key) = map.next_key::<String>()? {
             match key.as_str() {
                 "schema_version" => field!(version, "schema_version"),
@@ -150,6 +167,7 @@ impl<'de, F: FnMut(&Segment) -> Result<()>> Visitor<'de> for Scan<'_, F> {
                 "language" => field!(language, "language"),
                 "duration" => field!(duration, "duration"),
                 "engine" => field!(engine, "engine"),
+                "range" => field!(range, "range"),
                 "segments" => {
                     if end.is_some() {
                         return Err(de::Error::duplicate_field("segments"));
@@ -168,9 +186,17 @@ impl<'de, F: FnMut(&Segment) -> Result<()>> Visitor<'de> for Scan<'_, F> {
             duration: duration.ok_or_else(|| de::Error::missing_field("duration"))?,
             engine: engine.ok_or_else(|| de::Error::missing_field("engine"))?,
             segments: Vec::new(),
+            range: range.flatten(),
         };
         result.validate().map_err(de::Error::custom)?;
-        if end.ok_or_else(|| de::Error::missing_field("segments"))? > result.duration {
+        let (first, last) = end.ok_or_else(|| de::Error::missing_field("segments"))?;
+        if let Some(range) = result.range
+            && (first.is_some_and(|s| s < range.start_frame as f64 / 16000.0)
+                || last > range.end_frame as f64 / 16000.0)
+        {
+            return Err(de::Error::custom("segments exceed recognition range"));
+        }
+        if last > result.duration {
             return Err(de::Error::custom("segments exceed transcript duration"));
         }
         Ok(result)
@@ -406,5 +432,45 @@ mod tests {
         assert!(read_streaming(Cursor::new(value.to_string()), |_| Ok(())).is_err());
         value["segments"] = serde_json::json!([]);
         read_streaming(Cursor::new(value.to_string()), |_| Ok(())).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod range_tests {
+    use super::*;
+    #[test]
+    fn ranged_canonical_requires_schema2_and_rejects_segments_outside_selection() {
+        let mut t = crate::transcript::tests::sample();
+        t.duration = 20.0;
+        t.schema_version = 2;
+        t.range = Some(
+            crate::time_range::TimeRange {
+                start_millis: 5000,
+                end_millis: Some(7000),
+            }
+            .resolve(320000)
+            .unwrap(),
+        );
+        let scan = |t: &Transcript| {
+            read_streaming(std::io::Cursor::new(serde_json::to_vec(t).unwrap()), |_| {
+                Ok(())
+            })
+        };
+        assert!(scan(&t).is_err());
+        for segment in &mut t.segments {
+            segment.start += 5.0;
+            segment.end += 5.0;
+            for word in &mut segment.words {
+                word.start += 5.0;
+                word.end += 5.0;
+            }
+        }
+        t.validate().unwrap();
+        assert_eq!(scan(&t).unwrap().range, t.range);
+        t.schema_version = 1;
+        assert!(scan(&t).is_err());
+        t.schema_version = 2;
+        t.range = None;
+        assert!(scan(&t).is_err());
     }
 }

@@ -59,6 +59,7 @@ fn trial(
     let cancelled = Arc::new(AtomicBool::new(false));
     let mut pipeline = Pipeline::new(
         Options {
+            range: None,
             url: "https://youtu.be/a2hbJlPxj4M".into(),
             work_dir: root.into(),
             model_dir: model_dir.into(),
@@ -108,6 +109,7 @@ fn trial(
             }
         }
         let header = Transcript {
+            range: None,
             schema_version: 1,
             source: Source {
                 url: "https://huggingface.co/datasets/google/fleurs".into(),

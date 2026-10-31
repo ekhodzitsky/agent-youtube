@@ -6,6 +6,62 @@ Moved from the root README on 2026-10-27. Commands assume the repository root.
 Historical verification statements retain their original dates and scope; they are
 not new measurements of the current version.
 
+## Recognition time ranges
+
+Available in 0.12.0 source builds; no new binary release is published for this feature.
+After setup, select a passage using seconds or HH:MM:SS with up to three decimal
+places. Missing start means zero; missing end means the actual decoded end:
+
+```sh
+agent-youtube transcribe 'https://www.youtube.com/watch?v=jNQXAC9IVRw' \
+  --start 00:00:05 --end 15 --work-dir runs/passage
+```
+
+The interval is half-open: start included, end excluded, at exact 16 kHz frame
+boundaries. Millisecond input is exact (16 frames per millisecond). Negative,
+non-finite, exponent-form or overflowing timestamps, reversed/empty bounds and
+invalid clock fields are rejected before creating a job. An end past the decoded
+recording end is clamped; a start at/past that end fails with range_out_of_bounds
+and preserves downloaded/decoded media. Decoded duration determines actual bounds,
+not rounded YouTube metadata or the timestamp of the last recognized word.
+
+This first implementation downloads and decodes the complete audio and verifies
+its duration. Only the selected samples reach GigaSTT; it does not save network
+traffic or full decode work. No new recognition or text-normalization engine is
+introduced. CPU/disk for complete decoding still apply. Pause-adjusted internal
+cuts remain within the selected interval, including fractional and cross-grid cuts.
+
+Timestamps in words, passages, Markdown and SRT/VTT remain relative to the original
+video; they do not start at zero. duration continues to mean the full decoded
+source duration. Compact/metadata JSON adds range with requested_start_seconds,
+requested_end_seconds (null for open end), actual start_seconds/end_seconds and
+download=full_audio. Coverage.scope is audio_range_processed; frames counts only
+selected input, start_frame/end_frame are absolute and contiguous refers to this
+interval. Speech-gap diagnostics exclude audio outside the selection and still do
+not establish recognition accuracy or speech completeness.
+
+Ranged jobs use checkpoint schema5, which older binaries reject before recovery;
+whole-video checkpoint schema4 and existing legacy migrations remain unchanged.
+Do not downgrade an unfinished range job. Saved ranged transcript.json uses canonical schema2 and a range object with
+requested.start_millis/end_millis, start_frame/end_frame and source_frames, all
+frame values at 16 kHz. coverage.json uses schema2 with the same range; its frames
+field retains the full decoded frame count, while its chunks count describes
+selected ASR chunks. The manifest records exact source-frame spans and raw ASR
+hashes. Whole-video canonical and coverage files remain schema1 with no range
+field. --response full keeps its schema1 response envelope, but embeds canonical
+schema2 for a ranged transcript. JSON export is the compact schema2 agent view;
+TXT contains text only, while Markdown/VTT also state the recognition interval.
+
+Repeat the identical command or use resume --work-dir to continue; saved bounds
+are immutable even for a completed job. Omitting or changing an existing range
+returns checkpoint_settings_mismatch before publication recovery or cleanup.
+Use a fresh work directory for a different range. Batch accepts the same --start
+and --end options for every item; successful batch items include the same range
+summary, with each video's actual end. Changing bounds requires a new batch directory.
+status/cancel continue to operate on the selected job; resume accepts saved bounds
+rather than replacement range flags. URLs with a timestamp still identify a full
+video; only explicit --start/--end selects a recognition interval.
+
 ## Batch transcription
 
 Available in 0.11.0 source builds. The published 0.10.1 binary does not include it.

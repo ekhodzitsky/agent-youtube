@@ -9,17 +9,17 @@ impl Pipeline {
     ) -> Result<crate::boundaries::Plan> {
         let chunk_frames = u64::from(self.options.chunk_seconds) * u64::from(audio::SAMPLE_RATE);
         let window = self.options.boundary_window_ms;
+        let selection = self.options.range.map(|r| r.resolve(frames)).transpose()?;
+        let mut plan = crate::boundaries::Plan::selected(frames, chunk_frames, selection)?;
         if window == 0 {
-            return crate::boundaries::Plan::fixed(frames, chunk_frames);
+            return Ok(plan);
         }
         let path = self.options.work_dir.join("recognition.json");
-        let planned = frames
-            .div_ceil(chunk_frames)
+        let planned = u64::try_from(plan.count()?)?
             .saturating_add(1)
             .saturating_mul(64)
             .saturating_add(64 * 1024);
         crate::memory::require(planned, &path, "recognition_plan")?;
-        let mut plan = crate::boundaries::Plan::fixed(frames, chunk_frames)?;
         if checkpoint.completed("recognition.json")? {
             crate::memory::require(
                 fs::metadata(&path)?
@@ -44,6 +44,9 @@ impl Pipeline {
             }
             plan.adjust(&self.options.work_dir, window, &self.runner.cancelled)?;
             checkpoint.publish_bytes(&serde_json::to_vec(&plan)?, "recognition.json")?;
+        }
+        if plan.selection() != selection {
+            return Err("recognition range evidence differs from saved request".into());
         }
         plan.validate(frames, chunk_frames, window).map_err(|e| {
             crate::checkpoint::evidence_failure("recognition_plan_invalid", &path, e)
@@ -100,7 +103,7 @@ impl Pipeline {
         // the checkpoint; staging is only hard links and private ASR outputs.
         checkpoint.retire_batch()?;
         let chunk_frames = u64::from(self.options.chunk_seconds) * u64::from(audio::SAMPLE_RATE);
-        let count = usize::try_from(audio.frames.div_ceil(chunk_frames))?;
+        let count = plan.count()?;
         let mut indices = Vec::new();
         for index in 0..count {
             if !checkpoint.verified(&format!("raw/{index:06}.json"))? {
@@ -124,11 +127,26 @@ impl Pipeline {
             return Ok(());
         }
         if let Some(wav) = audio.legacy.as_mut() {
-            self.prepare_chunks(checkpoint, wav, &indices)?;
+            if self.options.range.is_none() {
+                self.prepare_chunks(checkpoint, wav, &indices)?;
+            } else {
+                for index in &indices {
+                    let (start, frames) = plan.span(*index)?;
+                    for source in start / chunk_frames..=(start + frames - 1) / chunk_frames {
+                        self.prepare_chunks(checkpoint, wav, &[usize::try_from(source)?])?;
+                    }
+                }
+            }
         }
-        {
-            for index in &indices {
-                let name = format!("chunks/{index:06}.wav");
+        let mut previous_source = None;
+        for index in &indices {
+            let (start, frames) = plan.span(*index)?;
+            for source in start / chunk_frames..=(start + frames - 1) / chunk_frames {
+                if previous_source == Some(source) {
+                    continue;
+                }
+                previous_source = Some(source);
+                let name = format!("chunks/{source:06}.wav");
                 if !checkpoint.completed(&name)? {
                     return Err(crate::checkpoint::evidence_failure(
                         "decoded_chunk_missing",
@@ -136,11 +154,11 @@ impl Pipeline {
                         "decoded chunk is missing; media preserved",
                     ));
                 }
-                let frames = (audio.frames - *index as u64 * chunk_frames).min(chunk_frames);
-                if audio::Wav::open(&self.options.work_dir.join(name))?.frames != frames {
+                let expected = (audio.frames - source * chunk_frames).min(chunk_frames);
+                if audio::Wav::open(&self.options.work_dir.join(&name))?.frames != expected {
                     return Err(crate::checkpoint::evidence_failure(
                         "decoded_chunk_invalid",
-                        &self.options.work_dir.join(format!("chunks/{index:06}.wav")),
+                        &self.options.work_dir.join(&name),
                         "decoded chunk length mismatch; media preserved",
                     ));
                 }
@@ -157,11 +175,11 @@ impl Pipeline {
         for index in &batch.indices {
             let (start, frames) = plan.span(*index)?;
             let destination = input.join(format!("{index:06}.wav"));
-            if start == *index as u64 * chunk_frames
-                && frames == (audio.frames - start).min(chunk_frames)
-            {
+            if start % chunk_frames == 0 && frames == (audio.frames - start).min(chunk_frames) {
                 fs::hard_link(
-                    self.options.work_dir.join(format!("chunks/{index:06}.wav")),
+                    self.options
+                        .work_dir
+                        .join(format!("chunks/{:06}.wav", start / chunk_frames)),
                     destination,
                 )?;
             } else {
@@ -295,7 +313,7 @@ impl Pipeline {
         let plan = self.recognition_plan(checkpoint, audio.frames)?;
         let rate = u64::from(audio::SAMPLE_RATE);
         let chunk_frames = u64::from(self.options.chunk_seconds) * rate;
-        let count = usize::try_from(audio.frames.div_ceil(chunk_frames))?;
+        let count = plan.count()?;
         let pending = checkpoint.pending("transcript.json")?;
         {
             let file = storage::private_file().open(&pending)?;
@@ -307,8 +325,9 @@ impl Pipeline {
                 let (start, frames) = plan.span(index)?;
                 let offset = start as f64 / rate as f64;
                 let span = frames as f64 / rate as f64;
-                crate::protocol::progress("assemble", format!("[3/4] chunk {}/{} ({offset:.1}s / {:.1}s)", index+1, count, header.duration),
-                    serde_json::json!({"scope":"recording","completed_chunks":index,"total_chunks":count,"processed_seconds":offset,"total_seconds":header.duration,"durable":true}));
+                let (processed,total,scope)=header.range.map(|r|((start-r.start_frame) as f64/rate as f64,(r.end_frame-r.start_frame) as f64/rate as f64,"selection")).unwrap_or((offset,header.duration,"recording"));
+                crate::protocol::progress("assemble", format!("[3/4] chunk {}/{} ({processed:.1}s / {total:.1}s)", index+1, count),
+                    serde_json::json!({"scope":scope,"completed_chunks":index,"total_chunks":count,"processed_seconds":processed,"total_seconds":total,"durable":true}));
                 checkpoint.completed(&format!("raw/{index:06}.json"))?;
                 let result = read_asr_result(
                     &self.options.work_dir.join(format!("raw/{index:06}.json")),
@@ -322,9 +341,10 @@ impl Pipeline {
         if !checkpoint.completed("coverage.json")? {
             let producer = crate::agent::producer();
             let coverage = crate::agent::Coverage {
-                schema_version: 1,
+                schema_version: if header.range.is_some() { 2 } else { 1 },
                 transcript_sha256: storage::digest(&pending)?,
                 frames: audio.frames,
+                range: header.range,
                 sample_rate: audio::SAMPLE_RATE,
                 chunk_frames,
                 chunks: count,

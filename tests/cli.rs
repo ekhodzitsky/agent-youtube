@@ -634,6 +634,7 @@ fn saved_resume_ignores_broken_default_runtime() {
     let job = fixture.0.join("job");
     fs::create_dir(&job).unwrap();
     let options = agent_youtube::pipeline::Options {
+        range: None,
         url: "https://www.youtube.com/watch?v=of4B3aw7MXo".into(),
         work_dir: job.clone(),
         gigastt: "/bin/false".into(),
@@ -692,5 +693,39 @@ fn offline_setup_in_an_empty_directory_reports_missing_assets_without_network() 
     assert!(!fixture.0.join("runtime/runtime.json").exists());
     for line in String::from_utf8(output.stderr).unwrap().lines() {
         let _: serde_json::Value = serde_json::from_str(line).unwrap();
+    }
+}
+
+#[test]
+fn invalid_time_ranges_fail_before_creating_work() {
+    for options in [
+        vec!["--start", "-1"],
+        vec!["--end", "0"],
+        vec!["--start", "00:99:00"],
+        vec!["--start", "NaN"],
+        vec!["--start", "1e3"],
+        vec!["--start", "10", "--end", "9"],
+        vec!["--start", "1.0001"],
+    ] {
+        let fixture = Fixture::new();
+        let output = fixture
+            .command()
+            .args([
+                "transcribe",
+                "https://youtu.be/jNQXAC9IVRw",
+                "--work-dir",
+                "job",
+                "--gigastt",
+                "absent",
+                "--model-dir",
+                "absent",
+            ])
+            .args(options)
+            .output()
+            .unwrap();
+        assert!(!output.status.success());
+        let value: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(value["error"]["code"], "invalid_time_range", "{value}");
+        assert_eq!(fs::read_dir(&fixture.0).unwrap().count(), 0);
     }
 }

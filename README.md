@@ -2,7 +2,7 @@
 
 YouTube transcripts for AI agents.
 
-[![Source version: 0.11.0](docs/assets/version.svg)](Cargo.toml)
+[![Source version: 0.12.0](docs/assets/version.svg)](Cargo.toml)
 [![License: MIT](docs/assets/license.svg)](LICENSE)
 [![CI: disabled](docs/assets/ci.svg)](.github/workflows/check.yml)
 [![Minimum Rust for source builds: 1.94](docs/assets/msrv.svg)](docs/verification.md#badge-sources)
@@ -38,6 +38,16 @@ agent-youtube export runs/first-job/transcript.json --format md --output transcr
 agent-youtube status --work-dir runs/first-job
 agent-youtube resume --work-dir runs/first-job
 ```
+
+**Transcribe a specific passage.** In 0.12.0 source builds:
+
+```sh
+agent-youtube transcribe 'https://www.youtube.com/watch?v=jNQXAC9IVRw' \
+  --start 5 --end 15 --work-dir runs/passage
+```
+
+Only that interval is recognized. Audio is still downloaded and decoded in full;
+timestamps refer to the original video. [Range details](docs/usage.md#recognition-time-ranges).
 
 **Process a list of videos.** In 0.11.0 source builds, submit JSONL records such as
 `{"id":"lecture","url":"https://www.youtube.com/watch?v=jNQXAC9IVRw"}`:

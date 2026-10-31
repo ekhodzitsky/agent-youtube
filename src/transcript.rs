@@ -9,6 +9,8 @@ pub struct Transcript {
     pub source: Source,
     pub language: String,
     pub duration: f64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub range: Option<crate::time_range::SelectedRange>,
     pub engine: Engine,
     pub segments: Vec<Segment>,
 }
@@ -109,12 +111,18 @@ impl Segment {
 
 impl Transcript {
     pub fn validate(&self) -> crate::Result<()> {
-        if self.schema_version != 1 {
+        if !matches!(
+            (self.schema_version, self.range.is_some()),
+            (1, false) | (2, true)
+        ) {
             return Err(format!(
                 "unsupported transcript schema version {}",
                 self.schema_version
             )
             .into());
+        }
+        if let Some(range) = self.range {
+            range.validate(self.duration)?;
         }
         if self.source.url.trim().is_empty()
             || self.source.video_id.trim().is_empty()
@@ -129,6 +137,12 @@ impl Transcript {
         let mut previous_end = 0.0;
         for segment in &self.segments {
             segment.validate(previous_end, self.duration)?;
+            if let Some(range) = self.range
+                && (segment.start < range.start_frame as f64 / 16000.0
+                    || segment.end > range.end_frame as f64 / 16000.0)
+            {
+                return Err("segment exceeds recognition range".into());
+            }
             previous_end = segment.end;
         }
         Ok(())
@@ -177,6 +191,7 @@ impl Transcript {
             });
         }
         let result = Self {
+            range: None,
             schema_version: 1,
             source,
             language: "ru".into(),

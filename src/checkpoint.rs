@@ -72,6 +72,8 @@ static SAVED_BYTES: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub(crate) struct Config {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub range: Option<crate::time_range::TimeRange>,
     pub url: String,
     pub model_dir: PathBuf,
     #[serde(default)]
@@ -176,9 +178,17 @@ impl Checkpoint {
         if state.application != "agent-youtube" {
             return Err("checkpoint belongs to another application; use a new --work-dir".into());
         }
+        if (state.schema_version == 5) != state.config.range.is_some() {
+            return Err(
+                "ranged jobs require checkpoint schema5; whole-video jobs use schemas1..4".into(),
+            );
+        }
+        if let Some(range) = state.config.range {
+            range.validate()?;
+        }
         let journal = match (state.schema_version, state.journal.clone()) {
             (1, None) => None,
-            (2..=4, Some(anchor)) => Some(
+            (2..=5, Some(anchor)) => Some(
                 Journal::load(root, &anchor, bytes, &mut state).map_err(|error| {
                     evidence_context(
                         "checkpoint_journal_invalid",
@@ -334,6 +344,9 @@ impl Checkpoint {
                 )?),
                 |_| Ok(()),
             )?;
+            if header.range.map(|r| r.requested) != checkpoint.state.config.range {
+                return Err("published range differs from saved configuration".into());
+            }
             checkpoint.validate_duration(header.duration)?;
         }
         let cleanup_complete = published
@@ -364,6 +377,21 @@ impl Checkpoint {
                 "checkpoint_settings_mismatch",
                 &root.join("state.json"),
                 "model variant changed; use a new --work-dir to preserve previous results",
+            ));
+        }
+        Ok(())
+    }
+    pub(crate) fn validate_range(
+        root: &Path,
+        range: Option<crate::time_range::TimeRange>,
+    ) -> Result<()> {
+        if let Some(checkpoint) = Self::load(root)?
+            && checkpoint.state.config.range != range
+        {
+            return Err(evidence_failure(
+                "checkpoint_settings_mismatch",
+                &root.join("state.json"),
+                "recognition range changed; use a new work directory",
             ));
         }
         Ok(())
@@ -670,11 +698,21 @@ impl Checkpoint {
         } else {
             None
         };
+        if header.range.map(|r| r.requested) != self.state.config.range {
+            return Err("published range differs from saved invocation".into());
+        }
+        if let Some(coverage) = &coverage {
+            coverage.validate_range(&header)?;
+        }
         let plan = coverage
             .as_ref()
             .map(|coverage| -> Result<crate::boundaries::Plan> {
                 let plan = if coverage.boundary_window_ms == 0 {
-                    crate::boundaries::Plan::fixed(coverage.frames, coverage.chunk_frames)?
+                    crate::boundaries::Plan::selected(
+                        coverage.frames,
+                        coverage.chunk_frames,
+                        coverage.range,
+                    )?
                 } else {
                     if !self.completed("recognition.json")? {
                         return Err("missing recognition plan".into());
@@ -684,6 +722,9 @@ impl Checkpoint {
                     crate::memory::require(bytes.saturating_mul(16), &path, "manifest")?;
                     serde_json::from_str(&storage::read_text(&path, bytes)?)?
                 };
+                if plan.selection() != coverage.range {
+                    return Err("manifest recognition range differs from coverage".into());
+                }
                 plan.validate(
                     coverage.frames,
                     coverage.chunk_frames,
@@ -834,7 +875,13 @@ impl Checkpoint {
     fn persist_change(&mut self, change: Change) -> Result<()> {
         // Mutations are already applied in memory. A legacy migration snapshots
         // that change directly rather than replaying it twice after the anchor.
-        if self.state.schema_version < 4 {
+        if self.state.schema_version
+            < if self.state.config.range.is_some() {
+                5
+            } else {
+                4
+            }
+        {
             return self.compact();
         }
         if let Some(journal) = &mut self.journal {
@@ -854,7 +901,12 @@ impl Checkpoint {
         }
         let journal = self.journal.as_mut().ok_or("missing checkpoint journal")?;
         let anchor = journal.anchor()?;
-        if self.state.schema_version == 4 && self.state.journal.as_ref() == Some(&anchor) {
+        let schema = if self.state.config.range.is_some() {
+            5
+        } else {
+            4
+        };
+        if self.state.schema_version == schema && self.state.journal.as_ref() == Some(&anchor) {
             return Ok(());
         }
         let planned = (self.state.artifacts.len() as u64)
@@ -879,7 +931,7 @@ impl Checkpoint {
             }
             return Err(error);
         }
-        self.state.schema_version = 4;
+        self.state.schema_version = schema;
         self.state.journal = Some(anchor);
         let bytes = match serde_json::to_vec_pretty(&self.state) {
             Ok(bytes) => bytes,
@@ -1665,6 +1717,7 @@ pub(crate) mod tests {
             fs::create_dir_all(root.join(dir)).unwrap();
         }
         let config = Config {
+            range: None,
             url: "https://www.youtube.com/watch?v=a2hbJlPxj4M".into(),
             model_dir: root.join("models"),
             model_variant: Default::default(),
@@ -1734,6 +1787,7 @@ pub(crate) mod tests {
                 fs::create_dir_all(root.join(dir)).unwrap();
             }
             let config = Config {
+                range: None,
                 url: "https://www.youtube.com/watch?v=a2hbJlPxj4M".into(),
                 model_dir: root.join("models"),
                 model_variant: Default::default(),
@@ -1793,6 +1847,7 @@ pub(crate) mod tests {
             fs::create_dir_all(root.join(dir)).unwrap();
         }
         let config = Config {
+            range: None,
             url: "https://youtu.be/a2hbJlPxj4M".into(),
             model_dir: root.join("models"),
             model_variant: Default::default(),

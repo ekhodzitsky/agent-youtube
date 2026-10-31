@@ -35,6 +35,8 @@ pub(crate) const MODEL_FILES: [&str; 4] = [
 #[serde(deny_unknown_fields)]
 pub struct Options {
     pub url: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub range: Option<crate::time_range::TimeRange>,
     pub work_dir: PathBuf,
     pub model_dir: PathBuf,
     #[serde(default)]
@@ -50,6 +52,7 @@ pub struct Options {
 }
 
 pub struct Outcome {
+    pub range: Option<crate::time_range::SelectedRange>,
     pub transcript: PathBuf,
     pub manifest: Option<PathBuf>,
     pub reused: bool,
@@ -136,6 +139,9 @@ impl Pipeline {
         downloader: Downloader,
     ) -> Result<Self> {
         video_id(&options.url)?;
+        if let Some(range) = options.range {
+            range.validate()?;
+        }
         if options.asr_timeout_seconds == 0 || options.encoder_threads == Some(0) {
             return Err("ASR timeout and encoder threads must be positive".into());
         }
@@ -411,6 +417,7 @@ impl Pipeline {
             .collect();
         Ok(Config {
             url,
+            range: self.options.range,
             model_dir: fs::canonicalize(&self.options.model_dir)?,
             model_fingerprint,
             model_variant: self.options.model_variant,
@@ -809,6 +816,7 @@ impl Pipeline {
         let id = video_id(&self.options.url)?;
         let url = format!("https://www.youtube.com/watch?v={id}");
         Checkpoint::validate_model(&self.options.work_dir, self.options.model_variant)?;
+        Checkpoint::validate_range(&self.options.work_dir, self.options.range)?;
         let finished = Checkpoint::finished(&self.options.work_dir, &url)?;
         if finished.is_none() {
             Checkpoint::validate_backend(&self.options.work_dir, &self.media_backend())?;
@@ -894,8 +902,14 @@ impl Pipeline {
         let rate = u64::from(audio::SAMPLE_RATE);
         let chunk_frames = u64::from(self.options.chunk_seconds) * rate;
         let last_start = (audio.frames - 1) / chunk_frames * chunk_frames;
+        let selection = self
+            .options
+            .range
+            .map(|r| r.resolve(audio.frames))
+            .transpose()?;
         let header = Transcript {
-            schema_version: 1,
+            schema_version: if selection.is_some() { 2 } else { 1 },
+            range: selection,
             source: Source {
                 url,
                 video_id: id,
@@ -938,6 +952,7 @@ impl Pipeline {
             serde_json::json!({}),
         );
         Ok(Outcome {
+            range: header.range,
             transcript: output,
             manifest,
             reused: false,

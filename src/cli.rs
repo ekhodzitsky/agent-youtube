@@ -31,6 +31,8 @@ Usage:
   agent-youtube export TRANSCRIPT.json --format json|md|txt|srt|vtt --output FILE [--force]
 
 Options:
+  --start TIME                recognize from seconds or HH:MM:SS[.mmm] (default 0)
+  --end TIME                  recognize up to this exclusive timestamp (default decoded end)
   --jobs N                    batch pipeline workers, 1..8 (default 1); recognition stays serial
   --retry-window-seconds N    automatic recovery wait budget (default 3600; 0 disables)
   --response compact|metadata|full  transcribe response (default compact, schema2; full preserves schema1)
@@ -114,6 +116,8 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
                 "--output",
                 "--response",
                 "--jobs",
+                "--start",
+                "--end",
             ]
             .contains(&name.as_str())
             {
@@ -314,8 +318,27 @@ fn execute(args: Vec<OsString>, cancelled: Arc<AtomicBool>, downloader: Download
                 }
                 None => 0,
             };
+            let start = flags.remove("--start");
+            let end = flags.remove("--end");
+            if command == "doctor" && (start.is_some() || end.is_some()) {
+                return Err("time ranges are only accepted by transcribe and batch".into());
+            }
+            let range = if start.is_some() || end.is_some() {
+                let parse = |v: &OsString| {
+                    crate::time_range::timestamp(v.to_str().ok_or("timestamp must be UTF-8")?)
+                };
+                let value = crate::time_range::TimeRange {
+                    start_millis: start.as_ref().map(parse).transpose()?.unwrap_or(0),
+                    end_millis: end.as_ref().map(parse).transpose()?,
+                };
+                value.validate()?;
+                Some(value)
+            } else {
+                None
+            };
             let options = Options {
                 url,
+                range,
                 work_dir,
                 model_dir,
                 model_variant,

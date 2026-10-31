@@ -10,6 +10,35 @@ license is now present at the root, CI is dispatch-only and hosted Actions are
 disabled. Crates.io publication stays disabled. Sections below preserve dated
 reviews, including superseded privacy/license findings; see current readiness.
 
+## Recognition range qualification — 0.12.0, 2026-10-31
+
+Local gates pass: 417 Rust tests, 18 opt-in ignored; strict Clippy and formatting,
+74 Python checks and 28 documentation link targets. Regressions cover strict
+millisecond parsing, overflow, invalid/empty bounds, cross-grid PCM hashes, clamping,
+pause-adjusted cuts, absolute JSON/MD/SRT/VTT timestamps, saved-option resume,
+immutable finished selection, batch range metadata and legacy whole-video formats.
+Ranged jobs use checkpoint5, canonical2 and coverage2; whole-video jobs keep their
+previous formats. A failing-before/passing-after checkpoint-version assertion
+prevents older executables from accepting new ASR span semantics.
+
+A retained schema5 development build, before commit, downloaded the complete
+jNQXAC9IVRw audio: 309288 bytes, decoded to 305018 mono 16 kHz frames (19.063625 s).
+Only frames 80000..240000, original seconds 5..15, reached GigaSTT 2.22.0 / ml_ctc.
+The job was interrupted at the recognition stage, retaining media and checkpoint5. The
+retained 0.11.0 executable refused it as unsupported checkpoint schema; hashes of
+state, invocation, download receipt, source metadata and source audio stayed equal.
+The new executable resumed real recognition, published a 10-second raw ASR result,
+and retained absolute timestamps and range-scoped coverage. Exact raw/canonical
+hashes, selected input bounds and cleanup were checked; 27 emitted/artifact records
+matched the machine schema. A later development build adding resolved range to
+batch item metadata revalidated/reused this job without altering ASR/transcript
+bytes; its recovery response also matched the schema.
+
+This verifies one short real-video range, not recognition accuracy or a measured
+network reliability rate. Full acquisition and decoding still occur. Binary
+release remains 0.10.1; these features require a source build. No binary release or
+hosted CI was triggered for the feature.
+
 ## JSONL batch qualification — 0.11.0, 2026-10-31
 
 Local gates pass: 408 Rust tests, 18 opt-in ignored; strict Clippy, formatting,
@@ -223,7 +252,7 @@ or a hosted test run. SVG labels make no third-party requests.
 
 | Badge | Source and meaning |
 | --- | --- |
-| Source 0.11.0 | Cargo.toml package version; crates.io publication is disabled |
+| Source 0.12.0 | Cargo.toml package version; crates.io publication is disabled |
 | License MIT | Root LICENSE; dependencies and model terms remain separate |
 | CI disabled | GitHub Actions disabled by owner instruction; workflow remains dispatch-only |
 | Minimum Rust 1.94 for source builds | Manifest rust-version; prior local MSRV qualification, not a passing hosted 0.8.0 claim |

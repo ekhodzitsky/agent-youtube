@@ -35,6 +35,8 @@ pub(crate) fn producer() -> Value {
 #[serde(deny_unknown_fields)]
 pub(crate) struct Coverage {
     pub schema_version: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub range: Option<crate::time_range::SelectedRange>,
     pub transcript_sha256: String,
     pub frames: u64,
     pub sample_rate: u32,
@@ -92,13 +94,25 @@ impl Coverage {
                     )
                 })
         });
-        if value.schema_version != 1
-            || !producer_valid
+        let resolved = value
+            .range
+            .map(|r| r.requested.resolve(value.frames))
+            .transpose()?;
+        if value.range != resolved {
+            return Err("range coverage differs from decoded frame count".into());
+        }
+        let processed = resolved
+            .map(|r| r.end_frame - r.start_frame)
+            .unwrap_or(value.frames);
+        if !matches!(
+            (value.schema_version, value.range.is_some()),
+            (1, false) | (2, true)
+        ) || !producer_valid
             || value.sample_rate != 16000
             || value.frames == 0
             || value.chunk_frames == 0
             || value.boundary_window_ms > 2000
-            || u64::try_from(value.chunks).ok() != Some(value.frames.div_ceil(value.chunk_frames))
+            || u64::try_from(value.chunks).ok() != Some(processed.div_ceil(value.chunk_frames))
             || (value.frames as f64 / f64::from(value.sample_rate) - duration).abs()
                 > duration.abs().max(1.0) * f64::EPSILON * 4.0
             || value.transcript_sha256 != storage::digest(input)?
@@ -112,7 +126,17 @@ impl Coverage {
         Ok(Some(value))
     }
     fn summary(&self) -> Value {
-        json!({"status":"complete","scope":"audio_processed","frames":self.frames,"sample_rate":self.sample_rate,"start_frame":0,"end_frame":self.frames,"chunks":self.chunks,"contiguous":true})
+        let (start, end) = self
+            .range
+            .map(|r| (r.start_frame, r.end_frame))
+            .unwrap_or((0, self.frames));
+        json!({"status":"complete","scope":if self.range.is_some(){"audio_range_processed"}else{"audio_processed"},"frames":end-start,"sample_rate":self.sample_rate,"start_frame":start,"end_frame":end,"chunks":self.chunks,"contiguous":true})
+    }
+    pub(crate) fn validate_range(&self, header: &transcript::Transcript) -> Result<()> {
+        if self.range != header.range {
+            return Err("coverage range differs from canonical transcript".into());
+        }
+        Ok(())
     }
 }
 /// Timestamp coverage is a diagnostic, never a speech detector or accuracy score.
@@ -120,6 +144,7 @@ impl Coverage {
 #[derive(Default)]
 struct SpeechCoverage {
     cursor: f64,
+    first_time: Option<f64>,
     words: u64,
     untimed_segments: u64,
     gaps: u64,
@@ -127,6 +152,7 @@ struct SpeechCoverage {
 }
 impl SpeechCoverage {
     fn gap(&mut self, end: f64) {
+        self.first_time.get_or_insert(end);
         if end - self.cursor >= 5.0 {
             self.gaps += 1;
             if self.examples.len() < 32 {
@@ -146,6 +172,30 @@ impl SpeechCoverage {
                 self.cursor = self.cursor.max(word.end);
                 self.words += 1;
             }
+        }
+    }
+    fn finish_header(mut self, header: &transcript::Transcript) -> Value {
+        if let Some(range) = header.range {
+            let start = range.start_frame as f64 / 16000.0;
+            if let Some(first) = self.first_time {
+                if first >= 5.0 {
+                    if first - start >= 5.0 {
+                        if let Some(gap) = self.examples.first_mut() {
+                            gap["start"] = json!(start);
+                        }
+                    } else {
+                        self.gaps -= 1;
+                        if !self.examples.is_empty() {
+                            self.examples.remove(0);
+                        }
+                    }
+                }
+            } else {
+                self.cursor = start;
+            }
+            self.finish(range.end_frame as f64 / 16000.0)
+        } else {
+            self.finish(header.duration)
         }
     }
     fn finish(mut self, duration: f64) -> Value {
@@ -226,8 +276,11 @@ impl View {
             speech.segment(segment);
             Ok(())
         })?;
-        let speech_coverage = speech.finish(header.duration);
+        let speech_coverage = speech.finish_header(&header);
         let coverage = Coverage::load(input, header.duration)?;
+        if let Some(coverage) = &coverage {
+            coverage.validate_range(&header)?;
+        }
         Ok(Self {
             reader,
             header,
@@ -288,9 +341,12 @@ impl<W: Write> ViewWriter<W> {
         speech_coverage: &Value,
         metadata_only: bool,
     ) -> Result<Self> {
-        let value = json!({"schema_version":2,"source":header.source,"duration":header.duration,"engine":header.engine,
+        let mut value = json!({"schema_version":2,"source":header.source,"duration":header.duration,"engine":header.engine,
             "recognizer_language":header.language,"source_language":null,"accuracy":"unverified","timing":"asr_estimates","speaker_attribution":"unverified","content_trust":"untrusted_source",
             "speech_coverage":speech_coverage,"coverage":coverage.map(Coverage::summary).unwrap_or_else(|| json!({"status":"unavailable"})),"producer":coverage.map(|c| &c.producer)});
+        if let Some(range) = header.range {
+            value["range"] = range.summary();
+        }
         let bytes = serde_json::to_vec(&value)?;
         if metadata_only {
             out.write_all(&bytes)?;
@@ -334,7 +390,7 @@ pub(crate) fn render(transcript: &transcript::Transcript) -> Result<String> {
         &mut bytes,
         transcript,
         None,
-        &speech.finish(transcript.duration),
+        &speech.finish_header(transcript),
         false,
     )?;
     for segment in &transcript.segments {
@@ -420,6 +476,7 @@ mod tests {
         fs::write(&path, &original).unwrap();
         assert!(Coverage::load(&path, 2.0).unwrap().is_none());
         let good = serde_json::to_value(Coverage {
+            range: None,
             schema_version: 1,
             transcript_sha256: storage::digest(&path).unwrap(),
             frames: 32000,

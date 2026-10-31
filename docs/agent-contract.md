@@ -6,6 +6,32 @@ Moved from the root README on 2026-10-27. Commands assume the repository root.
 Historical verification statements retain their original dates and scope; they are
 not new measurements of the current version.
 
+## Range-aware records
+
+Since 0.12.0, explicit --start/--end requests produce ranged canonical transcripts
+and coverage artifacts with schema_version=2. Whole-video artifacts remain
+schema1; existing canonical transcripts and exact ASR JSON are retained unchanged.
+Compact/metadata responses
+still use their schema2 envelope, with optional range metadata and
+coverage.scope=audio_range_processed. Successful ranged batch items also include
+their requested/actual range summary without embedding text. A full response still has a schema1 envelope
+and may embed a canonical schema2 transcript. Clients must inspect artifact schema
+and range before treating text as full-recording recognition.
+
+Ranged checkpoints use schema5 to prevent older executables from interpreting
+selected ASR chunks as full-recording input. Whole-video jobs retain schema4 and
+legacy compatibility.
+
+Requested bounds use integer milliseconds in saved job/configuration and canonical
+range metadata. Actual bounds use absolute 16 kHz frame offsets derived from the
+full decoded source. Agent views provide requested and actual seconds; duration
+continues to identify full source length. Raw ASR JSON remains exact and relative
+to its individual selected input chunk. Canonical/agent/export timestamps are
+absolute. Bounds are checkpoint identity and cannot be changed on resume. Invalid
+requests use invalid_time_range; selections outside decoded audio use
+range_out_of_bounds (nonretryable, owned media retained). See
+[range semantics and examples](usage.md#recognition-time-ranges).
+
 ## Batch records
 
 Since 0.11.0, batch accepts JSONL records with id and url and returns schema1

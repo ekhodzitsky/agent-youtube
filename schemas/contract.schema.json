@@ -193,7 +193,10 @@
       "type": "object",
       "properties": {
         "schema_version": {
-          "const": 1
+          "enum": [
+            1,
+            2
+          ]
         },
         "source": {
           "$ref": "#/$defs/source"
@@ -213,6 +216,9 @@
           "items": {
             "$ref": "#/$defs/segment"
           }
+        },
+        "range": {
+          "$ref": "#/$defs/selected_range"
         }
       },
       "required": [
@@ -223,7 +229,30 @@
         "engine",
         "segments"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "schema_version": {
+                "const": 2
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "range"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "range"
+              ]
+            }
+          }
+        }
+      ]
     },
     "producer": {
       "type": "object",
@@ -287,7 +316,8 @@
               "const": 16000
             },
             "start_frame": {
-              "const": 0
+              "type": "integer",
+              "minimum": 0
             },
             "end_frame": {
               "type": "integer",
@@ -301,7 +331,10 @@
               "const": true
             },
             "scope": {
-              "const": "audio_processed"
+              "enum": [
+                "audio_processed",
+                "audio_range_processed"
+              ]
             }
           },
           "required": [
@@ -314,7 +347,25 @@
             "contiguous",
             "scope"
           ],
-          "additionalProperties": false
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "scope": {
+                    "const": "audio_processed"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "start_frame": {
+                    "const": 0
+                  }
+                }
+              }
+            }
+          ]
         }
       ]
     },
@@ -407,6 +458,9 @@
         },
         "speech_coverage": {
           "$ref": "#/$defs/speech_coverage"
+        },
+        "range": {
+          "$ref": "#/$defs/range_summary"
         }
       },
       "required": [
@@ -767,7 +821,8 @@
         "scope": {
           "enum": [
             "pending_batch",
-            "recording"
+            "recording",
+            "selection"
           ]
         }
       },
@@ -803,7 +858,10 @@
       "type": "object",
       "properties": {
         "schema_version": {
-          "const": 1
+          "enum": [
+            1,
+            2
+          ]
         },
         "transcript_sha256": {
           "type": "string",
@@ -831,6 +889,9 @@
         },
         "producer": {
           "$ref": "#/$defs/producer"
+        },
+        "range": {
+          "$ref": "#/$defs/selected_range"
         }
       },
       "required": [
@@ -843,7 +904,30 @@
         "boundary_window_ms",
         "producer"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "schema_version": {
+                "const": 2
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "range"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "range"
+              ]
+            }
+          }
+        }
+      ]
     },
     "manifest": {
       "type": "object",
@@ -1611,6 +1695,9 @@
               },
               "next_action": {
                 "const": "repeat_batch"
+              },
+              "range": {
+                "$ref": "#/$defs/range_summary"
               }
             },
             "required": [
@@ -1689,6 +1776,89 @@
         "ok",
         "command",
         "result"
+      ],
+      "additionalProperties": false
+    },
+    "time_range": {
+      "type": "object",
+      "properties": {
+        "start_millis": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end_millis": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        }
+      },
+      "required": [
+        "start_millis",
+        "end_millis"
+      ],
+      "additionalProperties": false
+    },
+    "selected_range": {
+      "type": "object",
+      "properties": {
+        "requested": {
+          "$ref": "#/$defs/time_range"
+        },
+        "start_frame": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end_frame": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_frames": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "requested",
+        "start_frame",
+        "end_frame",
+        "source_frames"
+      ],
+      "additionalProperties": false
+    },
+    "range_summary": {
+      "type": "object",
+      "properties": {
+        "requested_start_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "requested_end_seconds": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "start_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "end_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "download": {
+          "const": "full_audio"
+        }
+      },
+      "required": [
+        "requested_start_seconds",
+        "requested_end_seconds",
+        "start_seconds",
+        "end_seconds",
+        "download"
       ],
       "additionalProperties": false
     }

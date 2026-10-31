@@ -338,10 +338,12 @@ fn run_item(
     let outcome = Pipeline::with_downloader(options, cancelled, downloader)?
         .with_recognition_gate(recognition)
         .run_report()?;
-    Ok(
-        json!({"id":item.id,"work_dir":root,"state":"succeeded","reused":outcome.reused,
-        "artifacts":{"transcript":outcome.transcript,"manifest":outcome.manifest},"cleanup_complete":true}),
-    )
+    let mut result = json!({"id":item.id,"work_dir":root,"state":"succeeded","reused":outcome.reused,
+        "artifacts":{"transcript":outcome.transcript,"manifest":outcome.manifest},"cleanup_complete":true});
+    if let Some(range) = outcome.range {
+        result["range"] = range.summary();
+    }
+    Ok(result)
 }
 
 #[cfg(test)]
@@ -362,6 +364,7 @@ mod tests {
         }
         fn options(&self) -> Options {
             Options {
+                range: None,
                 url: "https://www.youtube.com/watch?v=a2hbJlPxj4M".into(),
                 work_dir: self.0.join("batch"),
                 model_dir: self.0.join("models"),
