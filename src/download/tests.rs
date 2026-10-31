@@ -1,4 +1,5 @@
 use super::*;
+use crate::fmp4;
 use std::{
     io::{BufRead, BufReader},
     net::{TcpListener, TcpStream},
@@ -11,6 +12,141 @@ use std::{
 };
 static NEXT: AtomicUsize = AtomicUsize::new(0);
 const ID: &str = "a2hbJlPxj4M";
+
+#[test]
+#[ignore = "explicit real acquisition into an owned private research directory; current network only"]
+fn research_acquire_owned_audio() {
+    let url = std::env::var("AGENT_YOUTUBE_RESEARCH_URL").unwrap();
+    let id = crate::pipeline::video_id(&url).unwrap();
+    let root = PathBuf::from(std::env::var_os("AGENT_YOUTUBE_RESEARCH_DIRECTORY").unwrap());
+    storage::private_directory(&root, true).unwrap();
+    let marker = root.join("acquisition-owner");
+    owned(&marker).unwrap();
+    if marker.exists() {
+        assert_eq!(storage::read_text(&marker, 128).unwrap(), id);
+    } else {
+        let mut file = storage::private_file().open(&marker).unwrap();
+        file.write_all(id.as_bytes()).unwrap();
+        file.sync_all().unwrap();
+        storage::sync_parent(&marker).unwrap();
+    }
+    // A lib-test harness cannot dispatch the private worker command itself.
+    // Use an explicitly supplied CLI through the existing test-only hook.
+    let executable = fs::canonicalize(PathBuf::from(
+        std::env::var_os("AGENT_YOUTUBE_RESEARCH_EXECUTABLE").unwrap(),
+    ))
+    .unwrap();
+    let downloader = Downloader::youtube().unwrap();
+    *downloader.runtime.lock().unwrap() =
+        Some(crate::web::Worker::test_executable(&executable).unwrap());
+    let downloaded = downloader
+        .download(&id, &root.join("input"), &AtomicBool::new(false))
+        .unwrap();
+    eprintln!(
+        "research_acquisition {}",
+        serde_json::json!({"video_id":id,
+        "bytes":fs::metadata(&downloaded).unwrap().len(),"sha256":storage::digest(&downloaded).unwrap()})
+    );
+}
+
+#[test]
+fn indexed_prefix_recovers_refusal_and_transient_faults_and_resumes_rate_limits() {
+    let media = Arc::new(fmp4::fragmented(16000));
+    let ranges = Arc::new(fmp4::ranges(&media));
+    for status in [403, 429, 503] {
+        let input = media.clone();
+        let parts = ranges.clone();
+        let calls = Arc::new(AtomicUsize::new(0));
+        let seen = calls.clone();
+        let players = Arc::new(AtomicUsize::new(0));
+        let checked = players.clone();
+        let server = Server::new(move |request, origin| {
+            if request.path.starts_with("/youtubei/") {
+                checked.fetch_add(1, Ordering::SeqCst);
+                let mut reply = sabr_player(origin, input.len());
+                let mut value: Value = serde_json::from_slice(&reply.body).unwrap();
+                value["videoDetails"]["lengthSeconds"] = "24".into();
+                reply.body = serde_json::to_vec(&value).unwrap();
+                return reply;
+            }
+            let call = seen.fetch_add(1, Ordering::SeqCst);
+            if call == 1 {
+                return Reply {
+                    status,
+                    headers: if status == 429 {
+                        vec![("Retry-After".into(), "0".into())]
+                    } else {
+                        vec![]
+                    },
+                    body: vec![],
+                };
+            }
+            let mut body = Vec::new();
+            let mut meta = Vec::new();
+            wire::blob(&mut meta, 1, ID.as_bytes());
+            wire::blob(&mut meta, 2, &format_id(&format(input.len())).unwrap());
+            wire::num(&mut meta, 3, 24000);
+            wire::num(&mut meta, 4, parts.len() as u64 - 2);
+            wire::blob(&mut meta, 5, b"audio/mp4; codecs=\"mp4a.40.2\"");
+            ump(42, &meta, &mut body);
+            for (index, range) in parts.iter().take(if call == 0 { 2 } else { 3 }).enumerate() {
+                sabr_segment(
+                    index as u8,
+                    index == 0,
+                    index.saturating_sub(1) as u64,
+                    range.start as u64,
+                    &input[range.clone()],
+                    &mut body,
+                );
+            }
+            Reply::bytes(body)
+        });
+        let first = server.downloader().download_range(
+            ID,
+            &server.prefix(),
+            &AtomicBool::new(false),
+            160000,
+        );
+        let acquired = if status == 429 {
+            let error = first.err().unwrap();
+            assert_eq!(
+                error
+                    .downcast_ref::<crate::protocol::Failure>()
+                    .unwrap()
+                    .retry_after_seconds(),
+                Some(1)
+            );
+            assert_eq!(
+                fs::read(suffix(&server.prefix(), ".m4a")).unwrap(),
+                media[..ranges[1].end]
+            );
+            // The client conservatively clamps Retry-After: 0 to one second.
+            http::pause(1000, &AtomicBool::new(false)).unwrap();
+            server
+                .downloader()
+                .download_range(ID, &server.prefix(), &AtomicBool::new(false), 160000)
+                .unwrap()
+        } else {
+            first.unwrap()
+        };
+        let prefix = acquired.prefix.unwrap();
+        assert_eq!(
+            fs::read(&acquired.path).unwrap(),
+            media[..prefix.bytes as usize]
+        );
+        assert!(prefix.bytes < prefix.total_bytes);
+        assert!(
+            Downloader::evidence(&server.prefix(), &acquired.path).is_err(),
+            "partial media cannot receive the full-source proof"
+        );
+        let evidence = Downloader::prefix_evidence(&server.prefix(), &acquired).unwrap();
+        assert_eq!(evidence["status"], "prefix_verified");
+        assert!(!evidence.to_string().contains(&server.origin));
+        if status == 403 {
+            assert!(players.load(Ordering::SeqCst) > 1);
+        }
+    }
+}
 
 fn refresh_page(request: &Request, player: Value) -> Reply {
     let client = if request.headers["user-agent"] == MWEB_USER_AGENT {

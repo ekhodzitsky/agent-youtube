@@ -467,6 +467,25 @@ mod range_tests {
         }
         t.validate().unwrap();
         assert_eq!(scan(&t).unwrap().range, t.range);
+        t.range.as_mut().unwrap().decoded_prefix =
+            Some(crate::time_range::DecodedPrefix::ContainerIndex {
+                through_frame: 160000,
+            });
+        assert!(scan(&t).is_err(), "schema2 cannot claim prefix decoding");
+        t.schema_version = 3;
+        assert_eq!(scan(&t).unwrap().range, t.range);
+        let original = t.range.unwrap();
+        t.range.as_mut().unwrap().decoded_prefix =
+            Some(crate::time_range::DecodedPrefix::ContainerIndex {
+                through_frame: 100000,
+            });
+        assert!(
+            scan(&t).is_err(),
+            "decoded prefix must contain the entire selection"
+        );
+        t.range.as_mut().unwrap().decoded_prefix = None;
+        assert!(scan(&t).is_err(), "schema3 requires prefix evidence");
+        t.range = Some(original);
         t.schema_version = 1;
         assert!(scan(&t).is_err());
         t.schema_version = 2;

@@ -341,7 +341,7 @@ impl Pipeline {
         if !checkpoint.completed("coverage.json")? {
             let producer = crate::agent::producer();
             let coverage = crate::agent::Coverage {
-                schema_version: if header.range.is_some() { 2 } else { 1 },
+                schema_version: header.schema_version,
                 transcript_sha256: storage::digest(&pending)?,
                 frames: audio.frames,
                 range: header.range,

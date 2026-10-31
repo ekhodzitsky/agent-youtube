@@ -2,7 +2,7 @@
 
 YouTube transcripts for AI agents.
 
-[![Source version: 0.13.1](docs/assets/version.svg)](Cargo.toml)
+[![Source version: 0.14.0](docs/assets/version.svg)](Cargo.toml)
 [![License: MIT](docs/assets/license.svg)](LICENSE)
 [![CI: disabled](docs/assets/ci.svg)](.github/workflows/check.yml)
 [![Minimum Rust for source builds: 1.94](docs/assets/msrv.svg)](docs/verification.md#badge-sources)
@@ -55,8 +55,9 @@ agent-youtube transcribe 'https://www.youtube.com/watch?v=jNQXAC9IVRw' \
   --start 5 --end 15 --work-dir runs/passage
 ```
 
-Only that interval is recognized. Audio is still downloaded and decoded in full;
-timestamps refer to the original video. [Range details](docs/usage.md#recognition-time-ranges).
+Only that interval is recognized. Since 0.14.0, qualified SABR sources download
+and decode a verified prefix, with full acquisition as fallback. Audio before
+--start is still processed; timestamps refer to the original video. [Range details](docs/usage.md#recognition-time-ranges).
 
 **Process a list of videos.** In 0.11.0 source builds, submit JSONL records such as
 `{"id":"lecture","url":"https://www.youtube.com/watch?v=jNQXAC9IVRw"}`:

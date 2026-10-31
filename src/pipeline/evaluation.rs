@@ -135,6 +135,7 @@ fn trial(
             &mut DecodedAudio {
                 frames,
                 legacy: None,
+                prefix_frames: None,
             },
             &header,
         );

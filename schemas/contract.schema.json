@@ -198,7 +198,8 @@
         "schema_version": {
           "enum": [
             1,
-            2
+            2,
+            3
           ]
         },
         "source": {
@@ -238,7 +239,10 @@
           "if": {
             "properties": {
               "schema_version": {
-                "const": 2
+                "enum": [
+                  2,
+                  3
+                ]
               }
             }
           },
@@ -252,6 +256,35 @@
               "required": [
                 "range"
               ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "schema_version": {
+                "const": 3
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "range": {
+                "required": [
+                  "decoded_prefix"
+                ]
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "range": {
+                "not": {
+                  "required": [
+                    "decoded_prefix"
+                  ]
+                }
+              }
             }
           }
         }
@@ -863,7 +896,8 @@
         "schema_version": {
           "enum": [
             1,
-            2
+            2,
+            3
           ]
         },
         "transcript_sha256": {
@@ -913,7 +947,10 @@
           "if": {
             "properties": {
               "schema_version": {
-                "const": 2
+                "enum": [
+                  2,
+                  3
+                ]
               }
             }
           },
@@ -927,6 +964,35 @@
               "required": [
                 "range"
               ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "schema_version": {
+                "const": 3
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "range": {
+                "required": [
+                  "decoded_prefix"
+                ]
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "range": {
+                "not": {
+                  "required": [
+                    "decoded_prefix"
+                  ]
+                }
+              }
             }
           }
         }
@@ -1820,6 +1886,12 @@
         "source_frames": {
           "type": "integer",
           "minimum": 1
+        },
+        "decoded_prefix": {
+          "$ref": "#/$defs/decoded_prefix"
+        },
+        "downloaded_prefix": {
+          "$ref": "#/$defs/downloaded_prefix"
         }
       },
       "required": [
@@ -1828,7 +1900,12 @@
         "end_frame",
         "source_frames"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "dependentRequired": {
+        "downloaded_prefix": [
+          "decoded_prefix"
+        ]
+      }
     },
     "range_summary": {
       "type": "object",
@@ -1853,7 +1930,28 @@
           "minimum": 0
         },
         "download": {
-          "const": "full_audio"
+          "enum": [
+            "full_audio",
+            "prefix"
+          ]
+        },
+        "decode": {
+          "const": "prefix"
+        },
+        "decoded_through_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "source_frames_basis": {
+          "const": "container_index"
+        },
+        "downloaded_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_bytes": {
+          "type": "integer",
+          "minimum": 2
         }
       },
       "required": [
@@ -1863,7 +1961,57 @@
         "end_seconds",
         "download"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "dependentRequired": {
+        "decode": [
+          "decoded_through_seconds",
+          "source_frames_basis"
+        ],
+        "decoded_through_seconds": [
+          "decode",
+          "source_frames_basis"
+        ],
+        "source_frames_basis": [
+          "decode",
+          "decoded_through_seconds"
+        ]
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "download": {
+                "const": "prefix"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "downloaded_bytes",
+              "source_bytes",
+              "decode",
+              "source_frames_basis",
+              "decoded_through_seconds"
+            ]
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "downloaded_bytes"
+                  ]
+                },
+                {
+                  "required": [
+                    "source_bytes"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
     },
     "command_description": {
       "type": "object",
@@ -2011,6 +2159,41 @@
         "ok",
         "command",
         "result"
+      ],
+      "additionalProperties": false
+    },
+    "decoded_prefix": {
+      "type": "object",
+      "properties": {
+        "source_frames_basis": {
+          "const": "container_index"
+        },
+        "through_frame": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "source_frames_basis",
+        "through_frame"
+      ],
+      "additionalProperties": false
+    },
+    "downloaded_prefix": {
+      "type": "object",
+      "properties": {
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_bytes": {
+          "type": "integer",
+          "minimum": 2
+        }
+      },
+      "required": [
+        "bytes",
+        "source_bytes"
       ],
       "additionalProperties": false
     }

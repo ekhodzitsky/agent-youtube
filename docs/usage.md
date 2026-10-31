@@ -70,40 +70,68 @@ boundaries. Millisecond input is exact (16 frames per millisecond). Negative,
 non-finite, exponent-form or overflowing timestamps, reversed/empty bounds and
 invalid clock fields are rejected before creating a job. An end past the decoded
 recording end is clamped; a start at/past that end fails with range_out_of_bounds
-and preserves downloaded/decoded media. Decoded duration determines actual bounds,
-not rounded YouTube metadata or the timestamp of the last recognized word.
+and preserves downloaded/decoded media. Bounds use decoded duration or the
+explicit indexed duration of a qualified prefix, never rounded YouTube metadata
+or the timestamp of the last recognized word.
 
-The implementation downloads and decodes the complete audio and verifies
-its duration. Only the selected samples reach GigaSTT; it does not save network
-traffic or full decode work. Starting with 0.13.1, new decoding retains WAVs only
-for fixed-grid chunks intersecting the selected interval. A cut inside a chunk
-retains that complete chunk; exact cropping still happens before recognition.
-Decoder state remains resumable without WAVs outside the interval. Existing
-owned WAVs are preserved until normal cleanup after validated publication.
-Compressed source storage, decoder checkpoints and full decoding CPU still apply.
-No new recognition or text-normalization engine is introduced. Pause-adjusted internal
-cuts remain within the selected interval, including fractional and cross-grid cuts.
+Since 0.14.0, an explicit end can stop acquisition at complete SABR fragments
+covering the needed decoder chunk and lookahead. The complete direct-reference
+SIDX must start at zero, describe the full representation byte length and use
+the AAC output clock; qualified AAC-LC mono/stereo decoding must establish every
+requested sample before source proof and staged WAVs are published. Hierarchical,
+missing or incompatible indexes, edit-list partial sources, unqualified codec
+state and ranges near source EOF use full acquisition. Direct HTTP routes retain
+full acquisition. This is an optimization, not an additional access guarantee.
 
-Timestamps in words, passages, Markdown and SRT/VTT remain relative to the original
-video; they do not start at zero. duration continues to mean the full decoded
-source duration. Compact/metadata JSON adds range with requested_start_seconds,
+Both acquisition and decoding start at zero to preserve AAC and resampler history;
+--start does not skip the preceding audio. A source can therefore require a long
+prefix for a late passage. Decoding stops at the first complete fixed-grid chunk
+covering the explicit end. Without --end, or when exact state is unavailable, it
+decodes the full recording. Full fallback remains available, and end clamping uses
+actual decoded EOF on that path. Partial success never claims that the unprocessed
+suffix has been received or decoded.
+
+Since 0.13.1, new decoding retains WAVs only for fixed-grid chunks intersecting
+the selection. A cut inside a chunk retains that complete chunk; exact cropping
+still happens before recognition. Decoder state remains resumable without WAVs
+outside the interval. Existing owned WAVs are preserved until normal cleanup
+after validated publication. Compressed source storage and decoder checkpoints
+still apply. Pause-adjusted internal cuts stay within the selected interval.
+GigaSTT remains the recognition engine and exact raw ASR JSON stays unchanged.
+
+Timestamps in words, passages, Markdown and SRT/VTT refer to the original video.
+Compact/metadata range summaries retain requested_start_seconds,
 requested_end_seconds (null for open end), actual start_seconds/end_seconds and
-download=full_audio. Coverage.scope is audio_range_processed; frames counts only
-selected input, start_frame/end_frame are absolute and contiguous refers to this
-interval. Speech-gap diagnostics exclude audio outside the selection and still do
-not establish recognition accuracy or speech completeness.
+download=full_audio or download=prefix. Prefix acquisition adds downloaded_bytes
+and source_bytes (committed media volume, excluding HTTP/UMP overhead and retries).
+Prefix decoding adds decode=prefix,
+decoded_through_seconds and source_frames_basis=container_index. Here duration
+and source_frames describe the indexed presentation, which may differ from
+fully decoded EOF because of container rounding or an unverified suffix. They
+are not a claim that the whole recording decoded successfully. Without prefix
+evidence, duration retains its fully decoded meaning. Coverage.scope remains
+audio_range_processed; contiguous and speech-gap diagnostics refer only to the
+selected interval and do not establish speech completeness or ASR accuracy.
 
-Ranged jobs use checkpoint schema5, which older binaries reject before recovery;
-whole-video checkpoint schema4 and existing legacy migrations remain unchanged.
-Do not downgrade an unfinished range job. Saved ranged transcript.json uses canonical schema2 and a range object with
-requested.start_millis/end_millis, start_frame/end_frame and source_frames, all
-frame values at 16 kHz. coverage.json uses schema2 with the same range; its frames
-field retains the full decoded frame count, while its chunks count describes
-selected ASR chunks. The manifest records exact source-frame spans and raw ASR
-hashes. Whole-video canonical and coverage files remain schema1 with no range
-field. --response full keeps its schema1 response envelope, but embeds canonical
-schema2 for a ranged transcript. JSON export is the compact schema2 agent view;
-TXT contains text only, while Markdown/VTT also state the recognition interval.
+New or mutated ranged checkpoints use schema6, which older binaries reject.
+Schema5 ranged checkpoints remain readable and migrate on mutation; existing
+published transcripts are not rewritten. Whole-video checkpoint schema4 and
+legacy migrations remain unchanged. Do not downgrade an unfinished range job.
+Canonical transcript.json and coverage.json use schema3 for prefix decoding,
+with range.decoded_prefix containing source_frames_basis=container_index and
+through_frame. Partial acquisition also includes range.downloaded_prefix with
+bytes and source_bytes; the retained manifest distinguishes prefix_verified
+source evidence from verified full-source evidence. Full-decoded ranged artifacts retain schema2; whole-video
+artifacts retain schema1. Range frame counters use 16 kHz and include requested
+millisecond bounds and actual selected start_frame/end_frame. Coverage frames
+and range.source_frames are the full indexed presentation for schema3 and the
+actual full decoded length for schemas1/2; coverage chunks counts selected ASR
+inputs. The temporary prefix decode receipt uses its own schema2.
+
+The manifest records exact input-frame spans and raw ASR hashes. --response full
+keeps its schema1 envelope but can embed canonical schema2 or schema3. JSON
+export retains the compact schema2 agent view and its explicit range summary;
+TXT contains text only, while Markdown/VTT state the recognition interval.
 
 Repeat the identical command or use resume --work-dir to continue; saved bounds
 are immutable even for a completed job. Omitting or changing an existing range

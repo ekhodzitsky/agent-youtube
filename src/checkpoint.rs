@@ -178,9 +178,9 @@ impl Checkpoint {
         if state.application != "agent-youtube" {
             return Err("checkpoint belongs to another application; use a new --work-dir".into());
         }
-        if (state.schema_version == 5) != state.config.range.is_some() {
+        if matches!(state.schema_version, 5 | 6) != state.config.range.is_some() {
             return Err(
-                "ranged jobs require checkpoint schema5; whole-video jobs use schemas1..4".into(),
+                "ranged jobs require checkpoint schema5 or schema6; whole-video jobs use schemas1..4".into(),
             );
         }
         if let Some(range) = state.config.range {
@@ -188,7 +188,7 @@ impl Checkpoint {
         }
         let journal = match (state.schema_version, state.journal.clone()) {
             (1, None) => None,
-            (2..=5, Some(anchor)) => Some(
+            (2..=6, Some(anchor)) => Some(
                 Journal::load(root, &anchor, bytes, &mut state).map_err(|error| {
                     evidence_context(
                         "checkpoint_journal_invalid",
@@ -219,6 +219,12 @@ impl Checkpoint {
         }))
     }
     fn duration_evidence(&self) -> Result<(u64, Option<u64>)> {
+        self.duration_evidence_with(None)
+    }
+    fn duration_evidence_with(
+        &self,
+        candidate: Option<&serde_json::Value>,
+    ) -> Result<(u64, Option<u64>)> {
         let unavailable = || {
             crate::protocol::failure_details(
                 "source_duration_unavailable",
@@ -227,17 +233,25 @@ impl Checkpoint {
                 serde_json::json!({"stage":"audio_validation","path":self.root.join("source.json"),"preserved":true}),
             )
         };
-        if !self.completed("source.json")? || !self.completed("download.json")? {
+        if !self.completed("source.json")?
+            || (candidate.is_none() && !self.completed("download.json")?)
+        {
             return Err(unavailable());
         }
         let source: serde_json::Value = serde_json::from_str(&storage::read_text(
             &self.root.join("source.json"),
             16 * 1024 * 1024,
         )?)?;
-        let download: serde_json::Value = serde_json::from_str(&storage::read_text(
-            &self.root.join("download.json"),
-            1024 * 1024,
-        )?)?;
+        let saved_download;
+        let download = if let Some(value) = candidate {
+            value
+        } else {
+            saved_download = serde_json::from_str::<serde_json::Value>(&storage::read_text(
+                &self.root.join("download.json"),
+                1024 * 1024,
+            )?)?;
+            &saved_download
+        };
         let initial = source["videoDetails"]["lengthSeconds"]
             .as_str()
             .and_then(|value| value.parse::<u64>().ok())
@@ -292,21 +306,48 @@ impl Checkpoint {
         let expected = initial.ok_or_else(unavailable)?;
         Ok((expected, Some(expected)))
     }
+    pub(crate) fn candidate_duration(&self, evidence: &serde_json::Value) -> Result<u64> {
+        Ok(self.duration_evidence_with(Some(evidence))?.0)
+    }
     pub(crate) fn source_duration(&self) -> Result<u64> {
         Ok(self.duration_evidence()?.0)
     }
-    pub(crate) fn validate_duration(&self, actual_seconds: f64) -> Result<()> {
-        let (expected, initial) = self.duration_evidence()?;
-        if !actual_seconds.is_finite()
-            || actual_seconds <= 0.0
-            || (actual_seconds - expected as f64).abs() > 2.0
-            || initial.is_some_and(|original| (actual_seconds - original as f64).abs() > 2.0)
+    pub(crate) fn validate_processed_duration(
+        &self,
+        seconds: f64,
+        prefix_frames: Option<u64>,
+    ) -> Result<()> {
+        self.validate_candidate_duration(seconds, prefix_frames, None)
+    }
+    pub(crate) fn validate_candidate_duration(
+        &self,
+        seconds: f64,
+        prefix_frames: Option<u64>,
+        candidate: Option<&serde_json::Value>,
+    ) -> Result<()> {
+        let (expected, initial) = self.duration_evidence_with(candidate)?;
+        if !seconds.is_finite()
+            || seconds <= 0.0
+            || (seconds - expected as f64).abs() > 2.0
+            || initial.is_some_and(|original| (seconds - original as f64).abs() > 2.0)
         {
+            let mut details = serde_json::json!({"stage":"audio_validation","expected_seconds":expected,"initial_seconds":initial,"tolerance_seconds":2,"preserved":true});
+            if let Some(through) = prefix_frames {
+                details["indexed_seconds"] = serde_json::json!(seconds);
+                details["source_frames_basis"] = serde_json::json!("container_index");
+                details["decoded_through_seconds"] = serde_json::json!(through as f64 / 16000.0);
+            } else {
+                details["decoded_seconds"] = serde_json::json!(seconds);
+            }
             return Err(crate::protocol::failure_details(
                 "audio_duration_mismatch",
                 Some(false),
-                "decoded recording duration disagrees with selected source; evidence preserved",
-                serde_json::json!({"stage":"audio_validation","expected_seconds":expected,"initial_seconds":initial,"decoded_seconds":actual_seconds,"tolerance_seconds":2,"preserved":true}),
+                if prefix_frames.is_some() {
+                    "indexed recording duration disagrees with selected source; evidence preserved"
+                } else {
+                    "decoded recording duration disagrees with selected source; evidence preserved"
+                },
+                details,
             ));
         }
         Ok(())
@@ -347,7 +388,13 @@ impl Checkpoint {
             if header.range.map(|r| r.requested) != checkpoint.state.config.range {
                 return Err("published range differs from saved configuration".into());
             }
-            checkpoint.validate_duration(header.duration)?;
+            checkpoint.validate_processed_duration(
+                header.duration,
+                header
+                    .range
+                    .and_then(|r| r.decoded_prefix)
+                    .map(|p| p.through_frame()),
+            )?;
         }
         let cleanup_complete = published
             && checkpoint.state.download_prefix.is_none()
@@ -877,7 +924,7 @@ impl Checkpoint {
         // that change directly rather than replaying it twice after the anchor.
         if self.state.schema_version
             < if self.state.config.range.is_some() {
-                5
+                6
             } else {
                 4
             }
@@ -902,7 +949,7 @@ impl Checkpoint {
         let journal = self.journal.as_mut().ok_or("missing checkpoint journal")?;
         let anchor = journal.anchor()?;
         let schema = if self.state.config.range.is_some() {
-            5
+            6
         } else {
             4
         };
@@ -1151,7 +1198,13 @@ impl Checkpoint {
                 std::io::BufReader::new(storage::open_regular_input(source)?),
                 |_| Ok(()),
             )?;
-            self.validate_duration(header.duration)?;
+            self.validate_processed_duration(
+                header.duration,
+                header
+                    .range
+                    .and_then(|r| r.decoded_prefix)
+                    .map(|p| p.through_frame()),
+            )?;
         }
         if source == &pending {
             fs::hard_link(&pending, &destination)?;

@@ -8,6 +8,30 @@ JSON or canonical transcripts. Source is public; crates.io publication stays dis
 
 ## Unreleased
 
+## 0.14.0 — 2026-11-01
+
+- Stop qualified AAC-LC range decoding after the complete fixed-grid chunk
+  covering an explicit end. Replay from the beginning preserves exact codec and
+  resampler state. Unsupported codec state and ranges reaching EOF
+  retain full decoding. Decoding starts at zero; it does not skip audio before
+  the requested start.
+- Stop qualified SABR acquisition using a complete direct-reference SIDX whose
+  byte extents cover the full representation. Validate the selected PCM before
+  publishing prefix source evidence and adopting staged WAVs. Keep full acquisition
+  for unsupported cases, preserve failed candidates and verify cached prefixes
+  without URLs or tokens. The public Rust Downloader.download API stays full-only.
+- Version prefix canonical/coverage artifacts as schema3. Their range.decoded_prefix
+  records through_frame and source_frames_basis=container_index; duration and
+  source_frames are indexed estimates, not proof of suffix decoding. Partial
+  acquisition adds range.downloaded_prefix; agent/batch summaries report
+  download=prefix, downloaded_bytes/source_bytes, decode=prefix and decoded extent. Response envelopes,
+  whole-video schema1 and full-decoded ranged schema2 remain unchanged.
+- Use ranged checkpoint schema6 to block unsafe downgrade; read schema5 and
+  migrate active jobs on mutation. Keep old exact transcripts and ASR JSON intact.
+  Prefix decode receipts use internal schema2. Rust SelectedRange literals now
+  need decoded_prefix: None and downloaded_prefix: None for full processing;
+  old serialized ranges default to no prefix. No new dependency or binary release.
+
 ## 0.13.1 — 2026-10-31
 
 - Retain decoded WAVs only for fixed-grid chunks intersecting --start/--end.

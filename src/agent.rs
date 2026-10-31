@@ -94,20 +94,18 @@ impl Coverage {
                     )
                 })
         });
-        let resolved = value
-            .range
-            .map(|r| r.requested.resolve(value.frames))
-            .transpose()?;
-        if value.range != resolved {
-            return Err("range coverage differs from decoded frame count".into());
+        let resolved = value.range;
+        if let Some(range) = resolved {
+            range.validate(duration)?;
+            if range.source_frames != value.frames {
+                return Err("range coverage differs from source frame count".into());
+            }
         }
         let processed = resolved
             .map(|r| r.end_frame - r.start_frame)
             .unwrap_or(value.frames);
-        if !matches!(
-            (value.schema_version, value.range.is_some()),
-            (1, false) | (2, true)
-        ) || !producer_valid
+        if value.schema_version != resolved.map_or(1, |range| range.schema_version())
+            || !producer_valid
             || value.sample_rate != 16000
             || value.frames == 0
             || value.chunk_frames == 0

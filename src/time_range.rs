@@ -16,6 +16,32 @@ pub struct SelectedRange {
     pub start_frame: u64,
     pub end_frame: u64,
     pub source_frames: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub decoded_prefix: Option<DecodedPrefix>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub downloaded_prefix: Option<DownloadedPrefix>,
+}
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct DownloadedPrefix {
+    pub bytes: u64,
+    pub source_bytes: u64,
+}
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(
+    tag = "source_frames_basis",
+    rename_all = "snake_case",
+    deny_unknown_fields
+)]
+pub enum DecodedPrefix {
+    ContainerIndex { through_frame: u64 },
+}
+impl DecodedPrefix {
+    pub(crate) fn through_frame(self) -> u64 {
+        match self {
+            Self::ContainerIndex { through_frame } => through_frame,
+        }
+    }
 }
 fn invalid() -> Box<dyn std::error::Error + Send + Sync> {
     protocol::failure(
@@ -103,21 +129,54 @@ impl TimeRange {
             start_frame,
             end_frame,
             source_frames: frames,
+            decoded_prefix: None,
+            downloaded_prefix: None,
         })
     }
 }
 impl SelectedRange {
+    pub(crate) fn schema_version(self) -> u32 {
+        if self.decoded_prefix.is_some() { 3 } else { 2 }
+    }
     pub(crate) fn validate(self, duration: f64) -> Result<()> {
-        if self.requested.resolve(self.source_frames)? != self
+        let mut expected = self.requested.resolve(self.source_frames)?;
+        expected.decoded_prefix = self.decoded_prefix;
+        expected.downloaded_prefix = self.downloaded_prefix;
+        if expected != self
             || (self.source_frames as f64 / RATE as f64 - duration).abs()
                 > duration.abs().max(1.0) * f64::EPSILON * 4.0
+        {
+            return Err(invalid());
+        }
+        if let Some(prefix) = self.downloaded_prefix
+            && (self.decoded_prefix.is_none()
+                || prefix.bytes == 0
+                || prefix.bytes >= prefix.source_bytes)
+        {
+            return Err(invalid());
+        }
+        if let Some(prefix) = self.decoded_prefix
+            && (self.requested.end_millis.is_none()
+                || prefix.through_frame() < self.end_frame
+                || prefix.through_frame() >= self.source_frames)
         {
             return Err(invalid());
         }
         Ok(())
     }
     pub(crate) fn summary(self) -> Value {
-        json!({"requested_start_seconds":self.requested.start_millis as f64/1000.0,"requested_end_seconds":self.requested.end_millis.map(|v|v as f64/1000.0),"start_seconds":self.start_frame as f64/RATE as f64,"end_seconds":self.end_frame as f64/RATE as f64,"download":"full_audio"})
+        let mut value = json!({"requested_start_seconds":self.requested.start_millis as f64/1000.0,"requested_end_seconds":self.requested.end_millis.map(|v|v as f64/1000.0),"start_seconds":self.start_frame as f64/RATE as f64,"end_seconds":self.end_frame as f64/RATE as f64,"download":"full_audio"});
+        if let Some(prefix) = self.decoded_prefix {
+            value["decode"] = json!("prefix");
+            value["decoded_through_seconds"] = json!(prefix.through_frame() as f64 / RATE as f64);
+            value["source_frames_basis"] = json!("container_index");
+        }
+        if let Some(prefix) = self.downloaded_prefix {
+            value["download"] = json!("prefix");
+            value["downloaded_bytes"] = json!(prefix.bytes);
+            value["source_bytes"] = json!(prefix.source_bytes);
+        }
+        value
     }
 }
 #[cfg(test)]

@@ -1,4 +1,5 @@
 use super::*;
+use crate::fmp4;
 #[cfg(unix)]
 fn fixture(frames: u64) -> (PathBuf, Pipeline, Checkpoint, audio::Wav) {
     fixture_with_range(frames, None)
@@ -71,6 +72,7 @@ fn unverified_teardown_does_not_adopt_staging_outputs() {
     let mut audio = DecodedAudio {
         frames: wav.frames,
         legacy: Some(wav),
+        prefix_frames: None,
     };
     crate::process::TEST_UNVERIFIED.set(true);
     let result = pipeline.recognize_pending(&pipeline.runner, &mut checkpoint, &mut audio);
@@ -104,6 +106,7 @@ fn pending_index_memory_refusal_preserves_media_before_asr() {
     let mut audio = DecodedAudio {
         frames: wav.frames,
         legacy: Some(wav),
+        prefix_frames: None,
     };
     let error = crate::memory::with_capacity_for_test(0, || {
         pipeline.recognize_pending(&pipeline.runner, &mut checkpoint, &mut audio)
@@ -350,6 +353,141 @@ fn direct_decode_checks_space_before_decoding_and_resumes_owned_chunks() {
 
 #[cfg(unix)]
 #[test]
+fn retired_prefix_candidate_state_is_not_used_by_the_next_acquisition() {
+    let range = crate::time_range::TimeRange {
+        start_millis: 1000,
+        end_millis: Some(12000),
+    };
+    let (root, pipeline, mut checkpoint, wav) = fixture_with_range(1, Some(range));
+    drop(wav);
+    let media = fmp4::fragmented(16000);
+    let ranges = fmp4::ranges(&media);
+    let cut = ranges[2].end;
+    let prefix = checkpoint.begin_download().unwrap();
+    let path = PathBuf::from(format!("{}.m4a", prefix.display()));
+    fs::write(&path, &media[..cut]).unwrap();
+    let source = AcquiredAudio {
+        acquisition: crate::download::Acquisition {
+            path: path.clone(),
+            prefix: Some(crate::download::Prefix {
+                index: crate::download::SegmentIndex {
+                    samples: 1000000,
+                    sample_rate: 16000,
+                    prefix_bytes: cut as u64,
+                },
+                bytes: cut as u64,
+                total_bytes: media.len() as u64,
+            }),
+        },
+        evidence: Some(serde_json::json!({})),
+    };
+    let failed = pipeline
+        .qualify_prefix(&pipeline.runner, &mut checkpoint, &source)
+        .err()
+        .unwrap();
+    assert_eq!(
+        failed
+            .downcast_ref::<crate::protocol::Failure>()
+            .unwrap()
+            .code,
+        "range_full_source_required"
+    );
+    assert!(checkpoint.chunk_indices().next().is_none());
+    assert!(checkpoint.latest_decode_resume().is_none());
+    assert!(!root.join("download.json").exists());
+    let staged: Vec<_> = fs::read_dir(root.join("chunks"))
+        .unwrap()
+        .map(|v| v.unwrap().path())
+        .collect();
+    assert!(!staged.is_empty());
+    checkpoint.retire_download().unwrap();
+    assert!(path.exists());
+    let next = checkpoint.begin_download().unwrap();
+    let replacement = PathBuf::from(format!("{}.m4a", next.display()));
+    fs::write(&replacement, fmp4::fragmented(32000)).unwrap();
+    let mut expected = Vec::new();
+    audio::decode_chunks(
+        &replacement,
+        160000,
+        &pipeline.runner.cancelled,
+        |index, pcm| {
+            if index == 0 {
+                expected.extend_from_slice(pcm);
+            }
+            Ok(())
+        },
+    )
+    .unwrap();
+    pipeline
+        .extract_audio(&pipeline.runner, &mut checkpoint, &replacement, None)
+        .unwrap();
+    let mut actual = Vec::new();
+    audio::copy_pcm_span(
+        &root,
+        160000,
+        0,
+        160000,
+        &pipeline.runner.cancelled,
+        |pcm| {
+            actual.extend_from_slice(pcm);
+            Ok(())
+        },
+    )
+    .unwrap();
+    assert_eq!(actual, expected);
+    assert!(
+        staged.iter().all(|path| path.exists()),
+        "unqualified candidate files must stay unadopted and preserved"
+    );
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[cfg(unix)]
+#[test]
+fn prefix_receipt_rejects_missing_range_schema_and_extent_mismatches() {
+    for (range, schema, through_frame) in [
+        (None, 2, 160000),
+        (Some((1000, None)), 2, 160000),
+        (Some((1000, Some(2000))), 1, 160000),
+        (Some((1000, Some(2000))), 2, 16000),
+        (Some((1000, Some(2000))), 2, 160001),
+        (Some((1000, Some(2000))), 2, 192000),
+    ] {
+        let range = range.map(|(start_millis, end_millis)| crate::time_range::TimeRange {
+            start_millis,
+            end_millis,
+        });
+        let (root, pipeline, mut checkpoint, wav) = fixture_with_range(1, range);
+        drop(wav);
+        let bytes = serde_json::to_vec(&serde_json::json!({"schema_version":schema,
+            "frames":192000,"chunk_seconds":10,"prefix_frames":through_frame}))
+        .unwrap();
+        checkpoint
+            .publish_bytes(&bytes, "media/audio.json")
+            .unwrap();
+        let error = pipeline
+            .extract_audio(
+                &pipeline.runner,
+                &mut checkpoint,
+                &root.join("absent.m4a"),
+                None,
+            )
+            .err()
+            .unwrap();
+        assert_eq!(
+            error
+                .downcast_ref::<crate::protocol::Failure>()
+                .unwrap()
+                .code,
+            "decoded_receipt_invalid"
+        );
+        assert_eq!(fs::read(root.join("media/audio.json")).unwrap(), bytes);
+        fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[cfg(unix)]
+#[test]
 fn ranged_decode_retains_only_selected_pcm_and_resumes_without_prefix_wavs() {
     let range = crate::time_range::TimeRange {
         start_millis: 10000,
@@ -461,7 +599,79 @@ fn ranged_decode_retains_only_selected_pcm_and_resumes_without_prefix_wavs() {
 
 #[cfg(unix)]
 #[test]
-#[ignore = "two full decodes of an owner-provided long source; local disk and PCM qualification"]
+#[ignore = "compare a real retained partial job with its complete same-representation reference"]
+fn real_saved_prefix_matches_complete_reference() {
+    use sha2::{Digest, Sha256};
+    use std::io::Read;
+    let job = PathBuf::from(std::env::var_os("AGENT_YOUTUBE_PREFIX_JOB").unwrap());
+    let reference = PathBuf::from(std::env::var_os("AGENT_YOUTUBE_PREFIX_REFERENCE").unwrap());
+    let saved: serde_json::Value =
+        serde_json::from_slice(&fs::read(job.join("job.json")).unwrap()).unwrap();
+    let options: Options = serde_json::from_value(saved["options"].clone()).unwrap();
+    let requested = options.range.unwrap();
+    let start = requested.start_millis * 16;
+    let end = requested.end_millis.unwrap() * 16;
+    let chunk_frames = u64::from(options.chunk_seconds) * 16000;
+    let state: serde_json::Value =
+        serde_json::from_slice(&fs::read(job.join("state.json")).unwrap()).unwrap();
+    let prefix = job.join(state["download_prefix"].as_str().unwrap());
+    let proof: serde_json::Value =
+        serde_json::from_slice(&fs::read(job.join("download.json")).unwrap()).unwrap();
+    let acquired = Downloader::saved_prefix(
+        &prefix,
+        &video_id(&options.url).unwrap(),
+        end.div_ceil(chunk_frames) * chunk_frames,
+        &proof,
+    )
+    .unwrap();
+    let info = acquired.prefix.unwrap();
+    assert_eq!(fs::metadata(&reference).unwrap().len(), info.total_bytes);
+    let mut reference_prefix = Sha256::new();
+    let mut reader = fs::File::open(&reference).unwrap().take(info.bytes);
+    let mut buffer = [0u8; 65536];
+    loop {
+        let n = reader.read(&mut buffer).unwrap();
+        if n == 0 {
+            break;
+        }
+        reference_prefix.update(&buffer[..n]);
+    }
+    assert_eq!(
+        format!("{:x}", reference_prefix.finalize()),
+        proof["sha256"]
+    );
+    let cancelled = AtomicBool::new(false);
+    let mut expected = Sha256::new();
+    let frames = audio::decode_chunks(&reference, chunk_frames, &cancelled, |index, pcm| {
+        let offset = index as u64 * chunk_frames;
+        let left = start.max(offset);
+        let right = end.min(offset + pcm.len() as u64 / 2);
+        if left < right {
+            expected.update(&pcm[((left - offset) * 2) as usize..((right - offset) * 2) as usize]);
+        }
+        Ok(())
+    })
+    .unwrap();
+    assert_eq!(info.index.frames().unwrap(), frames);
+    let mut actual = Sha256::new();
+    audio::copy_pcm_span(&job, chunk_frames, start, end - start, &cancelled, |pcm| {
+        actual.update(pcm);
+        Ok(())
+    })
+    .unwrap();
+    let expected = format!("{:x}", expected.finalize());
+    assert_eq!(format!("{:x}", actual.finalize()), expected);
+    eprintln!(
+        "real_prefix_comparison {}",
+        serde_json::json!({"video_id":video_id(&options.url).unwrap(),
+        "source_bytes":info.total_bytes,"prefix_bytes":info.bytes,"source_frames":frames,
+        "start_frame":start,"end_frame":end,"selected_pcm_sha256":expected,"pcm_equal":true,"source_prefix_equal":true})
+    );
+}
+
+#[cfg(unix)]
+#[test]
+#[ignore = "full reference and ranged pipeline on an owner-provided long source; local PCM qualification"]
 fn real_long_range_retention_profile() {
     use sha2::{Digest, Sha256};
     let input = PathBuf::from(std::env::var_os("AGENT_YOUTUBE_RANGE_PROFILE_SOURCE").unwrap());
@@ -504,7 +714,11 @@ fn real_long_range_retention_profile() {
         .extract_audio(&pipeline.runner, &mut checkpoint, &source, None)
         .unwrap();
     let ranged_ms = begin.elapsed().as_millis();
-    assert_eq!(decoded.frames, frames);
+    if let Some(through) = decoded.prefix_frames {
+        assert!(through >= end && through < decoded.frames);
+    } else {
+        assert_eq!(decoded.frames, frames);
+    }
     let mut actual = Sha256::new();
     audio::copy_pcm_span(
         &root,
@@ -541,7 +755,8 @@ fn real_long_range_retention_profile() {
             "selected_pcm_sha256":expected,"full_pcm_bytes":frames*2,
             "retained_wav_bytes":retained_pcm_bytes,"decoder_checkpoint_bytes":checkpoint_bytes,
             "full_decode_ms":baseline_ms,"ranged_retention_decode_ms":ranged_ms,
-            "download":"full_audio","decode":"full_audio","pcm_equal":true
+        "indexed_source_frames":decoded.frames,"decoded_prefix_frames":decoded.prefix_frames,
+        "download":"full_audio","decode":if decoded.prefix_frames.is_some() {"prefix"} else {"full_audio"},"pcm_equal":true
         })
     );
     fs::remove_dir_all(root).unwrap();

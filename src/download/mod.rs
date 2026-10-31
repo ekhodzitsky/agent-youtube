@@ -11,6 +11,8 @@ mod metrics;
 mod recovery;
 mod sabr;
 mod samsung;
+mod sidx;
+pub(crate) use sidx::Index as SegmentIndex;
 pub(crate) mod tls;
 mod wire;
 
@@ -99,6 +101,16 @@ struct Progress {
     sequence: Option<u64>,
     #[serde(default)]
     end_ms: u64,
+}
+#[derive(Clone, Copy)]
+pub(crate) struct Prefix {
+    pub index: SegmentIndex,
+    pub bytes: u64,
+    pub total_bytes: u64,
+}
+pub(crate) struct Acquisition {
+    pub path: PathBuf,
+    pub prefix: Option<Prefix>,
 }
 #[derive(Serialize, Deserialize)]
 struct Receipt {
@@ -589,6 +601,24 @@ impl Downloader {
     /// The prefix must already be durably owned by the caller's checkpoint.
     pub fn download(&self, id: &str, prefix: &Path, cancelled: &AtomicBool) -> Result<PathBuf> {
         let outcome = self.download_impl(id, prefix, cancelled);
+        self.finish_download(outcome, prefix, cancelled)
+    }
+    pub(crate) fn download_range(
+        &self,
+        id: &str,
+        prefix: &Path,
+        cancelled: &AtomicBool,
+        through_frame: u64,
+    ) -> Result<Acquisition> {
+        let outcome = self.download_inner(id, prefix, cancelled, Some(through_frame));
+        self.finish_download(outcome, prefix, cancelled)
+    }
+    fn finish_download<T>(
+        &self,
+        outcome: Result<T>,
+        prefix: &Path,
+        cancelled: &AtomicBool,
+    ) -> Result<T> {
         // Long-lived callers must not retain the interpreter or token state after
         // a media, persistence or cancellation failure.
         let worker = self
@@ -626,6 +656,16 @@ impl Downloader {
         })
     }
     fn download_impl(&self, id: &str, prefix: &Path, cancelled: &AtomicBool) -> Result<PathBuf> {
+        self.download_inner(id, prefix, cancelled, None)
+            .map(|value| value.path)
+    }
+    fn download_inner(
+        &self,
+        id: &str,
+        prefix: &Path,
+        cancelled: &AtomicBool,
+        range_end: Option<u64>,
+    ) -> Result<Acquisition> {
         check(cancelled)?;
         let path = suffix(prefix, ".m4a");
         let journal = suffix(prefix, ".json");
@@ -692,7 +732,18 @@ impl Downloader {
             // have been checked. Expired URLs cannot invalidate durable bytes.
             file.set_len(receipt.identity.length)?;
             file.sync_all()?;
-            return Ok(path);
+            return Ok(Acquisition { path, prefix: None });
+        }
+        if let (Some(receipt), Some((file, _)), Some(_), Some(end)) =
+            (&retained, &verified, &cached, range_end)
+            && let Some(info) = Self::prefix_candidate(&path, receipt, end)?
+        {
+            file.set_len(receipt.progress.bytes)?;
+            file.sync_all()?;
+            return Ok(Acquisition {
+                path,
+                prefix: Some(info),
+            });
         }
         let cached = match cached {
             Some(source) if !lease::expired(&source)? => Some(source),
@@ -766,16 +817,18 @@ impl Downloader {
         }
         let parent = prefix.parent().unwrap_or(Path::new("."));
         let space = storage::disk_space_at(parent, "download")?;
+        let pending_bytes = source
+            .identity
+            .length
+            .saturating_sub(receipt.progress.bytes);
+        let initial_bytes = if range_end.is_some() && !source.direct {
+            pending_bytes.min(8 * 1024 * 1024)
+        } else {
+            pending_bytes
+        };
         space.require_at(
             &path,
-            space
-                .allocation(
-                    source
-                        .identity
-                        .length
-                        .saturating_sub(receipt.progress.bytes),
-                )?
-                .saturating_add(64 * 1024),
+            space.allocation(initial_bytes)?.saturating_add(64 * 1024),
             "download",
         )?;
         space.require_files(parent, if path.exists() { 2 } else { 4 }, "download")?;
@@ -806,7 +859,34 @@ impl Downloader {
         let mut renewed_stalled_source = false;
         let mut stable_retry_used = false;
         let mut refresh_before_exclusion = false;
+        let mut index = None;
+        let mut probe_pending = range_end.is_some();
+        let mut prefix_info = None;
         while receipt.progress.bytes < source.identity.length {
+            if !receipt.identity.direct
+                && let Some(end) = range_end
+            {
+                if probe_pending {
+                    match sidx::probe(&path, receipt.identity.length, end)? {
+                        sidx::Probe::Ready(plan) => {
+                            index = Some(plan);
+                            probe_pending = false;
+                        }
+                        sidx::Probe::Unsupported => probe_pending = false,
+                        sidx::Probe::Pending => {}
+                    }
+                }
+                if let Some(plan) = index
+                    && receipt.progress.bytes >= plan.prefix_bytes
+                {
+                    prefix_info = Some(Prefix {
+                        index: plan,
+                        bytes: receipt.progress.bytes,
+                        total_bytes: receipt.identity.length,
+                    });
+                    break;
+                }
+            }
             check(cancelled)?;
             #[cfg(test)]
             faults::before_cycle(&mut source, &receipt);
@@ -990,14 +1070,17 @@ impl Downloader {
                 );
             }
         }
-        if receipt.progress.bytes != receipt.identity.length {
+        if receipt.progress.bytes != receipt.identity.length && prefix_info.is_none() {
             return Err("download length does not match its representation".into());
         }
         file.sync_all()?;
         if storage::digest(&path)? != receipt.progress.digest {
             return Err("download failed final integrity verification".into());
         }
-        Ok(path)
+        Ok(Acquisition {
+            path,
+            prefix: prefix_info,
+        })
     }
     fn replace_source(
         &self,
@@ -1101,6 +1184,111 @@ impl Downloader {
         Ok(serde_json::to_vec(
             &serde_json::json!({"status":"verified","representation":receipt.identity,"sha256":receipt.progress.digest,"bytes":receipt.progress.bytes,"duration_seconds":receipt.duration_seconds}),
         )?)
+    }
+    fn prefix_candidate(path: &Path, receipt: &Receipt, end: u64) -> Result<Option<Prefix>> {
+        if receipt.identity.direct || receipt.progress.bytes >= receipt.identity.length {
+            return Ok(None);
+        }
+        Ok(match sidx::probe(path, receipt.identity.length, end)? {
+            sidx::Probe::Ready(index) if receipt.progress.bytes >= index.prefix_bytes => {
+                Some(Prefix {
+                    index,
+                    bytes: receipt.progress.bytes,
+                    total_bytes: receipt.identity.length,
+                })
+            }
+            _ => None,
+        })
+    }
+    pub(crate) fn prefix_evidence(prefix: &Path, acquisition: &Acquisition) -> Result<Value> {
+        let info = acquisition
+            .prefix
+            .ok_or("missing partial acquisition scope")?;
+        let journal = suffix(prefix, ".json");
+        owned(&journal)?;
+        owned(&acquisition.path)?;
+        let receipt: Receipt = serde_json::from_str(&storage::read_text(&journal, 1 << 20)?)?;
+        let valid_index = match sidx::probe(&acquisition.path, receipt.identity.length, 0)? {
+            sidx::Probe::Ready(index) => {
+                index.samples == info.index.samples && index.sample_rate == info.index.sample_rate
+            }
+            _ => false,
+        };
+        if receipt.version != 1
+            || receipt.identity.direct
+            || !valid_index
+            || info.bytes == 0
+            || info.bytes >= info.total_bytes
+            || info.bytes != receipt.progress.bytes
+            || info.total_bytes != receipt.identity.length
+            || fs::metadata(&acquisition.path)?.len() != info.bytes
+            || storage::digest(&acquisition.path)? != receipt.progress.digest
+        {
+            return Err(crate::checkpoint::evidence_failure(
+                "download_prefix_invalid",
+                &acquisition.path,
+                "partial source evidence mismatch; media preserved",
+            ));
+        }
+        Ok(
+            serde_json::json!({"status":"prefix_verified","representation":receipt.identity,
+            "sha256":receipt.progress.digest,"bytes":info.bytes,"duration_seconds":receipt.duration_seconds,
+            "index":{"samples":info.index.samples,"sample_rate":info.index.sample_rate}}),
+        )
+    }
+    pub(crate) fn saved_prefix(
+        prefix: &Path,
+        id: &str,
+        end: u64,
+        expected: &Value,
+    ) -> Result<Acquisition> {
+        Self::read_saved_prefix(prefix, id, end, expected).map_err(|error| {
+            crate::checkpoint::evidence_context("download_prefix_invalid", prefix, error)
+        })
+    }
+    fn read_saved_prefix(
+        prefix: &Path,
+        id: &str,
+        end: u64,
+        expected: &Value,
+    ) -> Result<Acquisition> {
+        let journal = suffix(prefix, ".json");
+        owned(&journal)?;
+        let receipt: Receipt = serde_json::from_str(&storage::read_text(&journal, 1 << 20)?)?;
+        let path = suffix(prefix, ".m4a");
+        owned(&path)?;
+        let info = Self::prefix_candidate(&path, &receipt, end)?
+            .ok_or("saved source prefix does not cover the requested output grid")?;
+        let acquisition = Acquisition {
+            path,
+            prefix: Some(info),
+        };
+        let actual = Self::prefix_evidence(prefix, &acquisition)?;
+        let mut expected = expected.clone();
+        let decoded = expected
+            .as_object_mut()
+            .ok_or("invalid source prefix evidence")?
+            .remove("decoded_prefix")
+            .ok_or("source prefix was not qualified by decoding")?;
+        let decoded: crate::time_range::DecodedPrefix = serde_json::from_value(decoded)?;
+        let frames = info
+            .index
+            .samples
+            .checked_mul(u64::from(crate::audio::SAMPLE_RATE))
+            .ok_or("indexed source length overflow")?
+            .div_ceil(u64::from(info.index.sample_rate));
+        if receipt.identity.video_id != id
+            || actual != expected
+            || decoded.through_frame() != end
+            || decoded.through_frame() >= frames
+        {
+            return Err(crate::checkpoint::evidence_failure(
+                "download_prefix_invalid",
+                prefix,
+                "saved source prefix differs from the requested video or decoding proof; media preserved",
+            ));
+        }
+        Ok(acquisition)
     }
     fn range(
         &self,
@@ -1357,6 +1545,16 @@ fn commit(
     {
         return Err("audio payload exceeds declared representation length".into());
     }
+    let directory = journal.parent().unwrap_or(Path::new("."));
+    let space = storage::disk_space_at(directory, "download")?;
+    space.require_at(
+        journal,
+        space
+            .allocation(bytes.len() as u64)?
+            .saturating_add(64 * 1024),
+        "download",
+    )?;
+    space.require_files(directory, 1, "download")?;
     file.write_all(bytes)?;
     file.sync_all()?;
     hasher.update(bytes);

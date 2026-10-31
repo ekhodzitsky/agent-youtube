@@ -7,7 +7,9 @@ use std::{
 };
 
 mod resume;
-pub(crate) use resume::{DecodeEvent, Resume, decode_resumable};
+#[cfg(test)]
+use resume::decode_resumable;
+pub(crate) use resume::{DecodeEvent, Resume, SourcePrefix, decode_prefix, full_source_required};
 
 #[cfg(test)]
 thread_local! { static FRAME_COUNT: std::cell::Cell<u64> = const { std::cell::Cell::new(0) }; }
@@ -734,6 +736,161 @@ mod tests {
                 assert_eq!(actual, expected, "{hz} Hz fractional resume");
             }
         }
+    }
+
+    #[test]
+    fn prefix_decoding_matches_full_pcm_and_restores_a_completed_prefix() {
+        let temp = Temp::new();
+        for hz in [16000_u32, 22050, 44100, 48000] {
+            for open_fragment in [false, true] {
+                let source = temp.0.join("prefix.m4a");
+                let pcm: Vec<_> = (0..hz + 1).map(|i| 0.2 * (i as f32 * 0.19).sin()).collect();
+                let encoded = syom::encode_with(
+                    &[&pcm],
+                    hz,
+                    &syom::EncodeOptions::default()
+                        .with_bitrate_bps(32000)
+                        .with_pns(true)
+                        .with_container(syom::EncodeContainer::M4a),
+                )
+                .unwrap();
+                fs::write(
+                    &source,
+                    if open_fragment {
+                        fragmented(&encoded, true).0
+                    } else {
+                        encoded
+                    },
+                )
+                .unwrap();
+                let cancelled = AtomicBool::new(false);
+                let mut expected = Vec::new();
+                FRAME_COUNT.set(0);
+                let full = decode_resumable(&source, 1600, &cancelled, None, |event| {
+                    if let DecodeEvent::Chunk(_, pcm) = event {
+                        expected.extend_from_slice(pcm);
+                    }
+                    Ok(())
+                })
+                .unwrap();
+                let full_work = FRAME_COUNT.get();
+                FRAME_COUNT.set(0);
+                let mut actual = Vec::new();
+                let mut saved = None;
+                let decoded = resume::decode_prefix(
+                    &source,
+                    1600,
+                    &cancelled,
+                    None,
+                    Some(4801),
+                    None,
+                    |event| {
+                        match event {
+                            DecodeEvent::Chunk(_, pcm) => actual.extend_from_slice(pcm),
+                            DecodeEvent::Checkpoint(_, state) => {
+                                saved = Some(serde_json::to_vec(state).unwrap())
+                            }
+                        }
+                        Ok(())
+                    },
+                )
+                .unwrap();
+                assert_eq!(decoded.frames, full);
+                assert_eq!(decoded.prefix_frames, Some(6400));
+                assert_eq!(actual, expected[..12800]);
+                assert!(FRAME_COUNT.get() < full_work * 3 / 4);
+                FRAME_COUNT.set(0);
+                let restored = resume::decode_prefix(
+                    &source,
+                    1600,
+                    &cancelled,
+                    Some(serde_json::from_slice(saved.as_ref().unwrap()).unwrap()),
+                    Some(4801),
+                    None,
+                    |_| panic!("a completed prefix must not emit more chunks or checkpoints"),
+                )
+                .unwrap();
+                assert_eq!(restored.prefix_frames, Some(6400));
+                assert_eq!(restored.frames, full);
+                assert_eq!(FRAME_COUNT.get(), 0);
+                let mut resumed_pcm = Vec::new();
+                let mut interrupted = None;
+                resume::decode_prefix(&source, 1600, &cancelled, None, Some(4801), None, |event| {
+                    match event {
+                        DecodeEvent::Chunk(_, pcm) => resumed_pcm.extend_from_slice(pcm),
+                        DecodeEvent::Checkpoint(_, state) => {
+                            interrupted = Some(serde_json::to_vec(state).unwrap());
+                            return Err("fixture interruption".into());
+                        }
+                    }
+                    Ok(())
+                })
+                .err()
+                .unwrap();
+                let continued = resume::decode_prefix(
+                    &source,
+                    1600,
+                    &cancelled,
+                    Some(serde_json::from_slice(interrupted.as_ref().unwrap()).unwrap()),
+                    Some(4801),
+                    None,
+                    |event| {
+                        if let DecodeEvent::Chunk(_, pcm) = event {
+                            resumed_pcm.extend_from_slice(pcm);
+                        }
+                        Ok(())
+                    },
+                )
+                .unwrap();
+                assert_eq!(continued.prefix_frames, Some(6400));
+                assert_eq!(resumed_pcm, expected[..12800]);
+                let mut clamped = Vec::new();
+                let complete = resume::decode_prefix(
+                    &source,
+                    1600,
+                    &cancelled,
+                    None,
+                    Some(full + 16000),
+                    None,
+                    |event| {
+                        if let DecodeEvent::Chunk(_, pcm) = event {
+                            clamped.extend_from_slice(pcm);
+                        }
+                        Ok(())
+                    },
+                )
+                .unwrap();
+                assert_eq!(complete.prefix_frames, None);
+                assert_eq!(complete.frames, full);
+                assert_eq!(clamped, expected);
+            }
+        }
+    }
+
+    #[test]
+    fn prefix_decoding_replays_unqualified_he_aac_in_full() {
+        let temp = Temp::new();
+        let source = temp.0.join("he.m4a");
+        fs::write(&source, include_bytes!("../tests/fixtures/ps48.m4a")).unwrap();
+        let cancelled = AtomicBool::new(false);
+        let mut expected = Vec::new();
+        let full = decode_chunks(&source, 1600, &cancelled, |_, pcm| {
+            expected.extend_from_slice(pcm);
+            Ok(())
+        })
+        .unwrap();
+        let mut actual = Vec::new();
+        let decoded =
+            resume::decode_prefix(&source, 1600, &cancelled, None, Some(800), None, |event| {
+                if let DecodeEvent::Chunk(_, pcm) = event {
+                    actual.extend_from_slice(pcm);
+                }
+                Ok(())
+            })
+            .unwrap();
+        assert_eq!(decoded.prefix_frames, None);
+        assert_eq!(decoded.frames, full);
+        assert_eq!(actual, expected);
     }
 
     #[cfg(target_os = "linux")]

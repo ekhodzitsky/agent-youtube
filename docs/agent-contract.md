@@ -29,27 +29,32 @@ See [discovery usage](usage.md#machine-discovery).
 ## Range-aware records
 
 Since 0.12.0, explicit --start/--end requests produce ranged canonical transcripts
-and coverage artifacts with schema_version=2. Whole-video artifacts remain
-schema1; existing canonical transcripts and exact ASR JSON are retained unchanged.
-Compact/metadata responses
-still use their schema2 envelope, with optional range metadata and
-coverage.scope=audio_range_processed. Successful ranged batch items also include
-their requested/actual range summary without embedding text. A full response still has a schema1 envelope
-and may embed a canonical schema2 transcript. Clients must inspect artifact schema
-and range before treating text as full-recording recognition.
+and coverage artifacts with schema_version=2 when fully decoded. Since 0.14.0,
+qualified prefix decoding uses schema3 and range.decoded_prefix with
+source_frames_basis=container_index and through_frame. This explicitly distinguishes
+an indexed full-source duration from fully decoded EOF; the unprocessed suffix is
+not validated. A received prefix is described by range.downloaded_prefix with
+bytes and source_bytes; full acquisition has no such field. Whole-video artifacts remain
+schema1; saved canonical transcripts and exact ASR JSON are retained unchanged.
 
-Ranged checkpoints use schema5 to prevent older executables from interpreting
-selected ASR chunks as full-recording input. Whole-video jobs retain schema4 and
-legacy compatibility.
+Compact/metadata responses keep their schema2 envelope. A prefix range summary
+adds decode=prefix, decoded_through_seconds and source_frames_basis=container_index;
+absence of those fields retains the full-decoding meaning. Partial acquisition
+changes download to prefix and adds downloaded_bytes/source_bytes, which count
+committed media bytes rather than transport overhead. Coverage.scope remains
+audio_range_processed. Batch item range summaries carry the same evidence without
+embedding text. Full responses keep their schema1 envelope and can embed canonical
+schema2 or schema3. Inspect artifact schema and range before treating text or
+duration as evidence about the whole recording.
 
-Requested bounds use integer milliseconds in saved job/configuration and canonical
-range metadata. Actual bounds use absolute 16 kHz frame offsets derived from the
-full decoded source. Agent views provide requested and actual seconds; duration
-continues to identify full source length. Raw ASR JSON remains exact and relative
-to its individual selected input chunk. Canonical/agent/export timestamps are
-absolute. Bounds are checkpoint identity and cannot be changed on resume. Invalid
-requests use invalid_time_range; selections outside decoded audio use
-range_out_of_bounds (nonretryable, owned media retained). See
+New and mutated ranged checkpoints use schema6. Schema5 remains readable, but
+older executables reject schema6 before resuming. Whole-video jobs retain schema4
+and legacy compatibility. Requests use integer milliseconds; actual selected
+bounds and prefix extent use absolute 16 kHz frames. Raw ASR JSON remains exact and
+relative to its selected input chunk. Canonical/agent/export timestamps are
+absolute. Bounds are immutable checkpoint identity. Invalid requests use
+invalid_time_range; an empty range after decoding uses range_out_of_bounds
+(nonretryable, owned media retained). See
 [range semantics and examples](usage.md#recognition-time-ranges).
 
 ## Batch records

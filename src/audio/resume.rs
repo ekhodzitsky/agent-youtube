@@ -38,8 +38,89 @@ pub(crate) fn decode_resumable(
     chunk_frames: u64,
     cancelled: &AtomicBool,
     resume: Option<Resume>,
-    mut event: impl FnMut(DecodeEvent<'_>) -> Result<()>,
+    event: impl FnMut(DecodeEvent<'_>) -> Result<()>,
 ) -> Result<u64> {
+    decode_inner(source, chunk_frames, cancelled, resume, None, None, event).map(|v| v.frames)
+}
+
+pub(crate) struct Decoded {
+    pub frames: u64,
+    pub prefix_frames: Option<u64>,
+}
+
+impl Decoded {
+    fn full(frames: u64) -> Self {
+        Self {
+            frames,
+            prefix_frames: None,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct SourcePrefix {
+    pub samples: u64,
+    pub sample_rate: u32,
+}
+
+pub(crate) fn full_source_required() -> Box<dyn std::error::Error + Send + Sync> {
+    crate::protocol::failure(
+        "range_full_source_required",
+        Some(false),
+        "source prefix cannot establish the requested PCM; full acquisition required",
+    )
+}
+fn replay(
+    source: &Path,
+    chunk_frames: u64,
+    cancelled: &AtomicBool,
+    prefix: Option<SourcePrefix>,
+    mut event: impl FnMut(DecodeEvent<'_>) -> Result<()>,
+) -> Result<Decoded> {
+    if prefix.is_some() {
+        return Err(full_source_required());
+    }
+    decode_chunks(source, chunk_frames, cancelled, |index, pcm| {
+        event(DecodeEvent::Chunk(index, pcm))
+    })
+    .map(Decoded::full)
+}
+
+pub(crate) fn decode_prefix(
+    source: &Path,
+    chunk_frames: u64,
+    cancelled: &AtomicBool,
+    resume: Option<Resume>,
+    end_frame: Option<u64>,
+    source_prefix: Option<SourcePrefix>,
+    event: impl FnMut(DecodeEvent<'_>) -> Result<()>,
+) -> Result<Decoded> {
+    match (end_frame, source_prefix) {
+        (Some(end), prefix) => decode_inner(
+            source,
+            chunk_frames,
+            cancelled,
+            resume,
+            Some(end),
+            prefix,
+            event,
+        ),
+        (None, None) => {
+            decode_resumable(source, chunk_frames, cancelled, resume, event).map(Decoded::full)
+        }
+        (None, Some(_)) => Err(full_source_required()),
+    }
+}
+
+fn decode_inner(
+    source: &Path,
+    chunk_frames: u64,
+    cancelled: &AtomicBool,
+    resume: Option<Resume>,
+    end_frame: Option<u64>,
+    source_prefix: Option<SourcePrefix>,
+    mut event: impl FnMut(DecodeEvent<'_>) -> Result<()>,
+) -> Result<Decoded> {
     check_cancelled(cancelled)?;
     if chunk_frames == 0 {
         return Err(invalid(source));
@@ -58,13 +139,44 @@ pub(crate) fn decode_resumable(
         }
         _ if resume.is_none() => {
             crate::protocol::event("decoder checkpoint unavailable; using exact replay");
-            return decode_chunks(source, chunk_frames, cancelled, |index, pcm| {
-                event(DecodeEvent::Chunk(index, pcm))
-            });
+            return replay(source, chunk_frames, cancelled, source_prefix, event);
         }
         _ => return Err(invalid(source)),
     };
     let expected_rate = codec.output_sample_rate();
+    if let Some(prefix) = source_prefix
+        && (prefix.sample_rate != expected_rate
+            || prefix.samples < codec.presentation_len()
+            || prefix.samples == 0
+            || codec.bounded_presentation())
+    {
+        return Err(full_source_required());
+    }
+    // The container index supplies a source-length estimate, not a claim that
+    // the unprocessed suffix decoded successfully. Preserve that distinction.
+    let indexed_samples = source_prefix.map_or_else(|| codec.presentation_len(), |p| p.samples);
+    let indexed_frames = indexed_samples
+        .checked_mul(u64::from(SAMPLE_RATE))
+        .ok_or_else(|| invalid(source))?
+        .div_ceil(u64::from(expected_rate));
+    let stop_chunk = end_frame.map(|end| end.div_ceil(chunk_frames));
+    let prefix_result = |index: usize| -> Result<Option<Decoded>> {
+        let through = (index as u64)
+            .checked_mul(chunk_frames)
+            .ok_or_else(|| invalid(source))?;
+        Ok(
+            if stop_chunk.is_some_and(|stop| stop > 0 && index as u64 >= stop)
+                && through < indexed_frames
+            {
+                Some(Decoded {
+                    frames: indexed_frames,
+                    prefix_frames: Some(through),
+                })
+            } else {
+                None
+            },
+        )
+    };
     let mut index = 0;
     let mut samples = 0u64;
     let mut written = 0u64;
@@ -115,6 +227,12 @@ pub(crate) fn decode_resumable(
         crate::protocol::event(format!(
             "restoring exact decoder state after {index} completed chunks"
         ));
+    }
+    if codec.checkpoint_compatible()
+        && let Some(done) = prefix_result(index)?
+    {
+        check_cancelled(cancelled)?;
+        return Ok(done);
     }
     let mut converted = Vec::new();
     loop {
@@ -181,9 +299,7 @@ pub(crate) fn decode_resumable(
             return Err(error);
         }
         if unsupported_rate && !restoring && index == 0 {
-            return decode_chunks(source, chunk_frames, cancelled, |index, pcm| {
-                event(DecodeEvent::Chunk(index, pcm))
-            });
+            return replay(source, chunk_frames, cancelled, source_prefix, event);
         }
         match outcome {
             Err(syom::AacError::Io(error))
@@ -191,9 +307,7 @@ pub(crate) fn decode_resumable(
             {
                 if !codec.checkpoint_compatible() {
                     crate::protocol::event("stateful AAC extension requires exact replay");
-                    return decode_chunks(source, chunk_frames, cancelled, |index, pcm| {
-                        event(DecodeEvent::Chunk(index, pcm))
-                    });
+                    return replay(source, chunk_frames, cancelled, source_prefix, event);
                 }
                 if let Some(state) = codec.checkpoint() {
                     event(DecodeEvent::Checkpoint(
@@ -210,15 +324,20 @@ pub(crate) fn decode_resumable(
                             chunk_frames,
                         },
                     ))?;
+                    if let Some(done) = prefix_result(index)? {
+                        check_cancelled(cancelled)?;
+                        return Ok(done);
+                    }
                 }
             }
             Err(error) => return Err(decode_error(source, error)),
             Ok(_) => {
                 if !codec.checkpoint_compatible() {
                     crate::protocol::event("stateful AAC extension requires exact replay");
-                    return decode_chunks(source, chunk_frames, cancelled, |index, pcm| {
-                        event(DecodeEvent::Chunk(index, pcm))
-                    });
+                    return replay(source, chunk_frames, cancelled, source_prefix, event);
+                }
+                if source_prefix.is_some() {
+                    return Err(full_source_required());
                 }
                 break;
             }
@@ -226,9 +345,7 @@ pub(crate) fn decode_resumable(
     }
     if codec.remaining_samples() != 0 && !codec.bounded_presentation() {
         crate::protocol::event("unbounded presentation requires exact replay");
-        return decode_chunks(source, chunk_frames, cancelled, |index, pcm| {
-            event(DecodeEvent::Chunk(index, pcm))
-        });
+        return replay(source, chunk_frames, cancelled, source_prefix, event);
     }
     if !codec.presentation_complete() || samples == 0 || codec.position() != samples {
         return Err(decode_error(
@@ -252,7 +369,7 @@ pub(crate) fn decode_resumable(
     if !buffer.is_empty() {
         event(DecodeEvent::Chunk(index, &buffer))?;
     }
-    Ok(target)
+    Ok(Decoded::full(target))
 }
 fn invalid(source: &Path) -> Box<dyn std::error::Error + Send + Sync> {
     crate::checkpoint::evidence_failure(

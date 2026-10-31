@@ -14,6 +14,8 @@ use std::{
 static NEXT: AtomicU64 = AtomicU64::new(0);
 #[path = "support/contract.rs"]
 mod contract;
+#[path = "support/fmp4.rs"]
+mod fmp4;
 const URL: &str = "https://www.youtube.com/watch?v=a2hbJlPxj4M";
 
 #[test]
@@ -2605,7 +2607,10 @@ fn pipeline_cli_fixture() {
             writeln!(log_file, "{log}").unwrap();
             let mut status = 200;
             let mut extra = String::new();
-            let bytes = if path == "/youtubei/v1/player" {
+            let bytes = if std::env::var_os("FAKE_DENY_NETWORK").is_some() {
+                status = 503;
+                Vec::new()
+            } else if path == "/youtubei/v1/player" {
                 let source = std::env::var_os("FAKE_MEDIA")
                     .map(PathBuf::from)
                     .unwrap_or_else(|| root.join("input.m4a"));
@@ -2661,16 +2666,27 @@ fn pipeline_cli_fixture() {
                 if stalled {
                     fs::write(root.join("sabr-stall-served"), b"served").unwrap();
                 }
-                sabr_fixture(
-                    &fs::read(root.join("input.m4a")).unwrap(),
-                    if !stalled {
-                        2
-                    } else if first {
-                        1
+                let indexed = std::env::var_os("FAKE_INDEXED_SABR").is_some();
+                let segments = if indexed {
+                    let counter = root.join("sabr-indexed-count");
+                    let count = if counter.exists() {
+                        fs::read_to_string(&counter)
+                            .unwrap()
+                            .parse::<usize>()
+                            .unwrap()
                     } else {
                         0
-                    },
-                )
+                    };
+                    fs::write(&counter, (count + 1).to_string()).unwrap();
+                    count + 2
+                } else if !stalled {
+                    2
+                } else if first {
+                    1
+                } else {
+                    0
+                };
+                sabr_fixture(&fs::read(root.join("input.m4a")).unwrap(), segments)
             } else if path == "/audio"
                 && std::env::var_os("FAKE_RETRY_COOLDOWN").is_some()
                 && !root.join("cooldown-served").exists()
@@ -2794,13 +2810,27 @@ fn sabr_fixture(audio: &[u8], segments: usize) -> Vec<u8> {
     blob(&mut meta, 1, video_id.as_bytes());
     blob(&mut meta, 2, &format);
     num(&mut meta, 3, duration_ms);
-    num(&mut meta, 4, 0);
+    let indexed = std::env::var_os("FAKE_INDEXED_SABR").is_some();
+    num(
+        &mut meta,
+        4,
+        if indexed {
+            fmp4::ranges(audio).len() as u64 - 2
+        } else {
+            0
+        },
+    );
     blob(&mut meta, 5, b"audio/mp4; codecs=\"mp4a.40.2\"");
     part(&mut out, 42, &meta);
-    for (id, offset, bytes) in [(0_u8, 0, &audio[..32]), (1, 32, &audio[32..])]
-        .into_iter()
-        .take(segments)
-    {
+    let ranges = if indexed {
+        fmp4::ranges(audio)
+    } else {
+        vec![0..32, 32..audio.len()]
+    };
+    for (id, range) in ranges.into_iter().enumerate().take(segments) {
+        let offset = range.start as u64;
+        let bytes = &audio[range];
+        let id = id as u8;
         let mut h = Vec::new();
         num(&mut h, 1, u64::from(id));
         blob(&mut h, 2, video_id.as_bytes());
@@ -2808,9 +2838,25 @@ fn sabr_fixture(audio: &[u8], segments: usize) -> Vec<u8> {
         num(&mut h, 4, 12345);
         num(&mut h, 6, offset);
         num(&mut h, 8, u64::from(id == 0));
-        num(&mut h, 9, 0);
-        num(&mut h, 11, 0);
-        num(&mut h, 12, duration_ms);
+        num(
+            &mut h,
+            9,
+            if indexed {
+                u64::from(id.saturating_sub(1))
+            } else {
+                0
+            },
+        );
+        num(
+            &mut h,
+            11,
+            if indexed {
+                u64::from(id.saturating_sub(1)) * 8000
+            } else {
+                0
+            },
+        );
+        num(&mut h, 12, if indexed { 8000 } else { duration_ms });
         num(&mut h, 14, bytes.len() as u64);
         part(&mut out, 20, &h);
         let mut payload = vec![id];
@@ -2820,6 +2866,168 @@ fn sabr_fixture(audio: &[u8], segments: usize) -> Vec<u8> {
     }
     out
 }
+#[test]
+fn indexed_sabr_prefix_matches_full_pcm_and_resumes_without_http() {
+    use sha2::{Digest, Sha256};
+    let media = fmp4::fragmented(16000);
+    let reference = Fixture::new();
+    fs::write(reference.root.join("input.m4a"), &media).unwrap();
+    failure(
+        reference
+            .run_command(URL)
+            .env("FAKE_SABR", "1")
+            .env("FAKE_INDEXED_SABR", "1")
+            .env("FAKE_DURATION", "24")
+            .env("FAKE_FAIL_CHUNK", "000000")
+            .output()
+            .unwrap(),
+        "process_failed",
+    );
+    let expected = fs::read(reference.path("chunks/000000.wav")).unwrap();
+    let data = expected
+        .windows(4)
+        .position(|part| part == b"data")
+        .unwrap()
+        + 8;
+    let expected_hash = format!(
+        "{:x}",
+        Sha256::digest(&expected[data + 16016 * 2..data + 40016 * 2])
+    );
+    let fixture = Fixture::new();
+    fs::write(fixture.root.join("input.m4a"), &media).unwrap();
+    let failed = fixture
+        .run_command(URL)
+        .args(["--start", "1.001", "--end", "2.501"])
+        .env("FAKE_SABR", "1")
+        .env("FAKE_INDEXED_SABR", "1")
+        .env("FAKE_DURATION", "24")
+        .env("FAKE_FAIL_CHUNK", "000000")
+        .output()
+        .unwrap();
+    assert_eq!(
+        batch_json(&failed)["error"]["code"],
+        "process_failed",
+        "{}",
+        String::from_utf8_lossy(&failed.stderr)
+    );
+    assert_eq!(
+        fs::read(fixture.path("chunks/000000.wav")).unwrap(),
+        expected
+    );
+    assert!(!fixture.path("media/source.audio").exists());
+    let evidence: serde_json::Value =
+        serde_json::from_slice(&fs::read(fixture.path("download.json")).unwrap()).unwrap();
+    assert_eq!(evidence["status"], "prefix_verified");
+    let bytes = evidence["bytes"].as_u64().unwrap() as usize;
+    assert!(bytes < media.len() * 3 / 4);
+    let state: serde_json::Value =
+        serde_json::from_slice(&fs::read(fixture.path("state.json")).unwrap()).unwrap();
+    let prefix = state["download_prefix"].as_str().unwrap();
+    let path = fixture.path(&format!("{prefix}.m4a"));
+    assert_eq!(fs::read(&path).unwrap(), media[..bytes]);
+    let requests = fixture.calls("http", "/sabr").len();
+    assert!(requests < reference.calls("http", "/sabr").len());
+    let original = fs::read(&path).unwrap();
+    let mut corrupt = original.clone();
+    let last = corrupt.len() - 1;
+    corrupt[last] ^= 1;
+    fs::write(&path, &corrupt).unwrap();
+    let saved_state = fs::read(fixture.path("state.json")).unwrap();
+    let refused = Command::new("/usr/bin/python3")
+        .arg(fixture.root.join("agent-youtube-test"))
+        .env("AGENT_YOUTUBE_TEST_ROOT", &fixture.root)
+        .env("FAKE_DENY_NETWORK", "1")
+        .args(["resume", "--work-dir"])
+        .arg(fixture.path(""))
+        .output()
+        .unwrap();
+    assert_eq!(
+        batch_json(&refused)["error"]["code"],
+        "download_prefix_invalid"
+    );
+    assert_eq!(fs::read(&path).unwrap(), corrupt);
+    assert_eq!(fs::read(fixture.path("state.json")).unwrap(), saved_state);
+    fs::write(&path, original).unwrap();
+    let resumed = Command::new("/usr/bin/python3")
+        .arg(fixture.root.join("agent-youtube-test"))
+        .env("AGENT_YOUTUBE_TEST_ROOT", &fixture.root)
+        .args(["resume", "--work-dir"])
+        .arg(fixture.path(""))
+        .env("FAKE_DENY_NETWORK", "1")
+        .env("FAKE_CAPTURE_PCM", "1")
+        .output()
+        .unwrap();
+    assert!(
+        resumed.status.success(),
+        "{}",
+        String::from_utf8_lossy(&resumed.stderr)
+    );
+    assert_eq!(fixture.calls("http", "/sabr").len(), requests);
+    let raw: serde_json::Value =
+        serde_json::from_slice(&fs::read(fixture.path("raw/000000.json")).unwrap()).unwrap();
+    assert_eq!(raw["fixture_pcm_sha256"], expected_hash);
+    let response = batch_json(&resumed);
+    let range = &response["result"]["transcript"]["range"];
+    assert_eq!(range["download"], "prefix");
+    assert_eq!(range["downloaded_bytes"], bytes);
+    assert_eq!(range["source_bytes"], media.len());
+    assert!(
+        !path.exists(),
+        "owned source prefix must be cleaned after validated publication"
+    );
+    let mut documents = Vec::new();
+    contract::collect(&failed, &mut documents);
+    contract::collect(&resumed, &mut documents);
+    for name in ["transcript.json", "coverage.json", "manifest.json"] {
+        documents.push(serde_json::from_slice(&fs::read(fixture.path(name)).unwrap()).unwrap());
+    }
+    contract::validate(&documents);
+}
+
+#[test]
+fn indexed_prefix_with_insufficient_pcm_falls_back_without_adopting_candidate_chunks() {
+    let fixture = Fixture::new();
+    let mut media = fmp4::fragmented(16000);
+    let index = media.windows(4).position(|w| w == b"sidx").unwrap();
+    let count = u16::from_be_bytes(media[index + 26..index + 28].try_into().unwrap()) as usize;
+    for entry in 0..count {
+        let at = index + 28 + entry * 12 + 4;
+        let duration = u32::from_be_bytes(media[at..at + 4].try_into().unwrap());
+        media[at..at + 4].copy_from_slice(&(duration * 2).to_be_bytes());
+    }
+    fs::write(fixture.root.join("input.m4a"), &media).unwrap();
+    let output = fixture
+        .run_command(URL)
+        .args(["--start", "1", "--end", "12"])
+        .env("FAKE_SABR", "1")
+        .env("FAKE_INDEXED_SABR", "1")
+        .env("FAKE_DURATION", "24")
+        .env("FAKE_FAIL_CHUNK", "000000")
+        .output()
+        .unwrap();
+    assert_eq!(
+        batch_json(&output)["error"]["code"],
+        "process_failed",
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(String::from_utf8_lossy(&output.stderr).contains("range_full_source_required"));
+    assert_eq!(fs::read(fixture.path("media/source.audio")).unwrap(), media);
+    let evidence: serde_json::Value =
+        serde_json::from_slice(&fs::read(fixture.path("download.json")).unwrap()).unwrap();
+    assert_eq!(evidence["status"], "verified");
+    assert!(
+        fs::read_dir(fixture.path("chunks"))
+            .unwrap()
+            .any(|entry| entry
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .starts_with(".agent-youtube-")),
+        "failed candidate media must remain owned and unadopted"
+    );
+}
+
 #[test]
 fn sabr_pipeline_preserves_exact_aac_and_resumes_recognition() {
     let fixture = Fixture::new();
@@ -2898,7 +3106,20 @@ fn incomplete_presentation_retains_source_without_transcript_or_recognition() {
         if ranged {
             command.args(["--start", "0", "--end", "1"]);
         }
-        failure(command.output().unwrap(), "incomplete M4A presentation");
+        let output = command.output().unwrap();
+        if ranged {
+            assert!(!output.status.success());
+            let error = batch_json(&output);
+            assert_eq!(error["error"]["code"], "audio_duration_mismatch");
+            assert_eq!(
+                error["error"]["details"]["source_frames_basis"],
+                "container_index"
+            );
+            assert_eq!(error["error"]["details"]["indexed_seconds"], 24.0);
+            assert!(error["error"]["details"].get("decoded_seconds").is_none());
+        } else {
+            failure(output, "incomplete M4A presentation");
+        }
         assert_eq!(fs::read(fixture.path("media/source.audio")).unwrap(), input);
         assert!(!fixture.path("media/audio.wav").exists());
         assert!(!fixture.path("transcript.json").exists());
@@ -4047,6 +4268,98 @@ fn interrupted_batch_preserves_jobs_and_resumes_after_process_restart() {
 }
 
 #[test]
+#[ignore = "requires an explicitly supplied older CLI to verify unsafe downgrade refusal"]
+fn older_cli_rejects_prefix_checkpoint_without_changing_owned_media() {
+    let older = std::env::var_os("AGENT_YOUTUBE_PREVIOUS_CLI").unwrap();
+    let fixture = Fixture::new();
+    let failed = fixture
+        .run_command(URL)
+        .args(["--start", "1", "--end", "2"])
+        .env("FAKE_FAIL_CHUNK", "000000")
+        .output()
+        .unwrap();
+    assert_eq!(batch_json(&failed)["error"]["code"], "process_failed");
+    let mut before = Vec::new();
+    for name in [
+        "state.json",
+        "job.json",
+        "media/source.audio",
+        "media/audio.json",
+        "chunks/000000.wav",
+    ] {
+        before.push((name, fs::read(fixture.path(name)).unwrap()));
+    }
+    let refused = Command::new(older)
+        .args(["resume", "--work-dir"])
+        .arg(fixture.path(""))
+        .output()
+        .unwrap();
+    assert!(!refused.status.success());
+    let response: serde_json::Value = serde_json::from_slice(&refused.stdout).unwrap();
+    assert_eq!(response["error"]["code"], "checkpoint_invalid");
+    for (name, bytes) in before {
+        assert_eq!(
+            fs::read(fixture.path(name)).unwrap(),
+            bytes,
+            "older CLI changed {name}"
+        );
+    }
+    assert!(!fixture.path("transcript.json").exists());
+}
+
+#[test]
+fn selected_prefix_reports_indexed_duration_and_resumes_in_another_process() {
+    let fixture = Fixture::new();
+    let failed = fixture
+        .run_command(URL)
+        .args(["--start", "1.001", "--end", "2.501"])
+        .env("FAKE_FAIL_CHUNK", "000000")
+        .output()
+        .unwrap();
+    assert_eq!(batch_json(&failed)["error"]["code"], "process_failed");
+    let decoded: serde_json::Value =
+        serde_json::from_slice(&fs::read(fixture.path("media/audio.json")).unwrap()).unwrap();
+    assert_eq!(decoded["schema_version"], 2);
+    assert_eq!(decoded["prefix_frames"], 160000);
+    assert_eq!(decoded["frames"], 192000);
+    assert!(!fixture.path("chunks/000001.wav").exists());
+    let state: serde_json::Value =
+        serde_json::from_slice(&fs::read(fixture.path("state.json")).unwrap()).unwrap();
+    assert_eq!(state["schema_version"], 6);
+    let resumed = Command::new(env!("CARGO_BIN_EXE_agent-youtube"))
+        .args(["resume", "--work-dir"])
+        .arg(fixture.path(""))
+        .output()
+        .unwrap();
+    assert!(
+        resumed.status.success(),
+        "{}",
+        String::from_utf8_lossy(&resumed.stderr)
+    );
+    let response: serde_json::Value = serde_json::from_slice(&resumed.stdout).unwrap();
+    let summary = &response["result"]["transcript"]["range"];
+    assert_eq!(summary["decode"], "prefix");
+    assert_eq!(summary["download"], "full_audio");
+    assert_eq!(summary["source_frames_basis"], "container_index");
+    assert_eq!(summary["decoded_through_seconds"], 10.0);
+    let mut documents = Vec::new();
+    contract::collect(&failed, &mut documents);
+    contract::collect(&resumed, &mut documents);
+    for name in ["transcript.json", "coverage.json"] {
+        let document: serde_json::Value =
+            serde_json::from_slice(&fs::read(fixture.path(name)).unwrap()).unwrap();
+        assert_eq!(document["schema_version"], 3);
+        assert_eq!(document["range"]["decoded_prefix"]["through_frame"], 160000);
+        assert_eq!(
+            document["range"]["decoded_prefix"]["source_frames_basis"],
+            "container_index"
+        );
+        documents.push(document);
+    }
+    contract::validate(&documents);
+}
+
+#[test]
 fn ranged_jobs_keep_only_intersecting_fixed_grid_pcm() {
     let mut documents = Vec::new();
     for (start, end, indices, code) in [
@@ -4112,9 +4425,18 @@ fn selected_range_uses_exact_cross_chunk_pcm_and_resumes_with_absolute_times() {
         .unwrap();
     let failure = batch_json(&failed);
     assert_eq!(failure["error"]["code"], "process_failed", "{failure}");
-    let state: serde_json::Value =
+    let mut state: serde_json::Value =
         serde_json::from_slice(&fs::read(fixture.path("state.json")).unwrap()).unwrap();
-    assert_eq!(state["schema_version"], 5);
+    assert_eq!(state["schema_version"], 6);
+    // This acquisition was decoded in full, as in legacy ranged schema5.
+    // Reuse that format to exercise migration without changing audio/ASR data.
+    state["schema_version"] = serde_json::json!(5);
+    fs::write(
+        fixture.path("state.json"),
+        serde_json::to_vec(&state).unwrap(),
+    )
+    .unwrap();
+
     let a = ryf::read(fixture.path("chunks/000000.wav")).unwrap();
     let b = ryf::read(fixture.path("chunks/000001.wav")).unwrap();
     let mut samples = a.channels[0][9 * 16000..].to_vec();

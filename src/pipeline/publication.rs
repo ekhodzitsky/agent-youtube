@@ -20,7 +20,13 @@ impl Pipeline {
         if header.range.map(|r| r.requested) != self.options.range {
             return Err("published range differs from invocation".into());
         }
-        checkpoint.validate_duration(header.duration)?;
+        checkpoint.validate_processed_duration(
+            header.duration,
+            header
+                .range
+                .and_then(|range| range.decoded_prefix)
+                .map(|prefix| prefix.through_frame()),
+        )?;
         let manifest = checkpoint.ensure_manifest(&self.runner.cancelled)?;
         checkpoint.cleanup_media().map_err(|e| crate::protocol::failure_details("cleanup_pending", Some(true), e, serde_json::json!({"transcript":output,"manifest":manifest,"transcript_published":true,"cleanup_complete":false})))?;
         crate::protocol::progress(

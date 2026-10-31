@@ -10,6 +10,54 @@ license is now present at the root, CI is dispatch-only and hosted Actions are
 disabled. Crates.io publication stays disabled. Sections below preserve dated
 reviews, including superseded privacy/license findings; see current readiness.
 
+## Partial acquisition qualification — 0.14.0, 2026-11-01
+
+Two real YouTube recordings were downloaded completely as references, then
+independently acquired through the ranged production CLI. Both partial sources
+matched the corresponding bytes of their complete reference. Every selected PCM
+byte matched a separate full streaming decode, before recognition.
+
+| Recording | Requested interval (seconds) | Complete media bytes | Actual partial media bytes | Reduction |
+| --- | --- | --- | --- | --- |
+| 3:07:51.0124375 | 3600.123–3660.123 | 182,409,911 | 59,636,979 | 67.31% |
+| 52.96475 | 1.001–12.501 | 858,695 | 647,586 | 24.59% |
+
+These are committed compressed-media bytes, excluding HTTP/UMP overhead and
+retries. Server responses may include fragments beyond the minimum requested
+prefix. Each trial was normally cancelled after durable prefix qualification;
+elapsed times to cancellation were 472.8 and 66.1 seconds respectively, including
+acquisition, qualification and CLI setup. These times are observations, not a
+matched network throughput comparison. On the saved long reference, full
+streaming decoding took 64.5 seconds and prefix decoding with durable selected
+chunks took 21.0 seconds; different persistence work limits that comparison.
+
+Both jobs subsequently resumed with actual GigaSTT 2.22.0 and the multilingual
+CTC model, while strace forced every attempted socket creation to fail with
+ENETDOWN. Neither process tree attempted a network connection; local IPC remained
+available. The jobs published six and two original ASR JSON files respectively.
+Transcript and raw-artifact hashes validated, all eight result/manifest/transcript/
+coverage documents passed the JSON contract, and owned media was removed only
+after publication. ASR accuracy was not measured by this check.
+
+The optimization requires an explicit end and a complete direct-reference SABR
+SIDX with supported codec/timeline properties. It acquires and decodes from zero,
+preserving codec and resampler history; it does not seek directly to the selected
+start. Full acquisition or decoding remains the fallback for unsupported inputs.
+Canonical and coverage schema3 report the prefix extent and indexed source
+duration explicitly. They do not attest decoding the unused suffix.
+
+Local regressions exercise 403/429/503 recovery, server waiting intervals,
+corrupt retained prefixes, separate-process resume, rejected old-binary downgrade,
+unsupported codecs, insufficient candidate PCM, and replacement sources without
+adopting candidate chunks or decoder state. Real trials establish these two
+observations in the current network, not universal YouTube availability. Original
+media, transcripts and trial records remain private local evidence.
+
+Final local gates passed: 432 Rust tests with 22 opt-in tests ignored, formatting,
+strict Clippy, 74 Python checks and 28 documentation link targets. The real-source
+checks above ran separately. The previously observed intermittent ASR notification
+count mismatch remains outside this change; a passing run does not fix that issue.
+
 ## Selected PCM storage qualification — 0.13.1, 2026-10-31
 
 An existing complete 182,409,911-byte recording decoded to 180,336,199 mono

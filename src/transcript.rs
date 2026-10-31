@@ -111,10 +111,7 @@ impl Segment {
 
 impl Transcript {
     pub fn validate(&self) -> crate::Result<()> {
-        if !matches!(
-            (self.schema_version, self.range.is_some()),
-            (1, false) | (2, true)
-        ) {
+        if self.schema_version != self.range.map_or(1, |range| range.schema_version()) {
             return Err(format!(
                 "unsupported transcript schema version {}",
                 self.schema_version

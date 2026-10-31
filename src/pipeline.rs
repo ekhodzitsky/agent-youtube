@@ -67,10 +67,17 @@ struct DecodedChunks {
     schema_version: u32,
     frames: u64,
     chunk_seconds: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    prefix_frames: Option<u64>,
+}
+struct AcquiredAudio {
+    acquisition: crate::download::Acquisition,
+    evidence: Option<serde_json::Value>,
 }
 struct DecodedAudio {
     frames: u64,
     legacy: Option<audio::Wav>,
+    prefix_frames: Option<u64>,
 }
 
 #[derive(Default)]
@@ -461,7 +468,20 @@ impl Pipeline {
         }
         Ok(metadata)
     }
-    fn download(&self, runner: &Runner, checkpoint: &mut Checkpoint, url: &str) -> Result<PathBuf> {
+    fn requested_prefix_end(&self) -> Option<u64> {
+        let chunk_frames = u64::from(self.options.chunk_seconds) * u64::from(audio::SAMPLE_RATE);
+        self.options
+            .range
+            .and_then(|r| r.end_millis)
+            .and_then(|end| (end * 16).div_ceil(chunk_frames).checked_mul(chunk_frames))
+    }
+    fn download(
+        &self,
+        runner: &Runner,
+        checkpoint: &mut Checkpoint,
+        url: &str,
+        allow_partial: bool,
+    ) -> Result<AcquiredAudio> {
         for name in ["media/source.audio", "media/video.mkv"] {
             if checkpoint.completed(name)? {
                 crate::protocol::progress(
@@ -469,7 +489,13 @@ impl Pipeline {
                     "[1/4] verified saved source; skipping download",
                     serde_json::json!({}),
                 );
-                return Ok(self.options.work_dir.join(name));
+                return Ok(AcquiredAudio {
+                    acquisition: crate::download::Acquisition {
+                        path: self.options.work_dir.join(name),
+                        prefix: None,
+                    },
+                    evidence: None,
+                });
             }
         }
         crate::protocol::progress(
@@ -478,11 +504,42 @@ impl Pipeline {
             serde_json::json!({}),
         );
         let id = video_id(url)?;
-        let (prefix, downloaded) = loop {
+        let range_end = if allow_partial {
+            self.requested_prefix_end()
+        } else {
+            None
+        };
+        if let Some(end) = range_end
+            && checkpoint.completed("download.json")?
+        {
+            let evidence: serde_json::Value = serde_json::from_str(&read_text(
+                &self.options.work_dir.join("download.json"),
+                JSON_LIMIT,
+            )?)?;
+            if evidence["status"] == "prefix_verified" {
+                let prefix = checkpoint.begin_download()?;
+                validate_download_scratch(&prefix)?;
+                let acquisition = Downloader::saved_prefix(&prefix, &id, end, &evidence)?;
+                return Ok(AcquiredAudio {
+                    acquisition,
+                    evidence: Some(evidence),
+                });
+            }
+        }
+        let (prefix, acquisition) = loop {
             let prefix = checkpoint.begin_download()?;
             validate_download_scratch(&prefix)?;
-            match self.downloader.download(&id, &prefix, &runner.cancelled) {
-                Ok(path) => break (prefix, path),
+            let downloaded = match range_end {
+                Some(end) => self
+                    .downloader
+                    .download_range(&id, &prefix, &runner.cancelled, end),
+                None => self
+                    .downloader
+                    .download(&id, &prefix, &runner.cancelled)
+                    .map(|path| crate::download::Acquisition { path, prefix: None }),
+            };
+            match downloaded {
+                Ok(acquisition) => break (prefix, acquisition),
                 Err(error)
                     if error
                         .downcast_ref::<crate::protocol::Failure>()
@@ -510,14 +567,27 @@ impl Pipeline {
         if let Some(original) = checkpoint.original_acquisition() {
             Downloader::same_track(&original, &prefix)?;
         }
+        if acquisition.prefix.is_some() {
+            let evidence = Downloader::prefix_evidence(&prefix, &acquisition)?;
+            return Ok(AcquiredAudio {
+                acquisition,
+                evidence: Some(evidence),
+            });
+        }
         if !checkpoint.completed("download.json")? {
             checkpoint.publish_bytes(
-                &Downloader::evidence(&prefix, &downloaded)?,
+                &Downloader::evidence(&prefix, &acquisition.path)?,
                 "download.json",
             )?;
         }
-        checkpoint.publish(&downloaded, "media/source.audio")?;
-        Ok(self.options.work_dir.join("media/source.audio"))
+        checkpoint.publish(&acquisition.path, "media/source.audio")?;
+        Ok(AcquiredAudio {
+            acquisition: crate::download::Acquisition {
+                path: self.options.work_dir.join("media/source.audio"),
+                prefix: None,
+            },
+            evidence: None,
+        })
     }
     fn extract_audio(
         &self,
@@ -530,12 +600,142 @@ impl Pipeline {
             storage::disk_space_at(path, "decode_audio")
         })
     }
+    fn qualify_prefix(
+        &self,
+        runner: &Runner,
+        checkpoint: &mut Checkpoint,
+        source: &AcquiredAudio,
+    ) -> Result<DecodedAudio> {
+        let info = source.acquisition.prefix.ok_or("missing partial source")?;
+        let evidence = source
+            .evidence
+            .as_ref()
+            .ok_or("missing source prefix evidence")?;
+        let frames = info.index.frames()?;
+        let selected = self
+            .options
+            .range
+            .ok_or_else(audio::full_source_required)?
+            .resolve(frames)?;
+        let end = selected
+            .requested
+            .end_millis
+            .ok_or_else(audio::full_source_required)?
+            * 16;
+        let chunk_frames = u64::from(self.options.chunk_seconds) * u64::from(audio::SAMPLE_RATE);
+        let mut staged = Vec::new();
+        let mut last_state = None;
+        let directory = self.options.work_dir.join("chunks");
+        let header = ryf::encode_s16(&[], audio::SAMPLE_RATE)?.len() as u64;
+        crate::protocol::progress(
+            "decode",
+            "qualifying source prefix before publishing selected PCM",
+            serde_json::json!({"scope":"selection","durable":false}),
+        );
+        let decoded = audio::decode_prefix(
+            &source.acquisition.path,
+            chunk_frames,
+            &runner.cancelled,
+            None,
+            Some(end),
+            Some(audio::SourcePrefix {
+                samples: info.index.samples,
+                sample_rate: info.index.sample_rate,
+            }),
+            |event| {
+                match event {
+                    audio::DecodeEvent::Checkpoint(index, state) => {
+                        last_state = Some((index, serde_json::to_vec(state)?))
+                    }
+                    audio::DecodeEvent::Chunk(index, pcm) => {
+                        let start = (index as u64)
+                            .checked_mul(chunk_frames)
+                            .ok_or("chunk offset overflow")?;
+                        let end = start
+                            .checked_add(pcm.len() as u64 / 2)
+                            .ok_or("chunk end overflow")?;
+                        if start >= selected.end_frame || end <= selected.start_frame {
+                            return Ok(());
+                        }
+                        staged.try_reserve(1).map_err(|error| {
+                            crate::memory::allocation_error(&directory, "decode_audio", error)
+                        })?;
+                        let space = storage::disk_space_at(&directory, "decode_audio")?;
+                        space.require_at(
+                            &directory,
+                            space.allocation(pcm.len() as u64 + header)?,
+                            "decode_audio",
+                        )?;
+                        let name = format!("chunks/{index:06}.wav");
+                        let pending = checkpoint.pending(&name)?;
+                        audio::write_chunk(&pending, pcm).map_err(|error| {
+                            storage::audio_write_error(error, &directory, "decode_audio")
+                        })?;
+                        staged.push((pending, name));
+                    }
+                }
+                Ok(())
+            },
+        )?;
+        let through = decoded
+            .prefix_frames
+            .ok_or_else(audio::full_source_required)?;
+        if decoded.frames != frames
+            || staged.len() as u64
+                != selected.end_frame.div_ceil(chunk_frames) - selected.start_frame / chunk_frames
+        {
+            return Err(audio::full_source_required());
+        }
+        let (index, state) = last_state.ok_or_else(audio::full_source_required)?;
+        checkpoint.validate_candidate_duration(
+            frames as f64 / f64::from(audio::SAMPLE_RATE),
+            Some(through),
+            Some(evidence),
+        )?;
+        let mut evidence = evidence.clone();
+        evidence["decoded_prefix"] =
+            serde_json::to_value(crate::time_range::DecodedPrefix::ContainerIndex {
+                through_frame: through,
+            })?;
+        // Source proof is durable before any staged PCM becomes a reusable chunk.
+        // After this point resume needs no new URL, token or representation.
+        checkpoint.publish_bytes(&serde_json::to_vec(&evidence)?, "download.json")?;
+        for (pending, name) in staged {
+            checkpoint.publish(&pending, &name)?;
+        }
+        checkpoint.publish_bytes(&state, &format!("chunks/{index:06}.resume.json"))?;
+        checkpoint.publish_bytes(
+            &serde_json::to_vec(&DecodedChunks {
+                schema_version: 2,
+                frames,
+                chunk_seconds: self.options.chunk_seconds,
+                prefix_frames: Some(through),
+            })?,
+            "media/audio.json",
+        )?;
+        Ok(DecodedAudio {
+            frames,
+            legacy: None,
+            prefix_frames: Some(through),
+        })
+    }
     fn extract_audio_with_space(
         &self,
         runner: &Runner,
         checkpoint: &mut Checkpoint,
         source: &Path,
         duration_seconds: Option<u64>,
+        capacity: impl FnMut(&Path) -> Result<storage::DiskSpace>,
+    ) -> Result<DecodedAudio> {
+        self.extract_audio_input(runner, checkpoint, source, duration_seconds, None, capacity)
+    }
+    fn extract_audio_input(
+        &self,
+        runner: &Runner,
+        checkpoint: &mut Checkpoint,
+        source: &Path,
+        duration_seconds: Option<u64>,
+        source_prefix: Option<audio::SourcePrefix>,
         mut capacity: impl FnMut(&Path) -> Result<storage::DiskSpace>,
     ) -> Result<DecodedAudio> {
         // Existing unfinished runs keep their validated complete-WAV path.
@@ -544,6 +744,7 @@ impl Pipeline {
             return Ok(DecodedAudio {
                 frames: wav.frames,
                 legacy: Some(wav),
+                prefix_frames: None,
             });
         }
         if checkpoint.verified("media/audio.json")? {
@@ -554,7 +755,12 @@ impl Pipeline {
             let receipt: DecodedChunks =
                 serde_json::from_str(&read_text(&path, 1024).map_err(invalid)?)
                     .map_err(|error| invalid(error.into()))?;
-            if receipt.schema_version != 1
+            if receipt.schema_version
+                != if receipt.prefix_frames.is_some() {
+                    2
+                } else {
+                    1
+                }
                 || receipt.frames == 0
                 || receipt.chunk_seconds != self.options.chunk_seconds
             {
@@ -564,15 +770,58 @@ impl Pipeline {
                     "invalid decoded chunk receipt",
                 ));
             }
+            if let Some(prefix) = source_prefix {
+                let expected = if prefix.sample_rate > 0 {
+                    prefix
+                        .samples
+                        .checked_mul(u64::from(audio::SAMPLE_RATE))
+                        .map(|n| n.div_ceil(u64::from(prefix.sample_rate)))
+                } else {
+                    None
+                };
+                if expected != Some(receipt.frames) || receipt.prefix_frames.is_none() {
+                    return Err(crate::checkpoint::evidence_failure(
+                        "decoded_receipt_invalid",
+                        &path,
+                        "decode receipt differs from the partial source index",
+                    ));
+                }
+            }
+            if let Some(through_frame) = receipt.prefix_frames {
+                let invalid_prefix = |error: Box<dyn std::error::Error + Send + Sync>| {
+                    crate::checkpoint::evidence_failure("decoded_receipt_invalid", &path, error)
+                };
+                let chunk_frames =
+                    u64::from(self.options.chunk_seconds) * u64::from(audio::SAMPLE_RATE);
+                let mut range = self
+                    .options
+                    .range
+                    .ok_or_else(|| {
+                        invalid_prefix("prefix receipt requires a selected range".into())
+                    })?
+                    .resolve(receipt.frames)
+                    .map_err(invalid_prefix)?;
+                range.decoded_prefix =
+                    Some(crate::time_range::DecodedPrefix::ContainerIndex { through_frame });
+                range
+                    .validate(receipt.frames as f64 / f64::from(audio::SAMPLE_RATE))
+                    .map_err(invalid_prefix)?;
+                if through_frame % chunk_frames != 0 {
+                    return Err(invalid_prefix(
+                        "prefix receipt must end at a decoder chunk boundary".into(),
+                    ));
+                }
+            }
             return Ok(DecodedAudio {
                 frames: receipt.frames,
                 legacy: None,
+                prefix_frames: receipt.prefix_frames,
             });
         }
         let chunk_frames = u64::from(self.options.chunk_seconds) * u64::from(audio::SAMPLE_RATE);
-        // Decode every access unit, but retain PCM only on the fixed-grid chunks
-        // intersecting the half-open requested interval. Do not resolve against
-        // the rounded metadata duration: the actual decoded EOF remains final.
+        // Retain only fixed-grid chunks intersecting the half-open interval.
+        // The decoder determines full EOF or a qualified indexed prefix; rounded
+        // metadata duration is used only for the storage estimate below.
         let millis_rate = u64::from(audio::SAMPLE_RATE) / 1000;
         let requested_start = match self.options.range {
             Some(range) => {
@@ -684,8 +933,9 @@ impl Pipeline {
             "[2/4] decoding AAC/M4A directly into resumable PCM chunks",
             serde_json::json!({}),
         );
-        let frames =
-            audio::decode_resumable(source, chunk_frames, &runner.cancelled, resume, |event| {
+        let decoded =
+            audio::decode_prefix(source, chunk_frames, &runner.cancelled, resume,
+                self.options.range.and_then(|r| r.end_millis).map(|end| end * millis_rate), source_prefix, |event| {
                 match event {
                     audio::DecodeEvent::Checkpoint(index, state) => {
                         let name = format!("chunks/{index:06}.resume.json");
@@ -754,20 +1004,27 @@ impl Pipeline {
                     error
                 }
             })?;
+        let frames = decoded.frames;
         if frames == 0 {
             return Err("source contains no decoded audio".into());
         }
         checkpoint.publish_bytes(
             &serde_json::to_vec(&DecodedChunks {
-                schema_version: 1,
+                schema_version: if decoded.prefix_frames.is_some() {
+                    2
+                } else {
+                    1
+                },
                 frames,
                 chunk_seconds: self.options.chunk_seconds,
+                prefix_frames: decoded.prefix_frames,
             })?,
             "media/audio.json",
         )?;
         Ok(DecodedAudio {
             frames,
             legacy: None,
+            prefix_frames: decoded.prefix_frames,
         })
     }
     fn prepare_chunks(
@@ -942,21 +1199,84 @@ impl Pipeline {
         crate::job::save(&self.options)?;
         checkpoint.recover()?;
         let metadata = self.metadata(&runner, &mut checkpoint, &id)?;
-        let source = self.download(&runner, &mut checkpoint, &url)?;
-        let declared_duration = checkpoint.source_duration()?;
-        let mut audio =
-            self.extract_audio(&runner, &mut checkpoint, &source, Some(declared_duration))?;
-        checkpoint.validate_duration(audio.frames as f64 / f64::from(audio::SAMPLE_RATE))?;
+        let mut source = self.download(&runner, &mut checkpoint, &url, true)?;
+        let mut audio = loop {
+            if let Some(prefix) = source.acquisition.prefix {
+                if checkpoint.completed("download.json")? {
+                    let declared = checkpoint.source_duration()?;
+                    break self.extract_audio_input(
+                        &runner,
+                        &mut checkpoint,
+                        &source.acquisition.path,
+                        Some(declared),
+                        Some(audio::SourcePrefix {
+                            samples: prefix.index.samples,
+                            sample_rate: prefix.index.sample_rate,
+                        }),
+                        |path| storage::disk_space_at(path, "decode_audio"),
+                    )?;
+                }
+                checkpoint.candidate_duration(
+                    source
+                        .evidence
+                        .as_ref()
+                        .ok_or("missing source prefix evidence")?,
+                )?;
+                match self.qualify_prefix(&runner, &mut checkpoint, &source) {
+                    Ok(audio) => break audio,
+                    Err(error)
+                        if error
+                            .downcast_ref::<crate::protocol::Failure>()
+                            .is_some_and(|failure| {
+                                failure.code == "range_full_source_required"
+                            }) =>
+                    {
+                        crate::protocol::progress(
+                            "download",
+                            "source prefix requires full acquisition; pending candidate media preserved",
+                            serde_json::json!({"reason":"range_full_source_required"}),
+                        );
+                        source = self.download(&runner, &mut checkpoint, &url, false)?;
+                    }
+                    Err(error) => return Err(error),
+                }
+            } else {
+                let declared = checkpoint.source_duration()?;
+                break self.extract_audio(
+                    &runner,
+                    &mut checkpoint,
+                    &source.acquisition.path,
+                    Some(declared),
+                )?;
+            }
+        };
+        checkpoint.validate_processed_duration(
+            audio.frames as f64 / f64::from(audio::SAMPLE_RATE),
+            audio.prefix_frames,
+        )?;
         let rate = u64::from(audio::SAMPLE_RATE);
         let chunk_frames = u64::from(self.options.chunk_seconds) * rate;
         let last_start = (audio.frames - 1) / chunk_frames * chunk_frames;
-        let selection = self
-            .options
-            .range
-            .map(|r| r.resolve(audio.frames))
-            .transpose()?;
+        let selection =
+            self.options
+                .range
+                .map(|r| {
+                    let mut selected = r.resolve(audio.frames)?;
+                    selected.downloaded_prefix = source.acquisition.prefix.map(|prefix| {
+                        crate::time_range::DownloadedPrefix {
+                            bytes: prefix.bytes,
+                            source_bytes: prefix.total_bytes,
+                        }
+                    });
+                    selected.decoded_prefix = audio.prefix_frames.map(|through_frame| {
+                        crate::time_range::DecodedPrefix::ContainerIndex { through_frame }
+                    });
+                    selected.validate(audio.frames as f64 / rate as f64)?;
+                    Ok::<_, Box<dyn std::error::Error + Send + Sync>>(selected)
+                })
+                .transpose()?;
         let header = Transcript {
-            schema_version: if selection.is_some() { 2 } else { 1 },
+            schema_version: selection.map_or(1, |r| r.schema_version()),
             range: selection,
             source: Source {
                 url,

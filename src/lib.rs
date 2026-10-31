@@ -22,6 +22,10 @@ pub mod time_range;
 pub mod transcript;
 mod web;
 
+#[cfg(test)]
+#[path = "../tests/support/fmp4.rs"]
+mod fmp4;
+
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 #[doc(hidden)]
