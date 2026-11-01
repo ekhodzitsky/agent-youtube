@@ -8,6 +8,8 @@ use std::{
 
 mod resume;
 #[cfg(test)]
+mod seek_qualification;
+#[cfg(test)]
 use resume::decode_resumable;
 pub(crate) use resume::{DecodeEvent, Resume, SourcePrefix, decode_prefix, full_source_required};
 
@@ -454,9 +456,9 @@ mod tests {
     use std::{fs, sync::atomic::AtomicU64};
 
     static NEXT: AtomicU64 = AtomicU64::new(0);
-    struct Temp(std::path::PathBuf);
+    pub(super) struct Temp(pub(super) std::path::PathBuf);
     impl Temp {
-        fn new() -> Self {
+        pub(super) fn new() -> Self {
             let path = std::env::temp_dir().join(format!(
                 "agent-youtube-audio-{}-{}",
                 std::process::id(),

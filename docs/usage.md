@@ -91,6 +91,12 @@ decodes the full recording. Full fallback remains available, and end clamping us
 actual decoded EOF on that path. Partial success never claims that the unprocessed
 suffix has been received or decoded.
 
+Direct seeking to --start remains disabled. A bounded AAC preroll can produce
+different PCM when noise substitution depends on earlier decoder state; a fresh
+resampler also needs the correct global phase. See the
+[interval seek qualification](verification.md#interval-seek-qualification--2026-11-01)
+for counterexamples and the requirements for a future safe path.
+
 Since 0.13.1, new decoding retains WAVs only for fixed-grid chunks intersecting
 the selection. A cut inside a chunk retains that complete chunk; exact cropping
 still happens before recognition. Decoder state remains resumable without WAVs

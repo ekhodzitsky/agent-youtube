@@ -8,6 +8,11 @@ JSON or canonical transcripts. Source is public; crates.io publication stays dis
 
 ## Unreleased
 
+- Qualify interval seeking against full sequential decoding. Add reproducible
+  PNS-history and resampler-phase counterexamples plus an opt-in saved-recording
+  comparison. Keep production acquisition and decoding unchanged: bounded
+  preroll is not a general proof of bit-exact selected PCM.
+
 ## 0.14.0 — 2026-11-01
 
 - Stop qualified AAC-LC range decoding after the complete fixed-grid chunk

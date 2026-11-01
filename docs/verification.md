@@ -10,6 +10,72 @@ license is now present at the root, CI is dispatch-only and hosted Actions are
 disabled. Crates.io publication stays disabled. Sections below preserve dated
 reviews, including superseded privacy/license findings; see current readiness.
 
+## Interval seek qualification — 2026-11-01
+
+Bounded preroll is not sufficient to enable exact interval seeking generally.
+The pinned syom M4aSeek.seek resets the AAC decoder, including the PNS random
+generator; its LC mono/stereo path warms two access units. PNS random draws depend
+on prior coded noise bands. That state is retained in a decoder checkpoint but
+is not supplied by the container time/byte index. Codec/profile eligibility for
+checkpointing does not establish that a fresh seek has the same state.
+
+The deterministic noise-plus-tone fixtures compare a half-second interval at
+4.001 seconds, with one second of additional decoded preroll after the seek:
+
+| Native rate | Encoder PNS | Native float differences | 16 kHz PCM sample differences |
+| --- | --- | --- | --- |
+| 16,000 Hz | Off | 0 / 8,000 | 0 / 8,000 |
+| 16,000 Hz | On | 8,000 / 8,000 | 8,000 / 8,000 |
+| 44,100 Hz | Off | 0 / 22,050 | 0 / 8,000 |
+| 44,100 Hz | On | 22,050 / 22,050 | 7,996 / 8,000 |
+
+The test signal actually exercises the counterexample: merely enabling the
+encoder PNS option on a tonal signal did not emit a useful PNS case. No audibility
+or ASR accuracy inference is made from sample-difference counts. A separate
+44.1/48 kHz resampler test shows that an aligned restart can match after warmup,
+while shifting the input origin by one sample changes the selected PCM. Absolute
+output timestamps alone do not restore the rational sampling phase.
+
+Saved real 53-second and 3:07:51 recordings matched full sequential decoding in
+one-second windows at 20.001 and 3600.123 seconds, using both one- and four-second
+preroll. These are four successful observations, not a safe-input detector or a
+guarantee for other passages in those recordings. Native and 16 kHz PCM are both
+compared; the full reference streams preceding samples away instead of buffering
+the recording. No fresh network acquisition or recognition was performed here.
+For the long-source window, the sequential reference read 59,678,348 file bytes;
+the one- and four-second seek candidates read 2,094,993 and 2,142,908 bytes,
+including container indexes. This shows the potential I/O reduction on that
+input, not verified network savings or general exact-seek eligibility.
+
+Production remains on the qualified prefix/full paths. A future exact interval
+path needs either validated codec/resampler state for the same representation and
+position, or an explicit decoder contract identifying and enforcing a supported
+history-independent subset throughout the required warmup/window. The current
+public frame/probe metadata does not expose PNS use or such a contract. A local
+PNS-free fixture is not evidence that every LC input is history-independent.
+HE/PS and other profiles require separate qualification. Any network interval
+path would also need distinct extent receipts: current SABR progress deliberately
+rejects byte/sequence gaps and cannot represent skipped preceding media as a
+contiguous downloaded prefix.
+
+The regular audio::seek_qualification tests retain the counterexamples. To repeat
+the opt-in real comparison on an owned complete source with at least five seconds
+before the selected window and enough audio after it:
+
+```bash
+AGENT_YOUTUBE_SEEK_SOURCE=/path/to/complete.m4a \
+AGENT_YOUTUBE_SEEK_START_MS=3600123 \
+cargo test --release --locked --lib real_interval_seek_qualification -- --ignored --nocapture
+```
+
+This compiles only a local library test, not a distribution binary. Output reports
+sample differences, file-read volume and elapsed time; read volume includes index
+reads and is not a network-traffic measurement. Original sources and evidence stay
+local. This qualification adds no runtime dependency or production seek option.
+Final local checks passed: 434 Rust tests, with 23 opt-in tests ignored, strict
+all-target Clippy, formatting, 74 Python checks and 28 documentation link targets.
+Both real-source opt-in comparisons ran separately as described above.
+
 ## Partial acquisition qualification — 0.14.0, 2026-11-01
 
 Two real YouTube recordings were downloaded completely as references, then
