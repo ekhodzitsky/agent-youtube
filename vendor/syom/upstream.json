@@ -5,7 +5,7 @@
   "release_status": "unreleased_source_candidate",
   "runtime_dependencies": 0,
   "patch": "../../tools/upstream-codecs/syom-0.9.0.patch",
-  "patch_sha256": "9163fb0c24108afe18f33c35f12c4950576870a51b1bcd1aae358aa3054d5f37",
+  "patch_sha256": "0d1ab782cebcc5c91ad0355760bbb206036ee45c739f2cd9f8eae732f5463c9d",
   "files": [
     {
       "path": "CHANGELOG.md",

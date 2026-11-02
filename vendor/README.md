@@ -8,7 +8,7 @@ Manifests omit development/benchmark dependencies and disable upstream test targ
 test source files and corpora are not included. Both have zero runtime crates.
 The source repository is public; crate publication remains disabled.
 
-- `syom` 0.9.0 unreleased source candidate: clean upstream revision `60199081659c9fe8ee9bdf7bc07f304d5bf3c8b6` plus the required local checkpoint/completion patch. Bundled snapshot SHA-256 `3042d67e331cf9a7e7cfdcb5740659da84f01f3d1c0415f9d138ad9b6f4658c8`. `syom/upstream.json` records original/bundled file hashes and the patch digest. This is not a claimed 0.9.0 registry release.
+- `syom` 0.9.0 unreleased source candidate: clean upstream revision `60199081659c9fe8ee9bdf7bc07f304d5bf3c8b6` plus the required local checkpoint/completion patch. Bundled snapshot SHA-256 `8375f85d182b3bbe0269a12a92c12908b9d05b138534754c66db97b57145fe12`. `syom/upstream.json` records original/bundled file hashes and the patch digest. This is not a claimed 0.9.0 registry release.
 - `bandlimit` 0.1.7: local HEAD `f9bed39b532ab23e5030ded23c7d60e45d5afa09` (clean working tree at import); bundled snapshot SHA-256 `0bb9f1caa31ec46697d08e94d9ee00f761359e646b9c91fb72dbf2fe453d36f1`.
 
 `ryf` is a normal crates.io dependency since agent-youtube 0.3.12, pinned to `=0.7.3`

@@ -2,7 +2,7 @@
 +++ b/src/engine/fb_pool.rs
 @@ -24,6 +24,10 @@
  }
- 
+
  impl FbPool {
 +    pub(crate) fn is_empty(&self) -> bool {
 +        self.slots.is_empty()
@@ -15,7 +15,7 @@
 +++ b/src/engine/filterbank.rs
 @@ -162,6 +162,35 @@
  }
- 
+
  impl Filterbank {
 +    pub(crate) fn checkpoint(&self, out: &mut Vec<u8>) {
 +        out.push(match self.prev_shape {
@@ -53,7 +53,7 @@
 +++ b/src/engine/pns.rs
 @@ -15,6 +15,13 @@
  }
- 
+
  impl Lcg {
 +    pub(crate) fn checkpoint(self) -> u32 {
 +        self.state
@@ -80,14 +80,14 @@
 +            && u128::from(left) * u128::from(self.movie_timescale.max(1000))
 +                < u128::from(sample_rate)
      }
- 
+
      /// Presentation length in media units: `elst.segment_duration` converted
 --- a/src/stream/m4a.rs
 +++ b/src/stream/m4a.rs
 @@ -214,6 +214,15 @@
          }
      }
- 
+
 +    // Movie durations may round up by less than one tick (e.g. 32 samples
 +    // at 48 kHz with a 1 kHz movie clock). All indexed AUs were decoded.
 +    // Bound this metadata rounding to less than 1 ms as well; never pad PCM
