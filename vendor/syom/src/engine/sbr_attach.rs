@@ -98,6 +98,16 @@ pub(crate) fn ingest_fil(
         // Seen in the wild: GPAC-muxed Akamai BBB DASH HE-AAC.
         return Ok(());
     }
+    // EXT_FILL has no value constraints and contributes no side information.
+    // Consume it directly: the structured parser retains opaque padding in a
+    // Vec for roundtripping, which would allocate on every padded LC frame.
+    // Peek on a copy so all other extensions keep their existing validation.
+    let mut peek = *br;
+    if peek.read(4)? == 0 {
+        let bits = cnt.checked_mul(8).ok_or(Error::ExtensionPayloadInvalid)? - 4;
+        *br = peek;
+        return br.skip(bits);
+    }
     let start = br.bit_position();
     let id_aac = match last_elem {
         Some((ElemKind::Cpe, _)) => IdSynEle::Cpe,

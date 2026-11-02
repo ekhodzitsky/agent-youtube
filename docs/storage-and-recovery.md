@@ -384,10 +384,12 @@ retries and body/segment processing check cancellation. Removing local duration 
 does not remove YouTube access or request-rate limits. This CLI does not import browser
 cookies or bypass account restrictions; its PO tokens authorize the anonymous Web
 streaming protocol. Live verification and remaining constraints are recorded in
-the Web report (local historical record). Unfinished native-codec
-runs using the current v2 backend identity can resume. Unfinished v1 native runs
-require a new work directory because their decoded audio or source-track selection may
-have passed the older incomplete validation; all their media and raw results are preserved.
+the Web report (local historical record). Source 0.15.0 uses a distinct v3 media
+backend for the pinned syom 0.9.0 candidate and its local checkpoint extensions.
+Jobs from another backend, including v1/v2, are refused before mutation. Resume
+them with the original implementation or use a new work directory; all their
+media and raw results are preserved. The earlier v1 validation could also accept
+incomplete decoded audio or an incorrectly selected source track.
 Previously completed transcripts are not rewritten or re-recognized automatically.
 A partial file from the old yt-dlp
 backend has no native receipt and needs a new work directory; it is preserved.

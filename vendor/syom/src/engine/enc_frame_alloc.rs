@@ -60,6 +60,7 @@ impl LcEncoder {
                     }
                 }
             }
+            a.finish_invariants(n);
         }
     }
 }

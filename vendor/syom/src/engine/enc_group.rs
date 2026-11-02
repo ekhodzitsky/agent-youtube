@@ -6,7 +6,7 @@
 //! CPE uses the per-window max across channels (common_window).
 
 use super::bits::BitWriter;
-use super::enc_huff::spectral_emit;
+use super::enc_huff::spectral_emit_band;
 use super::enc_quant::{MAX_FLAT_SHORT, QuantShort};
 use super::ics::{WindowSequence, grouping_of};
 use super::section::has_spectral;
@@ -150,7 +150,6 @@ pub fn emit_spectral_short(
             }
             let start = usize::from(offsets[b]);
             let end = usize::from(offsets[b + 1]);
-            let step = if cb <= 4 { 4 } else { 2 };
             let mut tmp = [0i32; LONG_WINDOW_LEN];
             let mut n = 0usize;
             for k in 0..glen {
@@ -159,11 +158,7 @@ pub fn emit_spectral_short(
                 tmp[n..n + (hi - lo)].copy_from_slice(&q.quant[lo..hi]);
                 n += hi - lo;
             }
-            let mut i = 0usize;
-            while i < n {
-                spectral_emit(cb, &tmp[i..i + step], w);
-                i += step;
-            }
+            spectral_emit_band(cb, &tmp[..n], w);
         }
         wbase += glen;
     }

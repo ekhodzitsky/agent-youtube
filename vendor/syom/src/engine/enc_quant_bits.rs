@@ -19,6 +19,10 @@ use crate::engine::enc_huff::esc_bits;
 use crate::engine::spectrum::SF_OFFSET;
 use crate::engine::{huff_esc, huff_pair, huff_quad};
 
+#[path = "enc_quant_packed.rs"]
+#[cfg(target_pointer_width = "64")]
+mod packed;
+
 /// `2^(−0.1875·(sf−100))` for scalefactors 0..=255.
 static QUANT_GAIN: LazyLock<[f32; 256]> = LazyLock::new(|| {
     let mut t = [0.0f32; 256];
@@ -51,6 +55,11 @@ pub(super) fn fill_bits(bits: &mut [u32; BOOKS], vals: &[i32]) {
     if max > 12 {
         bits[1..11].fill(UNREPRESENTABLE);
         bits[11] = pairs_esc(vals);
+        return;
+    }
+    #[cfg(target_pointer_width = "64")]
+    if vals.len() <= 1024 && max <= 7 {
+        packed::fill_small(bits, vals, max);
         return;
     }
     let mut t = [0u32; BOOKS];

@@ -25,8 +25,9 @@ const SPREAD_RANGE_BARK: f32 = 8.0;
 /// Per-rate psy state: Bark center per band + spreading matrix.
 pub struct Psy {
     n_bands: usize,
-    /// `spread[i][j]`: fraction of band `j`'s energy masking band `i`.
-    spread: Box<[[f32; MAX_BANDS]; MAX_BANDS]>,
+    /// Dense row-major spreading matrix for the active bands only.
+    /// `spread[i * n_bands + j]` masks band `i` with band `j`'s energy.
+    spread: Box<[f32]>,
     energy: [f32; MAX_BANDS],
     /// Absolute-threshold energy per band (Terhardt, 0 dBFS = 96 dB SPL).
     ath_energy: [f32; MAX_BANDS],
@@ -134,6 +135,7 @@ impl Psy {
 
     fn with_transform(offsets: &[u16], sample_rate: u32, transform: usize) -> Self {
         let n_bands = offsets.len() - 1;
+        assert!(n_bands <= MAX_BANDS);
         let bin_hz = sample_rate as f32 / transform as f32;
         let mut zb = [0.0f32; MAX_BANDS];
         let mut ath_energy = [0.0f32; MAX_BANDS];
@@ -143,9 +145,9 @@ impl Psy {
             *z = bark(f);
             ath_energy[b] = ath_band_energy(f);
         }
-        let mut spread = Box::new([[0.0f32; MAX_BANDS]; MAX_BANDS]);
-        for (i, row) in spread.iter_mut().enumerate().take(n_bands) {
-            for (j, cell) in row.iter_mut().enumerate().take(n_bands) {
+        let mut spread = vec![0.0f32; n_bands * n_bands].into_boxed_slice();
+        for (i, row) in spread.chunks_mut(n_bands.max(1)).enumerate() {
+            for (j, cell) in row.iter_mut().enumerate() {
                 let dz = zb[i] - zb[j];
                 if dz.abs() > SPREAD_RANGE_BARK {
                     continue;
@@ -175,8 +177,9 @@ impl Psy {
     fn masked_thresholds(&self, energy: &[f32; MAX_BANDS], out: &mut [f32; MAX_BANDS]) {
         for (i, slot) in out.iter_mut().enumerate().take(self.n_bands) {
             let mut acc = 0.0f32;
-            for (j, &e) in energy.iter().enumerate().take(self.n_bands) {
-                acc += e * self.spread[i][j];
+            let row = &self.spread[i * self.n_bands..(i + 1) * self.n_bands];
+            for (&e, &spread) in energy.iter().zip(row) {
+                acc += e * spread;
             }
             *slot = acc / SMR;
         }
@@ -349,3 +352,7 @@ impl AttackDetector {
 #[cfg(test)]
 #[path = "enc_psy_tests.rs"]
 mod enc_psy_tests;
+
+#[cfg(test)]
+#[path = "enc_psy_dense_tests.rs"]
+mod dense_tests;

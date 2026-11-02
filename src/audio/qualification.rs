@@ -4,7 +4,7 @@ use sha2::{Digest, Sha256};
 use std::{fs, io::Write, path::PathBuf};
 
 #[test]
-#[ignore = "isolated codec migration probe; use tools/qualify_codec_migration.py"]
+#[ignore = "isolated codec restart probe; see docs/syom-upgrade.md"]
 fn migration_probe() {
     let root = PathBuf::from(std::env::var_os("AGENT_YOUTUBE_CODEC_PROBE").unwrap());
     let mode = std::env::var("AGENT_YOUTUBE_CODEC_MODE").unwrap();
@@ -112,4 +112,95 @@ fn migration_probe() {
         serde_json::to_vec_pretty(&report).unwrap(),
     )
     .unwrap();
+}
+
+#[test]
+#[ignore = "compare retained real compressed prefix with complete same-backend PCM"]
+fn real_prefix_update_qualification() {
+    let root = PathBuf::from(std::env::var_os("AGENT_YOUTUBE_PREFIX_PROBE").unwrap());
+    let source = PathBuf::from(std::env::var_os("AGENT_YOUTUBE_CODEC_SOURCE").unwrap());
+    let reference = PathBuf::from(std::env::var_os("AGENT_YOUTUBE_FULL_PCM").unwrap());
+    let bytes: u64 = std::env::var("AGENT_YOUTUBE_PREFIX_BYTES")
+        .unwrap()
+        .parse()
+        .unwrap();
+    let start: u64 = std::env::var("AGENT_YOUTUBE_START_MS")
+        .unwrap()
+        .parse::<u64>()
+        .unwrap()
+        * 16;
+    let end: u64 = std::env::var("AGENT_YOUTUBE_END_MS")
+        .unwrap()
+        .parse::<u64>()
+        .unwrap()
+        * 16;
+    assert!(start < end && bytes < fs::metadata(&source).unwrap().len());
+    assert!(!root.exists(), "probe requires a fresh owned directory");
+    storage::private_directory(&root, false).unwrap();
+    let prefix = root.join("prefix.m4a");
+    let mut file = storage::private_file().open(&prefix).unwrap();
+    assert_eq!(
+        std::io::copy(&mut File::open(&source).unwrap().take(bytes), &mut file).unwrap(),
+        bytes
+    );
+    file.sync_all().unwrap();
+    drop(file);
+    let codec = syom::M4aSeek::open(
+        File::open(&source).unwrap(),
+        decode_options(&source).unwrap(),
+    )
+    .unwrap();
+    let hint = SourcePrefix {
+        samples: codec.presentation_len(),
+        sample_rate: codec.output_sample_rate(),
+    };
+    drop(codec);
+    let frames = hint
+        .samples
+        .checked_mul(16000)
+        .unwrap()
+        .div_ceil(u64::from(hint.sample_rate));
+    let chunk = 160000;
+    let mut selected = Sha256::new();
+    let mut selected_bytes = 0u64;
+    let decoded = decode_prefix(
+        &prefix,
+        chunk,
+        &AtomicBool::new(false),
+        None,
+        Some(end),
+        Some(hint),
+        |event| {
+            if let DecodeEvent::Chunk(index, pcm) = event {
+                let at = index as u64 * chunk;
+                let first = start.saturating_sub(at).min(pcm.len() as u64 / 2) as usize * 2;
+                let last = end.saturating_sub(at).min(pcm.len() as u64 / 2) as usize * 2;
+                selected.update(&pcm[first..last]);
+                selected_bytes += (last - first) as u64;
+            }
+            Ok(())
+        },
+    )
+    .unwrap();
+    assert_eq!(decoded.frames, frames);
+    assert_eq!(decoded.prefix_frames, Some(end.div_ceil(chunk) * chunk));
+    assert_eq!(selected_bytes, (end - start) * 2);
+    assert_eq!(fs::metadata(&reference).unwrap().len(), frames * 2);
+    let mut reference = File::open(reference).unwrap();
+    reference.seek(SeekFrom::Start(start * 2)).unwrap();
+    let mut expected = Sha256::new();
+    assert_eq!(
+        std::io::copy(&mut reference.take(selected_bytes), &mut expected).unwrap(),
+        selected_bytes
+    );
+    let actual = format!("{:x}", selected.finalize());
+    assert_eq!(actual, format!("{:x}", expected.finalize()));
+    let value = serde_json::json!({"backend":BACKEND,"prefix_bytes":bytes,"frames":frames,
+        "start_frame":start,"end_frame":end,"selected_pcm_sha256":actual,"pcm_equal":true});
+    fs::write(
+        root.join("comparison.json"),
+        serde_json::to_vec_pretty(&value).unwrap(),
+    )
+    .unwrap();
+    eprintln!("real_prefix_update {}", value);
 }

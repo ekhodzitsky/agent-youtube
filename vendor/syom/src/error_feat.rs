@@ -47,6 +47,10 @@ impl fmt::Display for UnsupportedFeature {
                 )
             }
             Self::FragmentedMp4(reason) => write!(f, "aac: fragmented MP4: {reason}"),
+            Self::ExactM4aSeek => write!(
+                f,
+                "aac: exact M4A seek is unqualified for this profile or geometry"
+            ),
         }
     }
 }

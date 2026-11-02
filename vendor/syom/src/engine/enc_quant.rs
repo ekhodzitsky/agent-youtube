@@ -45,7 +45,7 @@ pub fn cache_mags(spec: &[f32; 1024], mag: &mut [f32; 1024]) {
 pub struct QuantChannel {
     pub quant: [i32; 1024],
     /// `|x|^0.75` of the frame's spectrum ([`QuantChannel::cache_mags`]):
-    /// fixed across the rate loop's re-quantizations (TASK-83).
+    /// Fixed across the rate loop's re-quantizations.
     pub mag: [f32; 1024],
     /// `bits[band][book]` — spectral bits under each book, or
     /// [`UNREPRESENTABLE`].
@@ -89,7 +89,6 @@ impl QuantChannel {
     }
 }
 
-/// Short-window band ceiling (the 8 kHz table has 15 bands).
 pub const MAX_SFB_SHORT: usize = 15;
 /// Window groups in a short frame (8 windows; grouping may merge them).
 pub const MAX_GROUPS: usize = 8;
@@ -148,7 +147,6 @@ impl QuantShort {
     }
 }
 
-/// Per-band peak |coefficient| of a 1024-line long-window spectrum.
 pub fn band_peaks(spec: &[f32; 1024], offsets: &[u16], out: &mut [f32; MAX_BANDS]) {
     let n_bands = offsets.len() - 1;
     for b in 0..n_bands {
@@ -228,8 +226,7 @@ pub fn quantize(spec: &[f32; 1024], offsets: &[u16], out: &mut QuantChannel) {
     quantize_cached(spec, offsets, out);
 }
 
-/// [`quantize`] with `out.mag` already holding this spectrum's
-/// [`cache_mags`] (the rate loop re-quantizes one spectrum many times).
+/// [`quantize`] with this spectrum's [`cache_mags`] already in `out.mag`.
 pub fn quantize_cached(spec: &[f32; 1024], offsets: &[u16], out: &mut QuantChannel) {
     out.quant = [0; 1024];
     let n_bands = out.n_bands.min(offsets.len() - 1);
@@ -391,8 +388,11 @@ pub fn quantize_short_cached(spec: &[f32; LONG_WINDOW_LEN], offsets: &[u16], out
 
 #[path = "enc_quant_bits.rs"]
 mod bits;
+#[path = "enc_quant_reuse.rs"]
+mod reuse;
 pub use bits::dpcm_ok;
 use bits::{fill_bits, quant_gain};
+pub(crate) use reuse::BandReuse;
 
 #[cfg(test)]
 #[path = "enc_quant_tests.rs"]

@@ -77,7 +77,11 @@ pub fn parse_ics_into(
     spec: &mut Vec<f32>,
     sections: &mut SectionData,
     sf: &mut ScaleFactors,
-) -> Result<(IcsInfo, Option<super::tns::TnsData>, Option<super::ssr::GainControl>)> {
+) -> Result<(
+    IcsInfo,
+    Option<super::tns::TnsData>,
+    Option<super::ssr::GainControl>,
+)> {
     let ld = aot == super::asc::AOT_LD;
     let global_gain = br.read(8)? as u8;
     let ics = if let Some(shared) = common {

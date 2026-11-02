@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare production and patched upstream in owned, ignored local snapshots.
+"""Historical 0.7.1-to-prepared-0.8.1 comparison in ignored local snapshots.
 
 No dependency switch or upstream writes. Requires Linux /usr/bin/time and
 read-only sibling repositories containing PREPARED_REVISIONS. Real AAC/M4A
@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+import tomllib
 
 from qualify_vendors import ROOT, PREPARED_REVISIONS
 
@@ -59,6 +60,9 @@ def main():
     parser.add_argument("--upstream-root", type=Path, default=ROOT.parent)
     parser.add_argument("--source", type=Path, action="append", default=[])
     args = parser.parse_args()
+    manifest = tomllib.loads((ROOT / "Cargo.toml").read_text())
+    if manifest["dependencies"]["syom"]["version"] != "=0.7.1":
+        parser.error("historical probe requires the 0.7.1 production pin; run from source v0.14.0 or earlier, or use the current upgrade qualification")
     run = Path(tempfile.mkdtemp(prefix="codec-migration-", dir=ROOT / "runs"))
     print(run, flush=True)
     report = {"revision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),

@@ -1,6 +1,6 @@
 [package]
 name = "agent-youtube"
-version = "0.14.0"
+version = "0.15.0"
 edition = "2024"
 rust-version = "1.94"
 publish = false
@@ -17,7 +17,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip"] }
 ctrlc = { version = "3", features = ["termination"] }
 sha2 = "0.10"
-syom = { version = "=0.7.1", path = "vendor/syom" }
+syom = { version = "=0.9.0", path = "vendor/syom" }
 bandlimit = { version = "=0.1.7", path = "vendor/bandlimit" }
 ryf = { version = "=0.7.3", default-features = false, features = ["simd"] }
 ureq = { version = "=3.4.2", default-features = false, features = ["rustls-no-provider", "rustls-webpki-roots"] }

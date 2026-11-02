@@ -44,6 +44,8 @@ pub enum UnsupportedFeature {
     RawAccessUnit,
     /// Mid-stream AudioSpecificConfig change (call [`crate::Decoder::reset`]).
     AscChange,
+    /// Exact-seek contract is unqualified for this profile/layout/geometry.
+    ExactM4aSeek,
     /// Bounded fMP4 outside the envelope (lab/fmp4/REPORT.md §2).
     FragmentedMp4(&'static str),
 }
@@ -124,6 +126,10 @@ pub enum AacError {
     TooLong { observed_secs: f64, max_secs: f64 },
     /// `DecodeOptions` are not a usable limit set (NaN, negative, etc.).
     InvalidLimits(String),
+    /// Exact seeking needs more initial-state replay than the caller permits.
+    SeekReplayRequired { required_aus: u64, max_aus: u64 },
+    /// A logical seek checkpoint belongs to another source instance.
+    ForeignSeekPosition,
     /// An independent memory budget was exceeded (`planned == max` is ok).
     Limit {
         kind: BudgetKind,
@@ -281,6 +287,16 @@ impl fmt::Display for AacError {
             }
             Self::InvalidPcm(PcmReject::ChannelCount) => {
                 write!(f, "encode: channel plane count mismatch")
+            }
+            Self::SeekReplayRequired {
+                required_aus,
+                max_aus,
+            } => write!(
+                f,
+                "aac: exact seek requires {required_aus} replay AUs (maximum {max_aus})"
+            ),
+            Self::ForeignSeekPosition => {
+                write!(f, "aac: saved seek position belongs to another source")
             }
             Self::Format(msg) | Self::Decode(msg) | Self::Encode(msg) => write!(f, "{msg}"),
         }

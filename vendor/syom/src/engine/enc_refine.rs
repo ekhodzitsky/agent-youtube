@@ -95,6 +95,7 @@ fn step_band(
     b: usize,
     limit: usize,
 ) -> bool {
+    enc.alloc[ch].invalidate_band(b);
     let q = &mut enc.chans[ch];
     let old_sf = q.sf[b];
     q.sf[b] = old_sf - 1;

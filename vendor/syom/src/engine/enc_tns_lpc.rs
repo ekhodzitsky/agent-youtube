@@ -1,6 +1,6 @@
 //! Autocorrelation and the TNS analysis filter. Same f64 products and the
-//! same left-to-right add order as the straight loops; the inner indexes
-//! are slice iterators so the rate path does not bounds-check each tap.
+//! same left-to-right add order as the straight loops. Independent lag
+//! sums are batched without reassociating any accumulator's operations.
 
 use super::super::swb::LONG_WINDOW_LEN;
 use super::MAX_ORDER;
@@ -16,7 +16,29 @@ pub(super) fn autocorrelate(x: &[f32]) -> [f64; MAX_ORDER + 1] {
         *d = f64::from(v);
     }
     let mut r = [0.0f64; MAX_ORDER + 1];
-    for (lag, slot) in r.iter_mut().enumerate() {
+    let mut lag = 0;
+    // Independent lag sums expose parallel multiply/add lanes without
+    // reassociating any one lag's left-to-right f64 accumulation.
+    while lag + 4 <= r.len() && lag + 3 < n {
+        let common = n - lag - 3;
+        let mut acc = [0.0f64; 4];
+        for (i, &u) in xd[..common].iter().enumerate() {
+            let v = &xd[lag + i..lag + i + 4];
+            acc[0] += u * v[0];
+            acc[1] += u * v[1];
+            acc[2] += u * v[2];
+            acc[3] += u * v[3];
+        }
+        for (lane, slot) in acc.iter_mut().enumerate() {
+            let tail = lag + lane;
+            for i in common..n - tail {
+                *slot += xd[i] * xd[i + tail];
+            }
+            r[tail] = *slot;
+        }
+        lag += 4;
+    }
+    for (lag, slot) in r.iter_mut().enumerate().skip(lag) {
         if lag >= n {
             break;
         }
@@ -28,6 +50,10 @@ pub(super) fn autocorrelate(x: &[f32]) -> [f64; MAX_ORDER + 1] {
     }
     r
 }
+
+#[cfg(test)]
+#[path = "enc_tns_lpc_tests.rs"]
+mod tests;
 
 fn autocorrelate_long(x: &[f32]) -> [f64; MAX_ORDER + 1] {
     let mut r = [0.0f64; MAX_ORDER + 1];

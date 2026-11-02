@@ -16,7 +16,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 REVISIONS = {
-    "syom": "997bf56efda8700792dbc4b0136a36ad90eca328",
+    "syom": "60199081659c9fe8ee9bdf7bc07f304d5bf3c8b6",
     "bandlimit": "f9bed39b532ab23e5030ded23c7d60e45d5afa09",
 }
 PREPARED_REVISIONS = {
@@ -24,8 +24,8 @@ PREPARED_REVISIONS = {
     "bandlimit": "0559b94be9f55cdbf2bf7c87a600ee66c6b2e761",
 }
 
-# syom tests use the commit that captured the working-tree additions present
-# in our runtime snapshot. The runtime itself is always the vendored source.
+# Matching test revisions are pinned independently of historical prepared patches.
+# The runtime overlay is always the selected vendored source.
 
 
 def main():

@@ -89,13 +89,7 @@ impl StreamDecoder {
     ) -> Result<CpeBody> {
         let common_window = br.read_bit()?;
         let (ics_common, ms) = if common_window {
-            let ics = super::ics::IcsInfo::parse_mode(
-                br,
-                fs_index,
-                true,
-                aot,
-                self.frame_samples,
-            )?;
+            let ics = super::ics::IcsInfo::parse_mode(br, fs_index, true, aot, self.frame_samples)?;
             let ms = MsInfo::parse(br, &ics)?;
             (Some(ics), Some(ms))
         } else {
@@ -194,7 +188,6 @@ impl StreamDecoder {
         }
         Ok((ics_l, tns_l, gain_l, ics_r, tns_r, gain_r))
     }
-
 
     pub(crate) fn refill_spec_bufs(&mut self) {
         if self.spec_l.capacity() == 0 {

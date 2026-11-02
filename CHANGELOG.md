@@ -8,10 +8,22 @@ JSON or canonical transcripts. Source is public; crates.io publication stays dis
 
 ## Unreleased
 
-- Qualify interval seeking against full sequential decoding. Add reproducible
-  PNS-history and resampler-phase counterexamples plus an opt-in saved-recording
-  comparison. Keep production acquisition and decoding unchanged: bounded
-  preroll is not a general proof of bit-exact selected PCM.
+## 0.15.0 — 2026-11-02
+
+- Refresh the syom runtime from clean upstream source candidate 0.9.0 at
+  60199081659c9fe8ee9bdf7bc07f304d5bf3c8b6. This is an unreleased source
+  candidate, not a claimed registry release. Retain only the local exact-state
+  checkpoint and strict presentation-completion extensions; add no runtime crate.
+- Preserve upstream PNS-correct cold seeks, explicit prefix-replay planning and
+  bounded cold Huffman initialization. Qualify PNS seek PCM equality and refuse
+  missing history or insufficient replay budgets. Direct interval acquisition
+  remains disabled: the exact plan still requires the prefix.
+- Change the media-backend identity to v3. Old jobs, including v2, require their
+  original implementation for resume or a new work directory; refusal preserves
+  checkpoints, media and raw ASR. Saved transcript formats are unchanged.
+- Retain the earlier PNS/phase qualification as dated evidence, with current
+  behavior documented separately. Keep historical codec migration tooling from
+  silently running its old dependency replacements against the new production pin.
 
 ## 0.14.0 — 2026-11-01
 

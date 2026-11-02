@@ -2,7 +2,7 @@
 //! `scale_factor_data` and the Huffman spectral walk.
 
 use super::super::bits::BitWriter;
-use super::super::enc_huff::{sf_emit_delta, spectral_emit};
+use super::super::enc_huff::{sf_emit_delta, spectral_emit_band};
 use super::super::enc_quant::{MAX_BANDS, QuantChannel};
 use super::super::ics::WindowSequence;
 use super::super::section::{has_spectral, is_intensity, is_noise};
@@ -94,11 +94,6 @@ pub fn emit_spectral(
         }
         let lo = usize::from(win[0]);
         let hi = usize::from(win[1]);
-        let step = if cb <= 4 { 4 } else { 2 };
-        let mut i = lo;
-        while i < hi {
-            spectral_emit(cb, &q.quant[i..i + step], w);
-            i += step;
-        }
+        spectral_emit_band(cb, &q.quant[lo..hi], w);
     }
 }

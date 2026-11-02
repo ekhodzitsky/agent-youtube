@@ -1,4 +1,4 @@
-//! Executable qualification of bounded-preroll seeking, not a production path.
+//! Seek-history and exact-plan qualification, not a production interval path.
 use super::*;
 
 struct Window {
@@ -11,9 +11,18 @@ struct Window {
 struct MeasuredFile {
     file: File,
     bytes: std::rc::Rc<std::cell::Cell<u64>>,
+    blocked_before: std::rc::Rc<std::cell::Cell<Option<u64>>>,
 }
 impl Read for MeasuredFile {
     fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+        if let Some(minimum) = self.blocked_before.get()
+            && self.file.stream_position()? < minimum
+        {
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "prefix not acquired",
+            ));
+        }
         let count = self.file.read(buffer)?;
         self.bytes.set(self.bytes.get() + count as u64);
         Ok(count)
@@ -39,6 +48,7 @@ fn window(path: &Path, origin: u64, start_ms: u64, length_ms: u64) -> Window {
     let reader = MeasuredFile {
         file: File::open(path).unwrap(),
         bytes: bytes.clone(),
+        blocked_before: Default::default(),
     };
     let mut codec = syom::M4aSeek::open(reader, decode_options(path).unwrap()).unwrap();
     let rate = u64::from(codec.output_sample_rate());
@@ -110,7 +120,7 @@ fn compare(reference: &Window, candidate: &Window) -> serde_json::Value {
 }
 
 #[test]
-fn bounded_preroll_does_not_reconstruct_pns_history() {
+fn cold_seek_preserves_pns_history_and_exact_selected_pcm() {
     let temp = super::tests::Temp::new();
     for rate in [16000u32, 44100] {
         for pns in [false, true] {
@@ -139,15 +149,67 @@ fn bounded_preroll_does_not_reconstruct_pns_history() {
                 "seek_fixture {}",
                 serde_json::json!({"rate":rate,"pns":pns,"comparison":comparison})
             );
-            if pns {
-                assert!(comparison["native_differences"].as_u64().unwrap() > 0);
-                assert!(comparison["pcm_differences"].as_u64().unwrap() > 0);
-            } else {
-                assert_eq!(comparison["native_differences"], 0);
-                assert_eq!(comparison["pcm_differences"], 0);
-            }
+            assert_eq!(comparison["native_differences"], 0);
+            assert_eq!(comparison["pcm_differences"], 0);
         }
     }
+}
+
+#[test]
+fn exact_plan_exposes_prefix_and_refuses_missing_history_before_checkpointing() {
+    let temp = super::tests::Temp::new();
+    let path = temp.0.join("exact.m4a");
+    let samples: Vec<_> = (0..16000 * 6)
+        .map(|i| 0.2 * (i as f32 * 0.17).sin())
+        .collect();
+    std::fs::write(
+        &path,
+        syom::encode_with(
+            &[&samples],
+            16000,
+            &syom::EncodeOptions::default()
+                .with_bitrate_bps(64000)
+                .with_container(syom::EncodeContainer::M4a),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    let bytes = std::rc::Rc::new(std::cell::Cell::new(0));
+    let blocked_before = std::rc::Rc::new(std::cell::Cell::new(None));
+    let reader = MeasuredFile {
+        file: File::open(&path).unwrap(),
+        bytes: bytes.clone(),
+        blocked_before: blocked_before.clone(),
+    };
+    let mut codec = syom::M4aSeek::open(reader, decode_options(&path).unwrap()).unwrap();
+    let before = bytes.get();
+    let plan = codec.exact_seek_plan(64016, 72016).unwrap();
+    assert_eq!(plan.history(), syom::ExactSeekHistory::PrefixReplay);
+    let required = plan.replay_access_units();
+    assert!(required > 0);
+    let first_range = plan.media_ranges().next().unwrap();
+    assert_eq!(bytes.get(), before, "planning must not read payloads");
+    assert!(matches!(
+        codec.seek_exact(64016, required - 1),
+        Err(syom::AacError::SeekReplayRequired { .. })
+    ));
+    assert_eq!(bytes.get(), before, "budget refusal must happen before I/O");
+    assert_eq!(codec.position(), 0);
+    blocked_before.set(Some(first_range.end));
+    assert!(matches!(
+        codec.seek_exact(64016, u64::MAX),
+        Err(syom::AacError::Io(_))
+    ));
+    assert_eq!(
+        bytes.get(),
+        before,
+        "missing prefix cannot be silently skipped"
+    );
+    assert!(
+        !codec.supports_checkpoint(),
+        "failed exact state must not be reusable"
+    );
+    assert!(codec.checkpoint().is_none());
 }
 
 #[test]

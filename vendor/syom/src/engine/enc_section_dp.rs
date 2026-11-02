@@ -10,7 +10,7 @@ pub fn section_spectral_cost(
     coded: &[bool],
     bits: &[[u32; BOOKS]],
     n: usize,
-    header_bits: fn(usize) -> usize,
+    header_bits: impl Fn(usize) -> usize + Copy,
 ) -> u64 {
     let mut total = 0u64;
     let mut k = 0usize;
@@ -40,7 +40,7 @@ pub fn plan_books_dp(
     bits: &[[u32; BOOKS]],
     n: usize,
     sfb_cb: &mut [u8],
-    header_bits: fn(usize) -> usize,
+    header_bits: impl Fn(usize) -> usize + Copy,
 ) {
     let mut lo = 0usize;
     while lo < n {
@@ -64,7 +64,7 @@ fn plan_stretch_dp(
     sfb_cb: &mut [u8],
     lo: usize,
     hi: usize,
-    header_bits: fn(usize) -> usize,
+    header_bits: impl Fn(usize) -> usize + Copy,
 ) {
     let n = hi - lo;
     if n == 0 {

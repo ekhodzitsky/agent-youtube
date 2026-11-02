@@ -218,9 +218,8 @@ where
     // at 48 kHz with a 1 kHz movie clock). All indexed AUs were decoded.
     // Bound this metadata rounding to less than 1 ms as well; never pad PCM
     // or accept an unfinished priming skip or a whole missing AAC frame.
-    let rounded_tail = play_left.is_some_and(|left| {
-        track.rounded_presentation_tail(left as u64, out_rate)
-    });
+    let rounded_tail =
+        play_left.is_some_and(|left| track.rounded_presentation_tail(left as u64, out_rate));
     if skip_left != 0 || (play_left.is_some_and(|left| left != 0) && !rounded_tail) {
         return Err(AacError::format("incomplete M4A presentation"));
     }

@@ -54,8 +54,8 @@ pub use options::{
 pub use probe::{Probe, ProbeContainer, ProbeDuration, ProbeProfile, ProbeTrim, probe, probe_with};
 pub use sniff::{sniff_aac, sniff_is_adts, sniff_is_latm};
 pub use stream::{
-    Decoder, Frame, M4aSeek, StreamInfo, decode_read_streaming, decode_seek_streaming,
-    decode_streaming, preroll_aus,
+    Decoder, ExactSeekHistory, ExactSeekPlan, ExactSeekPosition, Frame, M4aSeek, StreamInfo,
+    decode_read_streaming, decode_seek_streaming, decode_streaming, preroll_aus,
 };
 
 #[cfg(test)]
@@ -258,6 +258,11 @@ mod stream_ld_tests;
 #[cfg(test)]
 #[path = "stream_m4a_seek_tests.rs"]
 mod stream_m4a_seek_tests;
+#[cfg(test)]
+mod stream_seek_noise_tests;
+
+#[cfg(test)]
+mod exact_seek_tests;
 
 #[cfg(test)]
 #[path = "stream_au_tests.rs"]

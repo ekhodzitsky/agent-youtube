@@ -182,14 +182,15 @@ impl Filterbank {
             2 => Some(WindowShape::Kbd),
             _ => return None,
         };
-        for (sample, bytes) in self.overlap.iter_mut().zip(bytes[1..].chunks_exact(4)) {
-            *sample = f32::from_bits(u32::from_le_bytes(bytes.try_into().ok()?));
+        for (sample, bytes) in self.overlap.iter_mut().zip(bytes[1..].as_chunks::<4>().0) {
+            *sample = f32::from_bits(u32::from_le_bytes(*bytes));
             if !sample.is_finite() {
                 return None;
             }
         }
         Some(())
     }
+
     /// Windowed overlap saved for the next frame (filterbank scale).
     pub(crate) fn saved_overlap(&self) -> &[f32] {
         &self.overlap

@@ -17,7 +17,7 @@ pub(crate) use resume::{DecodeEvent, Resume, SourcePrefix, decode_prefix, full_s
 thread_local! { static FRAME_COUNT: std::cell::Cell<u64> = const { std::cell::Cell::new(0) }; }
 
 pub const SAMPLE_RATE: u32 = 16_000;
-pub const BACKEND: &str = "syom-0.7.1-bandlimit-0.1.7-ryf-0.7.3-mono-pcm16-v2";
+pub const BACKEND: &str = "syom-0.9.0-6019908-checkpoint1-bandlimit-0.1.7-ryf-0.7.3-mono-pcm16-v3";
 
 pub(crate) fn check_cancelled(cancelled: &AtomicBool) -> Result<()> {
     if cancelled.load(Ordering::SeqCst) {

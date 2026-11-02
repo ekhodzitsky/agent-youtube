@@ -238,5 +238,4 @@ impl StreamDecoder {
         self.refill_spec_bufs();
         Ok(())
     }
-
 }

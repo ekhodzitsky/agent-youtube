@@ -50,7 +50,7 @@ mod pump;
 mod read;
 
 pub use frame::{Frame, StreamInfo};
-pub use m4a_pos::{M4aSeek, preroll_aus};
+pub use m4a_pos::{ExactSeekHistory, ExactSeekPlan, ExactSeekPosition, M4aSeek, preroll_aus};
 pub use m4a_seek::decode_seek_streaming;
 pub use read::decode_read_streaming;
 

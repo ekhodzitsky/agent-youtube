@@ -1,0 +1,364 @@
+--- a/src/engine/fb_pool.rs
++++ b/src/engine/fb_pool.rs
+@@ -24,6 +24,10 @@
+ }
+ 
+ impl FbPool {
++    pub(crate) fn is_empty(&self) -> bool {
++        self.slots.is_empty()
++    }
++
+     pub(crate) fn begin_frame(&mut self) {
+         for s in &mut self.slots {
+             s.seen = false;
+--- a/src/engine/filterbank.rs
++++ b/src/engine/filterbank.rs
+@@ -162,6 +162,35 @@
+ }
+ 
+ impl Filterbank {
++    pub(crate) fn checkpoint(&self, out: &mut Vec<u8>) {
++        out.push(match self.prev_shape {
++            None => 0,
++            Some(WindowShape::Sine) => 1,
++            Some(WindowShape::Kbd) => 2,
++        });
++        for sample in self.overlap {
++            out.extend_from_slice(&sample.to_bits().to_le_bytes());
++        }
++    }
++    pub(crate) fn restore_checkpoint(&mut self, bytes: &[u8]) -> Option<()> {
++        if bytes.len() != 1 + LONG_WINDOW_LEN * 4 {
++            return None;
++        }
++        self.prev_shape = match bytes[0] {
++            0 => None,
++            1 => Some(WindowShape::Sine),
++            2 => Some(WindowShape::Kbd),
++            _ => return None,
++        };
++        for (sample, bytes) in self.overlap.iter_mut().zip(bytes[1..].as_chunks::<4>().0) {
++            *sample = f32::from_bits(u32::from_le_bytes(*bytes));
++            if !sample.is_finite() {
++                return None;
++            }
++        }
++        Some(())
++    }
++
+     /// Windowed overlap saved for the next frame (filterbank scale).
+     pub(crate) fn saved_overlap(&self) -> &[f32] {
+         &self.overlap
+--- a/src/engine/pns.rs
++++ b/src/engine/pns.rs
+@@ -15,6 +15,13 @@
+ }
+ 
+ impl Lcg {
++    pub(crate) fn checkpoint(self) -> u32 {
++        self.state
++    }
++    pub(crate) fn restore_checkpoint(state: u32) -> Self {
++        Self { state }
++    }
++
+     /// lavc `ff_aac_decode_init` seed.
+     #[must_use]
+     pub fn new() -> Self {
+--- a/src/isomp4.rs
++++ b/src/isomp4.rs
+@@ -113,6 +113,14 @@
+             "elst duration",
+         )?;
+         Ok((skip, Some(play)))
++    }
++
++    /// A complete indexed presentation may end less than one movie tick early
++    /// because its duration was rounded up. Never allow a millisecond or more.
++    pub(crate) fn rounded_presentation_tail(&self, left: u64, sample_rate: u32) -> bool {
++        self.has_elst
++            && u128::from(left) * u128::from(self.movie_timescale.max(1000))
++                < u128::from(sample_rate)
+     }
+ 
+     /// Presentation length in media units: `elst.segment_duration` converted
+--- a/src/stream/m4a.rs
++++ b/src/stream/m4a.rs
+@@ -214,6 +214,15 @@
+         }
+     }
+ 
++    // Movie durations may round up by less than one tick (e.g. 32 samples
++    // at 48 kHz with a 1 kHz movie clock). All indexed AUs were decoded.
++    // Bound this metadata rounding to less than 1 ms as well; never pad PCM
++    // or accept an unfinished priming skip or a whole missing AAC frame.
++    let rounded_tail =
++        play_left.is_some_and(|left| track.rounded_presentation_tail(left as u64, out_rate));
++    if skip_left != 0 || (play_left.is_some_and(|left| left != 0) && !rounded_tail) {
++        return Err(AacError::format("incomplete M4A presentation"));
++    }
+     if emitted == 0 {
+         return Err(AacError::NotAac);
+     }
+--- a/src/stream/m4a_pos.rs
++++ b/src/stream/m4a_pos.rs
+@@ -79,6 +79,7 @@
+     preroll: u64,
+     locked: Option<(u32, usize)>,
+     mono: bool,
++    checkpoint_gapless_safe: bool,
+     // Contiguous decoded prefix that leaves the initial PNS state unchanged.
+     noise_free_prefix: usize,
+     exact_mode: bool,
+@@ -92,7 +93,13 @@
+     /// Parse `moov` and sit at presentation 0 (elst skip still to apply).
+     pub fn open(mut reader: R, opts: DecodeOptions) -> Result<Self> {
+         opts.validate()?;
+-        let track = match load_track_boxes(&mut reader, &opts.memory)? {
++        let boxes = load_track_boxes(&mut reader, &opts.memory)?;
++        let tagged = match &boxes {
++            TrackBoxes::Flat { moov, .. } | TrackBoxes::Frag { moov, .. } => {
++                crate::gapless::itunsmpb_in(moov).is_some()
++            }
++        };
++        let track = match boxes {
+             TrackBoxes::Flat { moov, file_len } => {
+                 isomp4::parse_aac_track_with_len(&moov, file_len, &opts.memory)
+                     .map_err(map_m4a_parse_err)?
+@@ -128,6 +135,7 @@
+         } else {
+             preroll_aus(asc.sbr_present)
+         };
++        let checkpoint_gapless_safe = track.has_elst || !tagged;
+         let mut s = Self {
+             reader,
+             track,
+@@ -145,6 +153,7 @@
+             preroll,
+             locked: None,
+             mono,
++            checkpoint_gapless_safe,
+             noise_free_prefix: 0,
+             exact_mode: false,
+             exact_failed: false,
+@@ -363,3 +372,116 @@
+         })
+     }
+ }
++
++// Versioned LC-only state. Spectral/IMDCT scratch is overwritten by the next AU.
++// HE, profile prediction, PCE and coupling histories are deliberately excluded.
++impl<R: Read + Seek> M4aSeek<R> {
++    pub fn supports_checkpoint(&self) -> bool {
++        !self.exact_mode
++            && !self.exact_failed
++            && self.checkpoint_gapless_safe
++            && self.asc.frame_samples == 1024
++            && matches!(
++                self.asc.output_sample_rate,
++                8000 | 16000 | 22050 | 24000 | 32000 | 44100 | 48000
++            )
++            && self.asc.aot == 2
++            && !self.asc.sbr_present
++            && !self.asc.ps_present
++            && matches!(self.asc.channel_configuration, 1 | 2)
++            && matches!(self.opts.channel_mode, ChannelMode::Mono)
++    }
++    pub fn checkpoint_compatible(&self) -> bool {
++        self.supports_checkpoint()
++            && !self.dec.sbr_active
++            && self.dec.pce.is_none()
++            && self.dec.fb_pool.is_empty()
++            && self.dec.tools.aot == 2
++    }
++    pub fn bounded_presentation(&self) -> bool {
++        self.track.has_elst
++    }
++    pub fn output_sample_rate(&self) -> u32 {
++        self.asc.output_sample_rate
++    }
++    pub fn remaining_samples(&self) -> u64 {
++        self.play_left
++    }
++    /// Validate EOF without padding a rounded movie duration. A nonzero tail
++    /// is admissible only after every indexed AU and the priming skip completed.
++    pub fn presentation_complete(&self) -> bool {
++        self.discard_left == 0
++            && (self.play_left == 0
++                || (self.next_frame == self.track.frames.len()
++                    && self
++                        .track
++                        .rounded_presentation_tail(self.play_left, self.asc.output_sample_rate)))
++    }
++    pub fn checkpoint(&self) -> Option<Vec<u8>> {
++        if !self.checkpoint_compatible()
++            || self.play_left == 0
++            || self.discard_left != 0
++            || (self.next_frame as u64).checked_mul(self.samples_per_au)
++                != self.skip.checked_add(self.pos)
++        {
++            return None;
++        }
++        let mut out = b"YTLC0001".to_vec();
++        for value in [
++            self.next_frame as u64,
++            self.pos,
++            self.discard_left as u64,
++            self.play_left,
++        ] {
++            out.extend_from_slice(&value.to_le_bytes());
++        }
++        out.extend_from_slice(&self.dec.rng.checkpoint().to_le_bytes());
++        self.dec.fb_l.checkpoint(&mut out);
++        self.dec.fb_r.checkpoint(&mut out);
++        Some(out)
++    }
++    pub fn restore_checkpoint(&mut self, bytes: &[u8]) -> Result<()> {
++        let invalid = || AacError::format("invalid LC decoder checkpoint");
++        if !self.supports_checkpoint() || bytes.len() != 8238 || &bytes[..8] != b"YTLC0001" {
++            return Err(invalid());
++        }
++        let number = |offset| -> Result<u64> {
++            Ok(u64::from_le_bytes(
++                bytes[offset..offset + 8]
++                    .try_into()
++                    .map_err(|_| invalid())?,
++            ))
++        };
++        let next = number(8)?;
++        let pos = number(16)?;
++        let discard = number(24)?;
++        let left = number(32)?;
++        if next > self.track.frames.len() as u64
++            || discard != 0
++            || pos == 0
++            || pos >= self.play
++            || left != self.play - pos
++            || next.checked_mul(self.samples_per_au) != self.skip.checked_add(pos)
++        {
++            return Err(invalid());
++        }
++        self.reset_codec();
++        self.dec.rng = crate::engine::pns::Lcg::restore_checkpoint(u32::from_le_bytes(
++            bytes[40..44].try_into().map_err(|_| invalid())?,
++        ));
++        self.dec
++            .fb_l
++            .restore_checkpoint(&bytes[44..4141])
++            .ok_or_else(invalid)?;
++        self.dec
++            .fb_r
++            .restore_checkpoint(&bytes[4141..8238])
++            .ok_or_else(invalid)?;
++        self.next_frame = usize::try_from(next).map_err(|_| invalid())?;
++        self.pos = pos;
++        self.discard_left = 0;
++        self.play_left = left;
++        self.locked = Some((self.asc.output_sample_rate, 1));
++        Ok(())
++    }
++}
+--- /dev/null
++++ b/tests/upstream_checkpoint.rs
+@@ -0,0 +1,101 @@
++#![allow(clippy::unwrap_used)]
++
++use std::io::{self, Cursor};
++
++#[test]
++fn checkpoints_preserve_pns_pcm_at_seven_rates_and_reject_corruption() {
++    for rate in [8000_u32, 16000, 22050, 24000, 32000, 44100, 48000] {
++        let pcm: Vec<_> = (0..rate + 1)
++            .map(|i| i.wrapping_mul(1664525).wrapping_add(1013904223) as i32 as f32 * 1e-10)
++            .collect();
++        let right: Vec<_> = pcm.iter().map(|x| -x * 0.25).collect();
++        let bytes = syom::encode_with(
++            &[&pcm, &right],
++            rate,
++            &syom::EncodeOptions::m4a()
++                .with_bitrate_bps(64000)
++                .with_pns(true)
++                .with_lookahead(true)
++                .with_short_group(true),
++        )
++        .unwrap();
++        let opts = syom::DecodeOptions::speech();
++        let mut full = syom::M4aSeek::open(Cursor::new(&bytes), opts.clone()).unwrap();
++        let mut expected = Vec::new();
++        full.decode(|frame| {
++            expected.extend(frame.planar[0].iter().map(|x| x.to_bits()));
++            Ok(())
++        })
++        .unwrap();
++        let mut first = syom::M4aSeek::open(Cursor::new(&bytes), opts.clone()).unwrap();
++        let mut got = Vec::new();
++        let mut frames = 0;
++        assert!(
++            first
++                .decode(|frame| {
++                    got.extend(frame.planar[0].iter().map(|x| x.to_bits()));
++                    frames += 1;
++                    if frames == 3 {
++                        return Err(syom::AacError::Io(io::Error::other("pause")));
++                    }
++                    Ok(())
++                })
++                .is_err()
++        );
++        let state = first.checkpoint().unwrap();
++        let mut resumed = syom::M4aSeek::open(Cursor::new(&bytes), opts.clone()).unwrap();
++        resumed.restore_checkpoint(&state).unwrap();
++        resumed
++            .decode(|frame| {
++                got.extend(frame.planar[0].iter().map(|x| x.to_bits()));
++                Ok(())
++            })
++            .unwrap();
++        assert!(resumed.presentation_complete());
++        assert_eq!(got, expected, "rate {rate}");
++        for length in [0, 7, 40, state.len() - 1] {
++            assert!(resumed.restore_checkpoint(&state[..length]).is_err());
++        }
++        let mut bad = state.clone();
++        bad[0] ^= 1;
++        assert!(resumed.restore_checkpoint(&bad).is_err());
++        let mut bad = state;
++        bad[45..49].copy_from_slice(&f32::NAN.to_bits().to_le_bytes());
++        assert!(resumed.restore_checkpoint(&bad).is_err());
++    }
++}
++
++#[test]
++fn indexed_presentation_accepts_only_sub_millisecond_rounding() {
++    let mut bytes = syom::encode_with(&[&[0.1f32]], 48000, &syom::EncodeOptions::m4a()).unwrap();
++    let edit = bytes.windows(4).position(|w| w == b"elst").unwrap();
++    bytes[edit + 12..edit + 16].copy_from_slice(&48000_u32.to_be_bytes());
++    let mut decoder =
++        syom::M4aSeek::open(Cursor::new(&bytes), syom::DecodeOptions::speech()).unwrap();
++    decoder.decode(|_| Ok(())).unwrap();
++    let actual = decoder.position();
++    assert!(!decoder.presentation_complete());
++    let movie = bytes.windows(4).position(|w| w == b"mvhd").unwrap();
++    bytes[movie + 16..movie + 20].copy_from_slice(&1000_u32.to_be_bytes());
++    for (extra, valid) in [(0, true), (1, false), (1000, false)] {
++        let ticks = u32::try_from(actual.div_ceil(48)).unwrap() + extra;
++        bytes[edit + 12..edit + 16].copy_from_slice(&ticks.to_be_bytes());
++        let mut seek =
++            syom::M4aSeek::open(Cursor::new(&bytes), syom::DecodeOptions::speech()).unwrap();
++        seek.decode(|_| Ok(())).unwrap();
++        assert_eq!(seek.presentation_complete(), valid);
++        let mut emitted = 0;
++        let result = syom::decode_seek_streaming(
++            Cursor::new(&bytes),
++            &syom::DecodeOptions::speech(),
++            |frame| {
++                emitted += frame.planar[0].len();
++                Ok(())
++            },
++        );
++        assert_eq!(result.is_ok(), valid);
++        if valid {
++            assert_eq!(emitted as u64, actual);
++        }
++    }
++}

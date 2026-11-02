@@ -26,6 +26,9 @@ of Git. See the installation guide for vendored codec provenance.
 
 ## Current release and operation
 
+- [syom refresh](syom-upgrade.md): pinned 0.9.0 source candidate, exact PCM and
+  restart comparisons, v3 backend migration and preserved legacy transcripts.
+
 - [Published timestamps without audio](usage.md#published-timestamps-without-audio):
   chapters command, author-description provenance, absence/errors and limits.
 

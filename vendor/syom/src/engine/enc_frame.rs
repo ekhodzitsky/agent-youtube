@@ -104,6 +104,8 @@ pub struct LcEncoder {
     books_s: [[u8; MAX_FLAT_SHORT]; 2],
     target_q_s: [[f32; MAX_FLAT_SHORT]; 2],
     psy_short: Psy,
+    /// Short-frame analysis reused by every rate probe, rebuilt each frame.
+    short_alloc: Box<[enc_short::ShortAlloc; 2]>,
     /// Off = OnlyLong every frame (LFE elements; pre-echo A/B in tests).
     block_switching: bool,
     /// Test hook: whole-pair M/S A/B (per-band when true).
@@ -187,6 +189,7 @@ impl LcEncoder {
             books_s: [[0; MAX_FLAT_SHORT]; 2],
             target_q_s: [[0.0; MAX_FLAT_SHORT]; 2],
             psy_short: Psy::new_short(short_offsets, sample_rate),
+            short_alloc: super::heap::heap_array(enc_short::ShortAlloc::new()),
             block_switching: true,
             #[cfg(test)]
             ms_per_band: true,

@@ -91,11 +91,6 @@ impl StreamDecoder {
         self.pce = Some(pce);
     }
 
-    /// Core samples per frame from the ASC (1024, 960, 512, or 480).
-    pub(crate) fn set_frame_samples(&mut self, n: u16) {
-        self.frame_samples = n;
-    }
-
     /// Seed HE/PS from ASC so output rate does not wait on a FIL payload.
     pub(crate) fn set_he_config(&mut self, sbr: bool, ps: bool, output_rate: u32) {
         self.sbr_declared = sbr;
@@ -194,7 +189,10 @@ impl StreamDecoder {
     ) -> Result<u32> {
         meta::check_config(aot, channel_configuration)?;
         self.refill_spec_bufs();
-        let core_aot = match aot { 1 | 3 | 4 | 23 => aot, _ => 2 };
+        let core_aot = match aot {
+            1 | 3 | 4 | 23 => aot,
+            _ => 2,
+        };
         self.tools.aot = core_aot;
         let mut br = BitReader::new(payload);
         // cfg 0 / ≥3 / PCE: per-channel FBs. cfg 1/2 keep the fast path.

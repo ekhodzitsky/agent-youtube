@@ -37,12 +37,18 @@ const NEIGHBOR: i32 = 8;
 #[cfg(test)]
 thread_local! {
     static BUILDS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    static EMITS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
 }
 
 /// Quantizations since the last [`take_builds`] (test threads only).
 #[cfg(test)]
 pub(super) fn take_builds() -> u32 {
     BUILDS.with(|c| c.replace(0))
+}
+
+#[cfg(test)]
+pub(super) fn take_emits() -> u32 {
+    EMITS.with(|c| c.replace(0))
 }
 
 #[cfg(test)]
@@ -136,7 +142,8 @@ impl LcEncoder {
     /// Bit counts dip by a few bits, so a start that is not the previous
     /// frame's offset can stop at a different crossing than a cold
     /// bisection. The first frame starts at [`OFFSET_LO`], which is that
-    /// cold search.
+    /// cold search. On return, quantized state is the selected offset's
+    /// build; callers may emit it without repeating the same quantization.
     pub(super) fn search_offset_from(
         &mut self,
         lo_bound: i32,
@@ -146,7 +153,14 @@ impl LcEncoder {
         let budget = spend.saturating_sub(32);
         let lo = lo_bound.clamp(OFFSET_LO, OFFSET_HI);
         let guess = self.rate_guess;
-        let offset = search_monotonic(lo, OFFSET_HI, guess, |off| self.build(specs, off) <= budget);
+        let mut last = None;
+        let offset = search_monotonic(lo, OFFSET_HI, guess, |off| {
+            last = Some(off);
+            self.build(specs, off) <= budget
+        });
+        if last != Some(offset) {
+            self.build(specs, offset);
+        }
         self.rate_guess = offset;
         offset
     }
@@ -171,7 +185,7 @@ impl LcEncoder {
             }
             for (ch, spec) in specs.iter().enumerate().take(self.channels) {
                 total += enc_short::channel_build(
-                    &mut self.psy_short,
+                    &self.short_alloc[ch],
                     self.short_offsets,
                     spec,
                     offset,
@@ -181,7 +195,6 @@ impl LcEncoder {
                     &mut self.gains[ch],
                     standalone,
                     &self.tns[ch],
-                    self.grouping,
                 );
             }
             return total + 7; // byte-align pad ceiling
@@ -195,30 +208,18 @@ impl LcEncoder {
             q.pns[..q.n_bands].fill(false);
             q.intensity[..q.n_bands].fill(false);
             let tq = &mut self.target_q[ch];
-            let a = &self.alloc[ch];
+            let a = &mut self.alloc[ch];
             q.coded = a.coded;
-            crate::engine::enc_alloc::noise_targets(
-                &a.peaks,
-                &a.energy,
-                &a.sum_sqrt,
-                &a.noise,
-                &a.width,
-                &a.cap,
-                offset,
-                q.n_bands,
-                &mut q.coded,
-                tq,
-            );
+            a.targets(offset, q.n_bands, &mut q.coded, tq);
             // TNS span bands are coded or dropped by the water level like
             // any other band. Forcing the span at target 1.0 blew the frame
             // budget where TNS fired hardest. Peaks were measured once.
-            let peaks = a.peaks;
             Self::quant_one_long(
                 self.offsets,
                 q,
                 tq,
                 spec,
-                &peaks,
+                a,
                 &mut self.books[ch],
                 &mut self.gains[ch],
             );
@@ -263,19 +264,21 @@ impl LcEncoder {
         q: &mut crate::engine::enc_quant::QuantChannel,
         tq: &[f32; MAX_BANDS],
         spec: &[f32; LONG_WINDOW_LEN],
-        peaks: &[f32; MAX_BANDS],
+        a: &mut crate::engine::enc_alloc::AllocCache,
         books: &mut [u8; MAX_BANDS],
         gain: &mut u8,
     ) {
-        enc_quant::raw_scalefactors(peaks, tq, 0, q);
+        a.raw_scalefactors(tq, q);
         *gain = enc_quant::normalize_sf(q);
-        enc_quant::quantize_cached(spec, offsets, q);
+        a.quantize(spec, offsets, q);
         *books = enc_section::plan_books(q);
     }
 
     /// Emit the `raw_data_block` from the built state into `out`.
     /// Returns the bit length before `END`.
     pub(super) fn emit_into(&self, out: &mut Vec<u8>) -> usize {
+        #[cfg(test)]
+        EMITS.with(|c| c.set(c.get().saturating_add(1)));
         if self.seq.is_eight_short() {
             enc_short::emit_frame(
                 self.short_offsets,

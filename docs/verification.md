@@ -10,10 +10,18 @@ license is now present at the root, CI is dispatch-only and hosted Actions are
 disabled. Crates.io publication stays disabled. Sections below preserve dated
 reviews, including superseded privacy/license findings; see current readiness.
 
+## syom update — 0.15.0, 2026-11-02
+
+[The current upgrade qualification](syom-upgrade.md) adopts the pinned 0.9.0
+source candidate with local decoder-state/completion extensions and a distinct
+v3 media backend. Its cold seek now preserves PNS history through prefix replay;
+the dated 0.7.1 counterexamples below are not findings against the new runtime.
+The exact seek plan still does not authorize independent bounded-preroll windows.
+
 ## Interval seek qualification — 2026-11-01
 
 Bounded preroll is not sufficient to enable exact interval seeking generally.
-The pinned syom M4aSeek.seek resets the AAC decoder, including the PNS random
+The then-pinned syom 0.7.1 M4aSeek.seek reset the AAC decoder, including the PNS random
 generator; its LC mono/stereo path warms two access units. PNS random draws depend
 on prior coded noise bands. That state is retained in a decoder checkpoint but
 is not supplied by the container time/byte index. Codec/profile eligibility for
@@ -47,18 +55,19 @@ the one- and four-second seek candidates read 2,094,993 and 2,142,908 bytes,
 including container indexes. This shows the potential I/O reduction on that
 input, not verified network savings or general exact-seek eligibility.
 
-Production remains on the qualified prefix/full paths. A future exact interval
+At that revision, production remained on the qualified prefix/full paths. A future exact interval
 path needs either validated codec/resampler state for the same representation and
 position, or an explicit decoder contract identifying and enforcing a supported
-history-independent subset throughout the required warmup/window. The current
-public frame/probe metadata does not expose PNS use or such a contract. A local
+history-independent subset throughout the required warmup/window. The reviewed
+0.7.1 public frame/probe metadata did not expose PNS use or such a contract. A local
 PNS-free fixture is not evidence that every LC input is history-independent.
 HE/PS and other profiles require separate qualification. Any network interval
 path would also need distinct extent receipts: current SABR progress deliberately
 rejects byte/sequence gaps and cannot represent skipped preceding media as a
 contiguous downloaded prefix.
 
-The regular audio::seek_qualification tests retain the counterexamples. To repeat
+The current audio::seek_qualification tests require PNS-correct replay; the
+original counterexample remains in source history. To repeat
 the opt-in real comparison on an owned complete source with at least five seconds
 before the selected window and enough audio after it:
 

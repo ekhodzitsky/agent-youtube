@@ -282,11 +282,63 @@ impl BitWriter {
         }
     }
 
+    /// Resume at an existing MSB-first prefix, discarding all later bits.
+    /// Retains capacity; `bit_len` must fit within the supplied bytes.
+    #[must_use]
+    pub(crate) fn resume_vec(mut buf: Vec<u8>, bit_len: usize) -> Self {
+        let bytes = bit_len / 8;
+        let bits = (bit_len % 8) as u8;
+        assert!(
+            bytes < buf.len() || (bytes == buf.len() && bits == 0),
+            "bit prefix exceeds supplied bytes"
+        );
+        let acc = if bits == 0 {
+            0
+        } else {
+            buf[bytes] >> (8 - bits)
+        };
+        buf.truncate(bytes);
+        Self { buf, acc, bits }
+    }
+
     /// Append the low `n` bits of `value`, MSB first.
+    #[inline]
     pub fn write(&mut self, value: u32, n: u32) {
         if n == 0 {
             return;
         }
+        if n > 32 {
+            self.write_wide(value, n);
+            return;
+        }
+        let mut left = n;
+        if self.bits > 0 {
+            let take = left.min(u32::from(8 - self.bits));
+            let part = ((value >> (left - take)) & ((1 << take) - 1)) as u8;
+            self.acc = (self.acc << take) | part;
+            self.bits += take as u8;
+            left -= take;
+            if self.bits < 8 {
+                return;
+            }
+            self.buf.push(self.acc);
+            self.acc = 0;
+            self.bits = 0;
+        }
+        while left >= 8 {
+            left -= 8;
+            self.buf.push((value >> left) as u8);
+        }
+        if left > 0 {
+            self.acc = value as u8 & ((1u8 << left) - 1);
+            self.bits = left as u8;
+        }
+    }
+
+    // Preserve the previous per-bit behavior outside the u32 field width,
+    // including checked-shift failures, rather than inventing wider fields.
+    #[cold]
+    fn write_wide(&mut self, value: u32, n: u32) {
         for i in (0..n).rev() {
             let bit = ((value >> i) & 1) as u8;
             self.acc = (self.acc << 1) | bit;
@@ -305,8 +357,15 @@ impl BitWriter {
     }
 
     /// Append one bit.
+    #[inline]
     pub fn write_bit(&mut self, bit: bool) {
-        self.write(u32::from(bit), 1);
+        self.acc = (self.acc << 1) | u8::from(bit);
+        self.bits += 1;
+        if self.bits == 8 {
+            self.buf.push(self.acc);
+            self.acc = 0;
+            self.bits = 0;
+        }
     }
 
     /// Bits written so far (before the final byte-align pad).

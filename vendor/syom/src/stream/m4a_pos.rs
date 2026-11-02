@@ -10,6 +10,11 @@ use crate::options::{ChannelMode, DecodeOptions};
 use crate::stream::{Frame, StreamInfo};
 
 use super::m4a::map_m4a_parse_err;
+#[path = "m4a_pos_au.rs"]
+mod au;
+#[path = "m4a_pos_exact.rs"]
+mod exact;
+pub use exact::{ExactSeekHistory, ExactSeekPlan, ExactSeekPosition};
 
 fn read_exact<R: Read>(r: &mut R, buf: &mut [u8]) -> Result<()> {
     loop {
@@ -24,8 +29,9 @@ fn read_exact<R: Read>(r: &mut R, buf: &mut [u8]) -> Result<()> {
     }
 }
 
-/// Extra LC mono/stereo overlap AUs (measured). HE/PS and any
-/// `channel_configuration` above stereo replay from AU 0 (see [`M4aSeek::seek`]).
+/// LC mono/stereo overlap AUs after a prefix is verified noise-free.
+/// Cold seeks, PNS, HE/PS and surround can require replay from AU 0
+/// (see [`M4aSeek::seek`]).
 #[must_use]
 pub fn preroll_aus(sbr: bool) -> u64 {
     if sbr { 0 } else { 2 }
@@ -74,6 +80,11 @@ pub struct M4aSeek<R> {
     locked: Option<(u32, usize)>,
     mono: bool,
     checkpoint_gapless_safe: bool,
+    // Contiguous decoded prefix that leaves the initial PNS state unchanged.
+    noise_free_prefix: usize,
+    exact_mode: bool,
+    exact_failed: bool,
+    source_identity: std::sync::Arc<()>,
     #[cfg(test)]
     last_seek_aus: u64,
 }
@@ -143,6 +154,10 @@ impl<R: Read + Seek> M4aSeek<R> {
             locked: None,
             mono,
             checkpoint_gapless_safe,
+            noise_free_prefix: 0,
+            exact_mode: false,
+            exact_failed: false,
+            source_identity: std::sync::Arc::new(()),
             #[cfg(test)]
             last_seek_aus: 0,
         };
@@ -151,6 +166,8 @@ impl<R: Read + Seek> M4aSeek<R> {
     }
 
     fn reset_codec(&mut self) {
+        self.exact_mode = false;
+        self.exact_failed = false;
         self.dec.reset();
         self.dec.mix_down_mono = self.mono;
         if let Some(pce) = self.asc.pce.clone() {
@@ -178,7 +195,8 @@ impl<R: Read + Seek> M4aSeek<R> {
         self.pos
     }
 
-    /// Profile preroll in AUs (see [`preroll_aus`]).
+    /// Profile overlap in AUs (see [`preroll_aus`]). Actual history replay
+    /// can be longer for cold seeks, PNS, legacy profiles, HE/PS or surround.
     #[must_use]
     pub fn preroll_aus(&self) -> u64 {
         self.preroll
@@ -191,6 +209,9 @@ impl<R: Read + Seek> M4aSeek<R> {
 
     /// Seek to a presentation sample. `0` is the first sample after `elst`
     /// skip. Negative is before-start; `> presentation_len` is beyond-end.
+    /// Cold or stateful seeks may decode the prefix from AU 0 to preserve
+    /// PNS and prediction history. Previously verified noise-free LC/LD
+    /// prefixes use only the profile's overlap preroll.
     pub fn seek(&mut self, presentation_sample: i64) -> Result<u64> {
         if presentation_sample < 0 {
             return Err(AacError::invalid_limits(
@@ -221,13 +242,21 @@ impl<R: Read + Seek> M4aSeek<R> {
         let spf = self.samples_per_au.max(1);
         let target = coded / spf;
         let intra = coded % spf;
-        // HE/PS: SBR headers live in-band (TASK-39). More than stereo:
-        // overlap was not shown to settle in 2 AUs (measured on mc51).
-        // LC mono/stereo: 2 AUs (measured). LD: 1 AU, the low-delay overlap.
-        let start = if self.asc.sbr_present || self.asc.channel_configuration > 2 {
+        // Skipping unexamined AUs loses PNS RNG history. Legacy profiles also
+        // carry prediction/filterbank state. Only a verified noise-free LC/LD
+        // prefix permits the short overlap preroll; otherwise replay from AU 0.
+        let overlap_start = target.saturating_sub(self.preroll);
+        let start = if self.asc.sbr_present
+            || self.asc.channel_configuration > 2
+            || !matches!(
+                self.asc.aot,
+                crate::engine::asc::AOT_LC | crate::engine::asc::AOT_LD
+            )
+            || overlap_start > self.noise_free_prefix as u64
+        {
             0
         } else {
-            target.saturating_sub(self.preroll)
+            overlap_start
         };
         for i in start..target {
             let idx = usize::try_from(i).unwrap_or(usize::MAX);
@@ -245,56 +274,16 @@ impl<R: Read + Seek> M4aSeek<R> {
         Ok(pres)
     }
 
-    fn decode_au(&mut self, idx: usize) -> Result<(u32, usize)> {
-        let &(off, len) = self
-            .track
-            .frames
-            .get(idx)
-            .ok_or_else(|| AacError::format("aac: sample index past table"))?;
-        self.opts.memory.check_declared_au(u64::from(len))?;
-        let n = usize::try_from(len).map_err(|_| AacError::format("aac: sample range overflow"))?;
-        self.reader
-            .seek(SeekFrom::Start(off))
-            .map_err(AacError::from)?;
-        let mut payload = vec![0u8; n];
-        read_exact(&mut self.reader, &mut payload)?;
-        let rate = if self.mono {
-            self.scratch.clear();
-            self.dec
-                .decode_raw_mono_f32(
-                    self.asc.aot,
-                    self.asc.sampling_frequency_index,
-                    self.asc.sample_rate,
-                    self.asc.channel_configuration,
-                    1,
-                    &payload,
-                    &mut self.scratch,
-                )
-                .map_err(AacError::from)?
-        } else {
-            self.dec
-                .decode_frame_scaled(
-                    self.asc.aot,
-                    self.asc.sampling_frequency_index,
-                    self.asc.sample_rate,
-                    self.asc.channel_configuration,
-                    &payload,
-                )
-                .map_err(AacError::from)?
-        };
-        let n_samp = if self.mono {
-            self.scratch.len()
-        } else {
-            self.dec.frame_planes().first().map_or(0, Vec::len)
-        };
-        Ok((rate, n_samp))
-    }
-
     /// Decode from the current position to the presentation end.
     pub fn decode<F>(&mut self, mut on_frame: F) -> Result<StreamInfo>
     where
         F: FnMut(Frame<'_>) -> Result<()>,
     {
+        if self.exact_failed {
+            return Err(AacError::Lifecycle {
+                state: crate::LifecycleState::Failed,
+            });
+        }
         let mut aac_frames = 0u64;
         let mut emitted = 0u64;
         let mut samples_out = 0u64;
@@ -388,7 +377,9 @@ impl<R: Read + Seek> M4aSeek<R> {
 // HE, profile prediction, PCE and coupling histories are deliberately excluded.
 impl<R: Read + Seek> M4aSeek<R> {
     pub fn supports_checkpoint(&self) -> bool {
-        self.checkpoint_gapless_safe
+        !self.exact_mode
+            && !self.exact_failed
+            && self.checkpoint_gapless_safe
             && self.asc.frame_samples == 1024
             && matches!(
                 self.asc.output_sample_rate,
@@ -419,10 +410,12 @@ impl<R: Read + Seek> M4aSeek<R> {
     /// Validate EOF without padding a rounded movie duration. A nonzero tail
     /// is admissible only after every indexed AU and the priming skip completed.
     pub fn presentation_complete(&self) -> bool {
-        self.discard_left == 0 && (self.play_left == 0 || (
-            self.next_frame == self.track.frames.len()
-                && self.track.rounded_presentation_tail(self.play_left, self.asc.output_sample_rate)
-        ))
+        self.discard_left == 0
+            && (self.play_left == 0
+                || (self.next_frame == self.track.frames.len()
+                    && self
+                        .track
+                        .rounded_presentation_tail(self.play_left, self.asc.output_sample_rate)))
     }
     pub fn checkpoint(&self) -> Option<Vec<u8>> {
         if !self.checkpoint_compatible()

@@ -41,6 +41,14 @@ impl LcEncoder {
         for (ch, spec) in specs.iter().enumerate().take(self.channels) {
             if self.seq.is_eight_short() {
                 crate::engine::enc_quant::cache_mags(spec, &mut self.chans_s[ch].mag);
+                self.short_alloc[ch].prepare(
+                    &mut self.psy_short,
+                    self.short_offsets,
+                    spec,
+                    self.chans_s[ch].n_sfb,
+                    &self.tns[ch],
+                    self.grouping,
+                );
             } else {
                 crate::engine::enc_quant::cache_mags(spec, &mut self.chans[ch].mag);
             }
@@ -55,14 +63,10 @@ impl LcEncoder {
         if let Some(offset) = self.quality {
             // The level's offset, coarsened uniformly (never by dropping
             // top bands) when a frame would exceed the LC cap.
-            let offset = if self.build(specs, offset) > cap {
-                self.search_offset_from(offset, specs, cap)
-            } else {
-                offset
-            };
-            self.build(specs, offset);
-            self.drop_bands_until(cap);
-            self.emit_into(&mut payload);
+            if self.build(specs, offset) > cap {
+                self.search_offset_from(offset, specs, cap);
+            }
+            self.drop_bands_until(cap, &mut payload);
             self.credit = 0;
         } else if self.cbr.is_some() {
             // Opt-in reservoir. The ABR arm below is the default path.
@@ -70,8 +74,7 @@ impl LcEncoder {
         } else {
             let budget = self.budget_bits();
             let spend = budget + (self.credit.min(budget as i64 / 2)) as usize;
-            let offset = self.search_offset(specs, spend);
-            self.build(specs, offset);
+            self.search_offset(specs, spend);
             self.refine_bands(specs, spend);
             let coded = self.fit_budget(spend.min(cap), &mut payload);
             self.credit = (self.credit + budget as i64 - coded as i64).clamp(0, budget as i64);
@@ -88,17 +91,17 @@ impl LcEncoder {
     /// `limit_bits` (the bit budget, never above 6144 bits/channel or
     /// the ADTS payload limit). Quality collapse is legal, an oversize
     /// frame is not.
-    pub(super) fn drop_bands_until(&mut self, limit_bits: usize) {
+    /// Emit directly into the caller's buffer, returning its pre-END bit
+    /// position so padding can reuse this final serialization.
+    pub(super) fn drop_bands_until(&mut self, limit_bits: usize, out: &mut Vec<u8>) -> usize {
         let cap = limit_bits
             .min(max_frame_bits(self.channels))
             .min(MAX_PAYLOAD_BYTES * 8);
         loop {
-            let mut tmp = std::mem::take(&mut self.payload);
-            self.emit_into(&mut tmp);
-            let bits = tmp.len().saturating_mul(8);
-            self.payload = tmp;
+            let end_at = self.emit_into(out);
+            let bits = out.len().saturating_mul(8);
             if bits <= cap {
-                return;
+                return end_at;
             }
             if self.seq.is_eight_short() {
                 let mut hit = None;
@@ -108,7 +111,7 @@ impl LcEncoder {
                         break;
                     }
                 }
-                let Some((ch, b)) = hit else { return };
+                let Some((ch, b)) = hit else { return end_at };
                 self.chans_s[ch].coded[b] = false;
                 self.books_s[ch] = enc_short::plan_books_short(&self.chans_s[ch]);
             } else {
@@ -119,7 +122,7 @@ impl LcEncoder {
                         break;
                     }
                 }
-                let Some((ch, b)) = hit else { return };
+                let Some((ch, b)) = hit else { return end_at };
                 self.chans[ch].coded[b] = false;
                 self.chans[ch].pns[b] = false;
                 self.chans[ch].intensity[b] = false;
@@ -137,8 +140,7 @@ impl LcEncoder {
     /// are not padded (silence exception). Not CBR.
     pub(super) fn fit_budget(&mut self, limit: usize, out: &mut Vec<u8>) -> usize {
         let limit = limit.min(max_frame_bits(self.channels));
-        self.drop_bands_until(limit);
-        let end_at = self.emit_into(out);
+        let end_at = self.drop_bands_until(limit, out);
         let coded = out.len().saturating_mul(8);
         if self.quant_all_zero() {
             return coded;
@@ -157,9 +159,8 @@ impl LcEncoder {
             let room = target.saturating_mul(8).saturating_sub(end_at + 3);
             let pad = crate::engine::enc_pad::pad_fill_for_room(room);
             if pad > 0 {
-                self.pad_fill = pad;
-                self.emit_into(out);
-                self.pad_fill = 0;
+                debug_assert_eq!(self.pad_fill, 0);
+                crate::engine::enc_pad::append_pad_fill(out, end_at, pad);
             }
         }
         let emitted = out.len().saturating_mul(8) as i64;
@@ -179,3 +180,7 @@ impl LcEncoder {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "enc_frame_control_tests.rs"]
+mod tests;

@@ -1,5 +1,11 @@
 # Application migration qualification
 
+Historical 2026-10-29 comparison. Source 0.15.0 later refreshed syom alone;
+see the [current upgrade qualification](../../docs/syom-upgrade.md). The original
+decision and measurements below retain their dated scope. The historical runner
+now refuses a changed production pin before creating experimental files instead
+of silently applying obsolete string replacements to current source.
+
 Decision: **retain the production forks**. The pinned upstream sources plus our
 patches compile and pass the application tests exercised here, but this is not
 a transparent replacement for existing jobs. No production dependency, package

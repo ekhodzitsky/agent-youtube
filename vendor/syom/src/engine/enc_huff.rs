@@ -6,6 +6,10 @@ use super::bits::BitWriter;
 use super::sf_tab::{SF_CODE, SF_LEN};
 use super::{huff_esc, huff_pair, huff_quad};
 
+#[path = "enc_huff_band.rs"]
+mod band;
+pub use band::spectral_emit_band;
+
 /// `(len, code)` tables for spectral book `cb` (1..=11).
 fn tables(cb: u8) -> Option<(&'static [u8], &'static [u16])> {
     match cb {
@@ -86,6 +90,7 @@ pub fn spectral_bits(cb: u8, v: &[i32]) -> Option<usize> {
 /// (unsigned books), then book-11 escape sequences — the exact order
 /// [`super::huff::decode_tuple`] reads them. Unrepresentable tuples are a
 /// caller bug; nothing is written.
+#[cfg_attr(not(test), allow(dead_code))] // independent oracle for band emission
 pub fn spectral_emit(cb: u8, v: &[i32], w: &mut BitWriter) {
     let Some(idx) = tuple_index(cb, v) else {
         return;

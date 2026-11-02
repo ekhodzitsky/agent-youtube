@@ -23,11 +23,17 @@ use super::swb::{LONG_WINDOW_LEN, SHORT_WINDOW_LEN};
 mod win;
 pub use win::{ShortWindows, spectra};
 
-/// Quantize + plan one short channel at `offset`; returns its body bits.
-/// Psy scores each window; [`Grouping`] then folds windows into groups.
+#[path = "enc_short_alloc.rs"]
+mod alloc;
+pub(crate) use alloc::ShortAlloc;
+#[cfg(test)]
+#[path = "enc_short_alloc_tests.rs"]
+mod alloc_tests;
+
+/// Quantize + plan one short channel from this frame's cached analysis.
 #[allow(clippy::too_many_arguments)]
 pub fn channel_build(
-    psy: &mut Psy,
+    a: &ShortAlloc,
     offsets: &[u16],
     spec: &[f32; LONG_WINDOW_LEN],
     offset: i32,
@@ -37,94 +43,29 @@ pub fn channel_build(
     gain: &mut u8,
     standalone: bool,
     tns: &EncTns,
-    grouping: Grouping,
 ) -> usize {
-    let n_sfb = q.n_sfb;
-    let mut win_coded = [false; MAX_FLAT_SHORT];
-    let mut win_tq = [0.0f32; MAX_FLAT_SHORT];
-    let mut win_forced = [false; MAX_FLAT_SHORT];
-    // Per-window energy / allowed noise / Σ√|x| for the noise targets.
-    let mut win_e = [0.0f32; MAX_FLAT_SHORT];
-    let mut win_n = [0.0f32; MAX_FLAT_SHORT];
-    let mut win_s = [0.0f32; MAX_FLAT_SHORT];
-    for w in 0..MAX_GROUPS {
-        let (lo, hi) = (w * n_sfb, (w + 1) * n_sfb);
-        psy.analyze(
-            &spec[w * SHORT_WINDOW_LEN..(w + 1) * SHORT_WINDOW_LEN],
-            offsets,
-            crate::engine::enc_frame::TARGET_Q,
-            &mut win_coded[lo..hi],
-            &mut win_tq[lo..hi],
-        );
-        let (e, n, s) = psy.bands();
-        win_e[lo..hi].copy_from_slice(&e[..n_sfb]);
-        win_n[lo..hi].copy_from_slice(&n[..n_sfb]);
-        win_s[lo..hi].copy_from_slice(&s[..n_sfb]);
-        if tns.short().window_on(w) {
-            for b in 0..n_sfb.min(14) {
-                win_forced[lo + b] = !win_coded[lo + b];
-                win_coded[lo + b] = true;
-                win_tq[lo + b] = crate::engine::enc_frame::TARGET_Q;
-            }
-        }
-    }
-    let mut peaks = [0.0f32; MAX_FLAT_SHORT];
-    enc_quant::band_peaks_short(spec, offsets, n_sfb, &mut peaks);
-    q.set_grouping(grouping);
-    let mut gpeaks = [0.0f32; MAX_FLAT_SHORT];
-    enc_group::fold_windows(
-        grouping,
-        n_sfb,
-        &win_coded,
-        &win_tq,
-        &peaks,
-        &mut q.coded,
-        tq,
-        &mut gpeaks,
-    );
-    // Fold energy / noise / Σ√|x| (sums) and the TNS forcing (any) per group.
-    let n = q.n_groups * n_sfb;
-    let (mut ge, mut gn, mut gs) = (
-        [0.0f32; MAX_FLAT_SHORT],
-        [0.0f32; MAX_FLAT_SHORT],
-        [0.0f32; MAX_FLAT_SHORT],
-    );
-    let mut gw = [0.0f32; MAX_FLAT_SHORT];
-    let mut gforced = [false; MAX_FLAT_SHORT];
-    let mut wbase = 0usize;
-    for g in 0..q.n_groups {
-        for k in 0..q.group_len[g] as usize {
-            for b in 0..n_sfb {
-                let (o, i) = (g * n_sfb + b, (wbase + k) * n_sfb + b);
-                ge[o] += win_e[i];
-                gn[o] += win_n[i];
-                gs[o] += win_s[i];
-                gw[o] += f32::from(offsets[b + 1] - offsets[b]);
-                gforced[o] |= win_forced[i];
-            }
-        }
-        wbase += q.group_len[g] as usize;
-    }
-    let cap = *tq;
+    q.set_grouping(a.grouping);
+    let n = q.n_groups * q.n_sfb;
+    q.coded[..n].copy_from_slice(&a.coded[..n]);
     crate::engine::enc_alloc::noise_targets(
-        &gpeaks,
-        &ge,
-        &gs,
-        &gn,
-        &gw,
-        &cap,
+        &a.peaks,
+        &a.energy,
+        &a.sum_sqrt,
+        &a.noise,
+        &a.width,
+        &a.cap,
         offset,
         n,
         &mut q.coded,
         tq,
     );
-    for o in 0..n {
-        if gforced[o] && !q.coded[o] && gpeaks[o] > 0.0 {
+    for (o, target) in tq.iter_mut().enumerate().take(n) {
+        if a.forced[o] && !q.coded[o] && a.peaks[o] > 0.0 {
             q.coded[o] = true;
-            tq[o] = 1.0;
+            *target = 1.0;
         }
     }
-    enc_quant::raw_scalefactors_short(&gpeaks, tq, 0, q);
+    enc_quant::raw_scalefactors_short(&a.peaks, tq, 0, q);
     *gain = enc_quant::normalize_sf_short(q);
     enc_quant::quantize_short_cached(spec, offsets, q);
     *books = plan_books_short(q);

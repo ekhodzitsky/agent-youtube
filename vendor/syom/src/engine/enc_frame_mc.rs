@@ -41,9 +41,8 @@ impl LcEncoder {
         limit_bits: usize,
     ) -> (usize, bool) {
         self.build(specs, offset);
-        self.drop_bands_until(limit_bits.min(max_frame_bits(self.channels)));
         let mut payload = std::mem::take(&mut self.payload);
-        self.emit_into(&mut payload);
+        self.drop_bands_until(limit_bits.min(max_frame_bits(self.channels)), &mut payload);
         self.payload = payload;
         self.prev_seq = self.seq;
         (self.payload.len() * 8, self.quant_all_zero())

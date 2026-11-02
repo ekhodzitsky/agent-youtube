@@ -14,7 +14,10 @@ use super::ics::WindowSequence;
 use super::section::{NOISE_HCB, has_spectral, is_intensity, is_noise};
 use super::sf::{NOISE_OFFSET, NOISE_PCM_BITS};
 
+#[path = "enc_section_cost.rs"]
+mod cost;
 #[path = "enc_section_dp.rs"]
+#[cfg(any(test, debug_assertions))]
 mod exact;
 #[cfg(test)]
 pub(super) use exact::{plan_books_dp, section_spectral_cost};
@@ -27,6 +30,7 @@ pub(super) fn section_header_bits(len: usize) -> usize {
 
 /// Spectral bits of bands `lo..hi` under one book (`UNREPRESENTABLE` if any
 /// band cannot use it).
+#[cfg(any(test, debug_assertions))]
 pub(super) fn range_book_bits(
     coded: &[bool],
     bits: &[[u32; BOOKS]],
@@ -50,6 +54,7 @@ pub(super) fn range_book_bits(
 
 /// Cheapest book for bands `lo..hi` (`None` when nothing represents them —
 /// impossible in practice: book 11 escapes any quantized value).
+#[cfg(any(test, debug_assertions))]
 pub(super) fn best_book(
     coded: &[bool],
     bits: &[[u32; BOOKS]],
@@ -90,6 +95,18 @@ pub(super) fn best_book(
     best
 }
 
+/// One band's strict-`<` minimum, without range sums or live-book state.
+fn best_single_book(bits: &[u32; BOOKS]) -> u8 {
+    let (mut book, mut best) = (11, UNREPRESENTABLE);
+    for (cb, &cost) in bits.iter().enumerate().skip(1) {
+        if cost < best {
+            book = cb as u8;
+            best = cost;
+        }
+    }
+    book
+}
+
 /// Choose `sfb_cb` for `n` bands: per-band cheapest book, then greedily
 /// merge adjacent coded runs while saved headers outweigh extra spectral
 /// bits. ZERO_HCB on uncoded bands. Exact DP is [`plan_books_dp`] (TASK-73
@@ -99,13 +116,12 @@ pub(super) fn plan_books_into(
     bits: &[[u32; BOOKS]],
     n: usize,
     sfb_cb: &mut [u8],
-    header_bits: fn(usize) -> usize,
+    header_bits: impl Fn(usize) -> usize + Copy,
 ) {
+    let costs = cost::CostPrefix::new(coded, bits, n);
     for b in 0..n {
         sfb_cb[b] = if coded[b] {
-            best_book(coded, bits, b, b + 1)
-                .map(|(cb, _)| cb)
-                .unwrap_or(11)
+            best_single_book(&bits[b])
         } else {
             0
         };
@@ -136,15 +152,10 @@ pub(super) fn plan_books_into(
                     }
                     let saved = header_bits(j - i) as i64 + header_bits(k - j) as i64
                         - header_bits(k - i) as i64;
-                    if let Some((cb, merged)) = best_book(coded, bits, i, k) {
-                        let cur = range_book_bits(coded, bits, i, j, usize::from(sfb_cb[i]))
-                            .saturating_add(range_book_bits(
-                                coded,
-                                bits,
-                                j,
-                                k,
-                                usize::from(sfb_cb[j]),
-                            ));
+                    if let Some((cb, merged)) = costs.best(i, k) {
+                        let cur = costs
+                            .range(i, j, usize::from(sfb_cb[i]))
+                            .saturating_add(costs.range(j, k, usize::from(sfb_cb[j])));
                         if i64::from(merged) - i64::from(cur) < saved {
                             sfb_cb[i..k].fill(cb);
                             improved = true;

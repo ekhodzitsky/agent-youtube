@@ -11,6 +11,26 @@ use super::enc_sbr_bits::FILL_MAX_BYTES;
 /// Zero payload for one maximally-sized EXT_FILL `fill_element()`.
 static ZEROES: [u8; FILL_MAX_BYTES] = [0; FILL_MAX_BYTES];
 
+#[cfg(test)]
+thread_local! {
+    static APPENDS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+#[cfg(test)]
+pub(crate) fn take_appends() -> u32 {
+    APPENDS.with(|c| c.replace(0))
+}
+
+/// Replace only the old END/alignment suffix with stuffing and a new END.
+/// `end_at` is the original raw block's pre-END bit position.
+pub(crate) fn append_pad_fill(out: &mut Vec<u8>, end_at: usize, pad: usize) {
+    #[cfg(test)]
+    APPENDS.with(|c| c.set(c.get().saturating_add(1)));
+    let mut w = BitWriter::resume_vec(std::mem::take(out), end_at);
+    write_pad_fill(&mut w, pad);
+    w.write(7, 3);
+    *out = w.finish();
+}
+
 /// Bits needed to emit `pad` EXT_FILL payload bytes, chunked to the
 /// `fill_element()` count syntax (≤ [`FILL_MAX_BYTES`] each).
 #[must_use]

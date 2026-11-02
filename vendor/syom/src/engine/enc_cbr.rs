@@ -96,11 +96,9 @@ impl LcEncoder {
         };
         let spend = avg.saturating_add(saved as usize).min(cap);
         self.pad_fill = 0;
-        let offset = self.search_offset(specs, spend);
-        self.build(specs, offset);
+        self.search_offset(specs, spend);
         self.refine_bands(specs, spend);
-        self.drop_bands_until(spend.min(cap));
-        let end_at = self.emit_into(out);
+        let end_at = self.drop_bands_until(spend.min(cap), out);
         if !self.quant_all_zero() {
             let floor = (saved as usize).saturating_add(avg).saturating_sub(max_res);
             self.pad_toward(out, end_at, floor.min(cap));
@@ -116,9 +114,60 @@ impl LcEncoder {
         Ok(())
     }
 
+    #[cfg(test)]
+    pub(crate) fn reference_rate_control_cbr(
+        &mut self,
+        specs: &[[f32; LONG_WINDOW_LEN]; 2],
+        out: &mut Vec<u8>,
+    ) -> Result<()> {
+        let cap = super::rate::max_frame_bits(self.channels).min(MAX_PAYLOAD_BYTES * 8);
+        let avg = self.budget_bits().min(cap);
+        let max_res = cap.saturating_sub(avg);
+        let saved = match self.cbr.as_ref() {
+            Some(resv) => resv.bits,
+            None => return Ok(()),
+        };
+        let spend = avg.saturating_add(saved as usize).min(cap);
+        self.pad_fill = 0;
+        self.search_offset(specs, spend);
+        self.refine_bands(specs, spend);
+        self.reference_drop_bands_until(spend.min(cap));
+        let end_at = self.emit_into(out);
+        if !self.quant_all_zero() {
+            let floor = (saved as usize).saturating_add(avg).saturating_sub(max_res);
+            self.reference_pad_toward(out, end_at, floor.min(cap));
+        }
+        let used = out.len().saturating_mul(8);
+        let next = (i64::from(saved) + avg as i64 - used as i64).clamp(0, max_res as i64);
+        let next = next as u32;
+        let full = fullness_words(next, self.channels);
+        if let Some(resv) = self.cbr.as_mut() {
+            resv.bits = next;
+            resv.log.push(full);
+        }
+        Ok(())
+    }
+
     /// EXT_FILL before `ID_END` so a non-silent frame reaches `target_bits`
     /// when the reservoir cannot absorb more (fdk-aac rejects trailing zeros).
     fn pad_toward(&mut self, out: &mut Vec<u8>, end_at: usize, target_bits: usize) {
+        let cap_bytes = MAX_PAYLOAD_BYTES.min(super::rate::max_frame_bits(self.channels) / 8);
+        let target = (target_bits / 8).min(cap_bytes);
+        if target == 0 || out.len() >= target {
+            return;
+        }
+        let room = target
+            .saturating_mul(8)
+            .saturating_sub(end_at.saturating_add(3));
+        let pad = crate::engine::enc_pad::pad_fill_for_room(room);
+        if pad == 0 {
+            return;
+        }
+        debug_assert_eq!(self.pad_fill, 0);
+        crate::engine::enc_pad::append_pad_fill(out, end_at, pad);
+    }
+    #[cfg(test)]
+    fn reference_pad_toward(&mut self, out: &mut Vec<u8>, end_at: usize, target_bits: usize) {
         let cap_bytes = MAX_PAYLOAD_BYTES.min(super::rate::max_frame_bits(self.channels) / 8);
         let target = (target_bits / 8).min(cap_bytes);
         if target == 0 || out.len() >= target {

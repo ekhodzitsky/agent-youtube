@@ -69,12 +69,17 @@ been verified there.
 cargo install --path . --locked
 ```
 
-FFmpeg and FFprobe are not required. Patched snapshots of **syom 0.7.1** and
+FFmpeg and FFprobe are not required. Patched snapshots of **syom 0.9.0 source candidate** and
 **bandlimit 0.1.7** are included under `vendor/`; **ryf 0.7.3** comes from
 crates.io with its version and checksum locked and only SIMD enabled. Builds do
 not depend on sibling checkouts; offline builds require registry packages in the
 Cargo cache. All three codec runtime dependency tables are empty. Provenance and
 local patches are in [vendor/README.md](../vendor/README.md).
+The syom candidate is pinned to an exact upstream revision; it is not advertised
+as a published 0.9.0 registry release. From source 0.15.0, its distinct v3 media
+backend refuses older jobs without mutating them. Resume those jobs with their
+original implementation or use a new work directory. Existing transcripts remain
+readable; see the [upgrade qualification](syom-upgrade.md).
 
 ### Managed Linux setup
 

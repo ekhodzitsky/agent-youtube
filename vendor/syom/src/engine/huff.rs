@@ -21,12 +21,20 @@ struct HuffTree {
     right: Vec<u16>,
     leaf: Vec<i16>,
     /// 12-bit prefix → (symbol, nbits). `nbits == 0` ⇒ code longer than 12.
-    lut_sym: [i16; 4096],
-    lut_len: [u8; 4096],
+    lut_sym: Box<[i16; 4096]>,
+    lut_len: Box<[u8; 4096]>,
     syms: Vec<Sym>,
     width: u8,
     sign_bits: bool,
     escape: bool,
+}
+
+/// Build directly in heap storage, without a full lookup table on the stack.
+fn heap_lut<T: Clone, const N: usize>(value: T) -> Box<[T; N]> {
+    vec![value; N]
+        .into_boxed_slice()
+        .try_into()
+        .unwrap_or_else(|_| unreachable!("fixed lookup length"))
 }
 
 impl HuffTree {
@@ -41,8 +49,8 @@ impl HuffTree {
         let mut left = vec![0u16];
         let mut right = vec![0u16];
         let mut leaf = vec![-1i16];
-        let mut lut_sym = [-1i16; 4096];
-        let mut lut_len = [0u8; 4096];
+        let mut lut_sym = heap_lut::<i16, 4096>(-1);
+        let mut lut_len = heap_lut::<u8, 4096>(0);
         for (idx, (&l, &c)) in len.iter().zip(code.iter()).enumerate() {
             let mut node = 0u16;
             for b in (0..l).rev() {

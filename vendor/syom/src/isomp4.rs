@@ -118,8 +118,9 @@ impl AacTrack {
     /// A complete indexed presentation may end less than one movie tick early
     /// because its duration was rounded up. Never allow a millisecond or more.
     pub(crate) fn rounded_presentation_tail(&self, left: u64, sample_rate: u32) -> bool {
-        self.has_elst && u128::from(left) * u128::from(self.movie_timescale.max(1000))
-            < u128::from(sample_rate)
+        self.has_elst
+            && u128::from(left) * u128::from(self.movie_timescale.max(1000))
+                < u128::from(sample_rate)
     }
 
     /// Presentation length in media units: `elst.segment_duration` converted

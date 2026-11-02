@@ -34,6 +34,11 @@ pub struct AllocCache {
     pub sum_sqrt: [f32; MAX_BANDS],
     pub peaks: [f32; MAX_BANDS],
     pub width: [f32; MAX_BANDS],
+    peak34: [f32; MAX_BANDS],
+    peak_sf_base: [f32; MAX_BANDS],
+    safe_sf: [i32; MAX_BANDS],
+    min_noise_per_bin: f32,
+    reuse: super::enc_quant::BandReuse,
 }
 
 impl AllocCache {
@@ -46,9 +51,98 @@ impl AllocCache {
             sum_sqrt: [0.0; MAX_BANDS],
             peaks: [0.0; MAX_BANDS],
             width: [0.0; MAX_BANDS],
+            peak34: [0.0; MAX_BANDS],
+            peak_sf_base: [0.0; MAX_BANDS],
+            safe_sf: [0; MAX_BANDS],
+            min_noise_per_bin: f32::INFINITY,
+            reuse: super::enc_quant::BandReuse::new(),
         }
     }
+
+    /// Finish invariant math after the coded spectrum and allowed noise are
+    /// final. Rebuilt on every long frame, including reset and MC paths.
+    pub fn finish_invariants(&mut self, n: usize) {
+        self.reuse.reset();
+        self.min_noise_per_bin = (0..n)
+            .filter(|&b| self.coded[b] && self.noise[b] > 0.0 && self.width[b] > 0.0)
+            .map(|b| self.noise[b] / self.width[b])
+            .fold(f32::INFINITY, f32::min);
+        for b in 0..n {
+            let peak = self.peaks[b];
+            self.peak34[b] = det_math::pow_three_quarter(peak);
+            self.peak_sf_base[b] = if peak <= 0.0 {
+                0.0
+            } else {
+                super::spectrum::SF_OFFSET as f32 + 4.0 * det_math::log2(peak)
+            };
+            self.safe_sf[b] = super::enc_quant::sf_for_peak(peak, super::enc_quant::QUANT_SAFE);
+        }
+    }
+
+    /// [`noise_targets`] for an unmodified copy of this frame's coded mask.
+    pub fn targets(&self, offset: i32, n: usize, coded: &mut [bool], target_q: &mut [f32]) {
+        debug_assert_eq!(coded[..n], self.coded[..n]);
+        let scale = det_math::exp2(offset as f32 * 0.25);
+        let water = if offset > 0 && self.min_noise_per_bin.is_finite() {
+            self.min_noise_per_bin * scale
+        } else {
+            0.0
+        };
+        for b in 0..n {
+            if !coded[b] {
+                target_q[b] = 0.0;
+                continue;
+            }
+            let t = if offset > 0 {
+                self.noise[b].max(water * self.width[b])
+            } else {
+                self.noise[b] * scale
+            };
+            if t >= self.energy[b] || self.peaks[b] <= 0.0 {
+                coded[b] = false;
+                target_q[b] = 0.0;
+                continue;
+            }
+            let g2 = 4.0 * self.sum_sqrt[b] / (27.0 * t.max(1e-30));
+            let tq = self.peak34[b] * g2.sqrt();
+            target_q[b] = tq.clamp(1.0, self.cap[b].max(1.0));
+        }
+    }
+
+    /// Original raw-scalefactor arithmetic with its peak-only subexpression
+    /// cached; the add, subtract, round and max order remains unchanged.
+    pub fn raw_scalefactors(
+        &self,
+        target_q: &[f32; MAX_BANDS],
+        q: &mut super::enc_quant::QuantChannel,
+    ) {
+        for (b, &tq) in target_q.iter().enumerate().take(q.n_bands) {
+            q.sf[b] = if q.coded[b] && tq >= 1.0 && self.peaks[b] > 0.0 {
+                let sf = self.peak_sf_base[b] - (16.0 / 3.0) * det_math::log2(tq);
+                (sf.round() as i32).max(self.safe_sf[b])
+            } else {
+                0
+            };
+        }
+    }
+
+    /// Reuse only within this frame; normalized sf determines quantized bins.
+    pub fn quantize(
+        &mut self,
+        spec: &[f32; 1024],
+        offsets: &[u16],
+        q: &mut super::enc_quant::QuantChannel,
+    ) {
+        self.reuse.quantize(spec, offsets, q);
+    }
+    pub fn invalidate_band(&mut self, band: usize) {
+        self.reuse.invalidate(band);
+    }
 }
+
+#[cfg(test)]
+#[path = "enc_alloc_tests.rs"]
+mod tests;
 
 /// Fill `target_q` (and clear `coded` for bands that drop out) for `n`
 /// bands at rate-loop position `offset`; `cap` is the psy's per-band

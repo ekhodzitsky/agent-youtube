@@ -1,11 +1,13 @@
 # Prepared codec patches
 
-These are review artifacts for upstream maintainers, not production dependencies.
-The agent-youtube runtime continues to use the existing vendored codecs. No sibling
-repository is modified and no upstream changes have been published.
+The original syom.patch and bandlimit.patch are historical review artifacts, not
+selected production dependencies. Source 0.15.0 refreshes syom to the pinned
+0.9.0 source candidate with the local delta documented in syom-0.9.0.patch. No
+sibling repository is modified and no upstream changes have been published.
 
 | Patch | Exact upstream base | Changes |
 | --- | --- | --- |
+| `syom-0.9.0.patch` | `60199081659c9fe8ee9bdf7bc07f304d5bf3c8b6` (0.9.0 source candidate) | Current qualified checkpoint/completion delta; exact-mode/failed-state guard; checkpoint regressions |
 | `syom.patch` | `c458e8a15d57612f4c2b92cbb0347d05c8f893c3` (0.8.1) | Qualified AAC-LC checkpoint state, strict indexed-presentation completion with bounded movie-clock rounding, two regression tests |
 | `bandlimit.patch` | `0559b94be9f55cdbf2bf7c87a600ee66c6b2e761` (0.1.7 source) | Write-mode checkpoint state and a restoration regression at seven input rates |
 
@@ -79,3 +81,17 @@ patches.
 [The isolated agent-youtube comparison](migration.md) records complete PCM, duration,
 process-restart recovery, memory and old-job refusal. Production dependencies
 remain unchanged; passing library tests alone does not authorize migration.
+
+## Current syom overlay qualification
+
+`python3 tools/qualify_vendors.py --crate syom` archives the current exact source
+revision, overlays selected runtime files and runs its matching upstream library
+suite. The 0.9.0 patch is independently reapplicable to that clean revision. Its
+additional tests/upstream_checkpoint.rs must be explicitly registered as a test
+target in an isolated checkout, because current upstream disables automatic test
+discovery. Do not modify a sibling checkout to run these tests.
+
+[The current application refresh](../../docs/syom-upgrade.md) records ten complete
+PCM comparisons, twenty process-restart comparisons, real prefix equality and
+strict old-job refusal. Earlier prepared-patch results and migration decisions
+above retain their original dates; they do not override the current backend.

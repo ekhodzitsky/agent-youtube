@@ -9,7 +9,7 @@ use super::sf::ScaleFactors;
 ///
 /// ISO leaves the generator non-normative. Seed and int-as-float mapping
 /// match FFmpeg libavcodec (`ac->random_state = 0x1f2e3d4c`).
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Lcg {
     state: u32,
 }
@@ -21,6 +21,7 @@ impl Lcg {
     pub(crate) fn restore_checkpoint(state: u32) -> Self {
         Self { state }
     }
+
     /// lavc `ff_aac_decode_init` seed.
     #[must_use]
     pub fn new() -> Self {
