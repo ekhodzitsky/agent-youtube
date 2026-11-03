@@ -17,7 +17,7 @@ pub(crate) use resume::{DecodeEvent, Resume, SourcePrefix, decode_prefix, full_s
 thread_local! { static FRAME_COUNT: std::cell::Cell<u64> = const { std::cell::Cell::new(0) }; }
 
 pub const SAMPLE_RATE: u32 = 16_000;
-pub const BACKEND: &str = "syom-0.9.0-6019908-checkpoint1-bandlimit-0.1.7-ryf-0.7.3-mono-pcm16-v3";
+pub const BACKEND: &str = "syom-0.10.0-1383825-bandlimit-0.1.7-ryf-0.7.3-mono-pcm16-v4";
 
 pub(crate) fn check_cancelled(cancelled: &AtomicBool) -> Result<()> {
     if cancelled.load(Ordering::SeqCst) {
@@ -570,7 +570,19 @@ mod tests {
                 })
                 .unwrap_err();
             let state = first.checkpoint().unwrap();
+            assert_eq!(&state[..8], b"SYOMLC01");
+            assert_eq!(state.len(), syom::M4aSeek::<File>::CHECKPOINT_BYTES,);
+            let mut incompatible_opts = opts.clone();
+            incompatible_opts.memory.max_output_bytes -= 1;
+            let mut incompatible =
+                syom::M4aSeek::open(File::open(&input).unwrap(), incompatible_opts).unwrap();
+            assert!(incompatible.restore_checkpoint(&state).is_err());
+            assert_eq!(incompatible.position(), 0);
             let mut restored = syom::M4aSeek::open(File::open(&input).unwrap(), opts).unwrap();
+            let mut legacy = state.clone();
+            legacy[..8].copy_from_slice(b"YTLC0001");
+            assert!(restored.restore_checkpoint(&legacy).is_err());
+            assert_eq!(restored.position(), 0);
             restored.restore_checkpoint(&state).unwrap();
             restored
                 .decode(|frame| {
@@ -1223,15 +1235,23 @@ mod tests {
         let temp = Temp::new();
         let input = temp.0.join("lc.m4a");
         let output = temp.0.join("lc.wav");
+        // Keep an interior AU available: upstream deliberately refuses EOF
+        // checkpoints even when only a rounded presentation tail remains.
         let mut bytes =
-            syom::encode_with(&[&[0.1f32][..]], 48000, &syom::EncodeOptions::m4a()).unwrap();
+            syom::encode_with(&[&[0.1f32; 4801][..]], 48000, &syom::EncodeOptions::m4a()).unwrap();
         let edit = bytes.windows(4).position(|w| w == b"elst").unwrap();
         // Measure all available coded PCM after priming, before applying a rounded edit.
         bytes[edit + 12..edit + 16].copy_from_slice(&48000_u32.to_be_bytes());
         let mut codec =
             syom::M4aSeek::open(std::io::Cursor::new(&bytes), syom::DecodeOptions::speech())
                 .unwrap();
-        codec.decode(|_| Ok(())).unwrap();
+        assert!(
+            codec
+                .decode(|_| Ok(()))
+                .unwrap_err()
+                .to_string()
+                .contains("incomplete M4A presentation")
+        );
         let actual_samples = codec.position();
         assert_ne!(actual_samples % 48, 0);
         drop(codec);

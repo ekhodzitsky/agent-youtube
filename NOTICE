@@ -43,10 +43,12 @@ SOFTWARE.
 
 Local codec checkpoint extensions
 
-The private vendored syom 0.7.1 and bandlimit 0.1.7 sources include agent-youtube-only
-versioned state save/restore methods for exact qualified AAC-LC restart. Original
-codec licensing files remain in vendor/. No additional runtime dependency is used.
-The state contract and qualifications are recorded in backlog decision-6 and doc-23.
+bandlimit 0.1.7 retains local versioned resampler state save/restore methods.
+Its original codec licenses remain in vendor/bandlimit/. syom uses unmodified
+upstream 0.10.0 candidate source pinned by Cargo.lock, including its upstream
+persistent AAC-LC state API. The MIT license for the retained syom test fixture
+is also preserved at vendor/licenses/syom-MIT.txt. No runtime crate is added.
+See docs/syom-upstream.md and docs/storage-and-recovery.md for the state contract.
 
 
 TLS key-exchange adapter reference

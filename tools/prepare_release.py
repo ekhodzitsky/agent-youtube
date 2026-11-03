@@ -104,7 +104,7 @@ def main():
     with tarfile.open(fileobj=io.BytesIO(raw), mode='r:') as archive:
         names = {e.name.removeprefix(prefix) for e in archive}
     for required in ['Cargo.toml', 'Cargo.lock', 'LICENSE', 'NOTICE',
-                     'vendor/syom/Cargo.toml', 'vendor/bandlimit/Cargo.toml',
+                     'vendor/bandlimit/Cargo.toml',
                      'vendor/rustls-rustcrypto-current/Cargo.toml',
                      'experiments/botguard/vendor/boa_engine/Cargo.toml',
                      'experiments/botguard/vendor/boa_ast/Cargo.toml']:

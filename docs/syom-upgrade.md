@@ -6,6 +6,9 @@ candidate**, archived from clean upstream revision
 No registry publication, new YouTube availability result or ASR accuracy
 improvement is claimed by adopting it.
 
+This dated qualification is superseded for current builds by the
+[unmodified upstream migration](syom-upstream.md).
+
 ## Source and local extensions
 
 Only syom changes. bandlimit 0.1.7 and registry ryf 0.7.3 remain unchanged.
@@ -19,7 +22,7 @@ extension refuses checkpointing exact-mode or failed state instead of bypassing
 the upstream contract. Other upstream Rust files remain byte-identical to the
 archived revision. Test media/corpora are not bundled.
 
-[Per-file provenance](../vendor/syom/upstream.json) records original/bundled hashes,
+[Archived per-file provenance](https://github.com/ekhodzitsky/agent-youtube/blob/dd5febc/vendor/syom/upstream.json) records original/bundled hashes,
 the revision and patch digest. [The current patch](../tools/upstream-codecs/syom-0.9.0.patch)
 and [vendor record](../vendor/README.md) describe the retained delta. The sibling
 repository was read only; no upstream change was committed or published.

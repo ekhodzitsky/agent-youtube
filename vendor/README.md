@@ -1,71 +1,38 @@
-# Retained local codec forks
+# Retained dependency forks and assets
 
-Runtime source is pinned from the owner's sibling projects. syom was refreshed on
-2026-11-02; bandlimit retains its earlier qualified snapshot.
-No changes were made to those projects. Upstream Rust sources and license files
-are retained verbatim except for the local patches and checkpoint extensions below.
-Manifests omit development/benchmark dependencies and disable upstream test targets;
-test source files and corpora are not included. Both have zero runtime crates.
-The source repository is public; crate publication remains disabled.
+syom is no longer vendored from agent-youtube 0.16.0. Cargo selects unmodified
+upstream 0.10.0 source candidate at `1383825e013f95ee565eb094122f3ec6fa2f7193`.
+Its public persistent-state and completion APIs replace our former local delta.
+This candidate is not a published registry release. See the
+[consumer migration](../docs/syom-upstream.md). The former syom patches remain
+historical review artifacts under `tools/upstream-codecs/`; they are not applied.
 
-- `syom` 0.9.0 unreleased source candidate: clean upstream revision `60199081659c9fe8ee9bdf7bc07f304d5bf3c8b6` plus the required local checkpoint/completion patch. Bundled snapshot SHA-256 `8375f85d182b3bbe0269a12a92c12908b9d05b138534754c66db97b57145fe12`. `syom/upstream.json` records original/bundled file hashes and the patch digest. This is not a claimed 0.9.0 registry release.
-- `bandlimit` 0.1.7: local HEAD `f9bed39b532ab23e5030ded23c7d60e45d5afa09` (clean working tree at import); bundled snapshot SHA-256 `0bb9f1caa31ec46697d08e94d9ee00f761359e646b9c91fb72dbf2fe453d36f1`.
+## bandlimit 0.1.7
 
-`ryf` is a normal crates.io dependency since agent-youtube 0.3.12, pinned to `=0.7.3`
-with its archive checksum in Cargo.lock. All 40 copied library source files were
-byte-identical to that release. `default-features = false, features = ["simd"]`
-preserves the previous feature set: ADPCM and the optional C benchmark build are
-disabled, and no runtime/build dependency is added. The published build script
-only emits rebuild hints with these features. Its source is no longer duplicated
-here; the application tests exercise the registry package directly.
+The retained snapshot is from clean local revision
+`f9bed39b532ab23e5030ded23c7d60e45d5afa09`, with bundled SHA-256
+`0bb9f1caa31ec46697d08e94d9ee00f761359e646b9c91fb72dbf2fe453d36f1`.
+The hash covers paths and contents in lexical order as path + NUL + contents.
+Manifests omit development/benchmark dependencies and disable upstream test
+targets; test corpora are not bundled. There are zero runtime dependencies.
+Both upstream licenses are retained.
 
-Hashes cover bundled file paths and contents (including minimized manifests and the
-patches below), concatenated in lexical path order as path + NUL + contents.
-Paths are relative to each crate directory, with forward slashes. The syom hash
-was reverified for this refresh on 2026-11-02; bandlimit retains its verified
-snapshot. Historical syom/bandlimit records initially omitted checkpoint extensions
-introduced by private commit `5e31ab2`; those records were corrected earlier.
+Local changes:
 
-Local syom correctness patch:
-
-- `stream/m4a.rs`: reject an unfinished priming skip or bounded presentation
-  window at decoder EOF. The 2026-10-28 qualification adds a shared
-  `isomp4.rs` rounding predicate and `stream/m4a_pos.rs` completion check:
-  after all indexed AUs, an edit-list residual must be smaller than both one
-  movie tick and one millisecond. Actual PCM is never padded. Existing accepted
-  PCM and checkpoint formats are unchanged. Open-ended fragmented edits remain supported. The
-  earlier pipeline backend identity was bumped to v2 so unfinished v1 runs could not reuse
-  potentially incomplete decoded audio or an incorrectly selected source track.
-  This patch changes only the vendored snapshot, not the sibling project.
-
-Local bandlimit portability patches:
-
-- `cascade_down.rs`: remove a discarded tuple that moved a mutable slice before its
-  later use on non-aarch64 targets (Linux x86_64 failed to compile).
+- `cascade_down.rs`: remove a discarded tuple that moved a mutable slice before
+  later use and prevented Linux x86_64 compilation.
 - `oneshot.rs`: import `UnsafeCell` only on macOS, matching its uses.
+- `stream.rs`: serialize/restore write-mode filter history, position and pending
+  output; reconstruct coefficient tables and validate rates, lengths and samples.
 
-Three existing Linux dead-code warnings in bandlimit (`prefer_p_cores`, `phase_f64`,
-`FULL_48`) are retained; they do not fail agent-youtube's clippy checks.
+Three existing Linux dead-code warnings (`prefer_p_cores`, `phase_f64`, `FULL_48`)
+remain. Do not replace this fork until upstream provides equivalent qualified
+resampler checkpoints. Codec updates require exact PCM/restart comparisons and
+an explicit backend identity decision. Do not edit sibling source repositories.
 
-Local exact-state checkpoint extensions (introduced by private commit `5e31ab2`,
-ported onto the current syom revision):
-
-- `syom/src/engine/{fb_pool,filterbank,pns}.rs` and
-  `syom/src/stream/m4a_pos.rs`: serialize/restore qualified AAC-LC mono/stereo
-  overlap, window, noise-generator and seek-presentation state. Stateful AAC
-  extensions and unqualified presentations retain the exact replay fallback.
-- `bandlimit/src/stream.rs`: serialize/restore write-mode filter history,
-  position and pending output; rebuild deterministic coefficient tables and
-  validate restored rates, lengths and finite samples.
-- These are local API extensions, not features of unmodified upstream. The new
-  syom exact seek position is a replay-based logical position, not our serialized
-  codec checkpoint. Our extension refuses exact-mode/failed state; it must not
-  bypass upstream replay requirements. Exact PCM and resume corruption tests live
-  in agent-youtube's test suite. The refreshed backend has a distinct v3 identity.
-
-Avoid other codec implementation edits here. Refresh from the local projects when needed,
-update this provenance and the media backend fingerprint, and rerun agent-youtube checks.
-
+ryf is a normal crates.io dependency pinned to `=0.7.3` with its archive checksum
+in Cargo.lock. Only SIMD is enabled; optional ADPCM and C benchmark builds stay
+disabled. It is not duplicated here.
 
 # Web runtime sources
 
@@ -98,27 +65,18 @@ remain upstream implementations. The application still rejects all-zero X25519
 results. No cryptographic primitive was rewritten. The source fingerprint includes
 this snapshot. See docs/development.md for residual advisory scope and tests.
 
-Codec qualification uses the revisions above. The default syom overlay runner
-now archives the exact 0.9.0 candidate revision, overlays the bundled runtime and
-uses its matching library tests. The earlier 0.7.1 snapshot used test revision
-`997bf56efda8700792dbc4b0136a36ad90eca328`; that is historical evidence. The
-0.8.1 prepared patch remains a historical handoff artifact. The current delta is
-[syom-0.9.0.patch](../tools/upstream-codecs/syom-0.9.0.patch), and application
-migration evidence is in [the upgrade qualification](../docs/syom-upgrade.md).
+## Qualification and historical patches
 
-Retain these forks only while their required changes are unavailable in the
-selected upstream package. In particular, the current syom 0.9.0 source
-candidate still lacks our serialized seek-decoder checkpoint API. bandlimit's pinned upstream
-source lacks the resampler checkpoint API. Boa carries the functional changes described above. The historical crypto
-snapshot is research provenance rather than a selected runtime fork. Public availability alone does not make
-these packages equivalent replacements. Move each back to a registry release
-after matching its required behavior and verifying recovery; do not retain
-unmodified copies solely for version pinning.
+The default `tools/qualify_vendors.py --crate syom` runner archives the exact
+selected upstream revision and runs its own tests without an overlay. bandlimit
+still uses the qualified runtime overlay. Prepared codec patches are historical
+handoff artifacts; `--prepared-patches` exercises their original pinned bases.
+The [codec handoff](../tools/upstream-codecs/README.md) preserves their evidence.
 
-Prepared upstream patches, regression evidence and migration blockers are in
-[the codec handoff](../tools/upstream-codecs/README.md). They are review artifacts;
-production does not compile against the historical prepared artifacts; the current
-0.9.0 delta documents the selected vendored extension.
+Keep vendored code only while required changes are unavailable upstream.
+The two Boa copies and bandlimit still carry functional changes. The old TLS
+snapshot is research provenance; the selected TLS copy has the manifest patch
+below. syom no longer needs a local fork.
 
 # Current TLS provider manifest patch — 0.6.1
 

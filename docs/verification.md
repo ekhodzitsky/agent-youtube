@@ -10,9 +10,14 @@ license is now present at the root, CI is dispatch-only and hosted Actions are
 disabled. Crates.io publication stays disabled. Sections below preserve dated
 reviews, including superseded privacy/license findings; see current readiness.
 
+## syom upstream migration — 0.16.0, 2026-11-03
+
+See the [upstream migration](syom-upstream.md) for the selected unmodified
+0.10.0 source candidate, v4 backend boundary and local consumer checks.
+
 ## syom update — 0.15.0, 2026-11-02
 
-[The current upgrade qualification](syom-upgrade.md) adopts the pinned 0.9.0
+[The historical upgrade qualification](syom-upgrade.md) adopts the pinned 0.9.0
 source candidate with local decoder-state/completion extensions and a distinct
 v3 media backend. Its cold seek now preserves PNS history through prefix replay;
 the dated 0.7.1 counterexamples below are not findings against the new runtime.

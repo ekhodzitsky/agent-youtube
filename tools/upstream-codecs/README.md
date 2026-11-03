@@ -1,13 +1,14 @@
 # Prepared codec patches
 
-The original syom.patch and bandlimit.patch are historical review artifacts, not
-selected production dependencies. Source 0.15.0 refreshes syom to the pinned
-0.9.0 source candidate with the local delta documented in syom-0.9.0.patch. No
-sibling repository is modified and no upstream changes have been published.
+All syom patches here are historical review artifacts. Source 0.16.0 selects
+unmodified upstream 0.10.0 candidate at `1383825e013f95ee565eb094122f3ec6fa2f7193`;
+see the [consumer migration](../../docs/syom-upstream.md). The local syom fork
+is removed. bandlimit retains its qualified local checkpoint extension. No
+sibling repository is modified by these tools.
 
 | Patch | Exact upstream base | Changes |
 | --- | --- | --- |
-| `syom-0.9.0.patch` | `60199081659c9fe8ee9bdf7bc07f304d5bf3c8b6` (0.9.0 source candidate) | Current qualified checkpoint/completion delta; exact-mode/failed-state guard; checkpoint regressions |
+| `syom-0.9.0.patch` | `60199081659c9fe8ee9bdf7bc07f304d5bf3c8b6` (0.9.0 source candidate) | Historical 0.15.0 checkpoint/completion delta; exact-mode/failed-state guard; checkpoint regressions |
 | `syom.patch` | `c458e8a15d57612f4c2b92cbb0347d05c8f893c3` (0.8.1) | Qualified AAC-LC checkpoint state, strict indexed-presentation completion with bounded movie-clock rounding, two regression tests |
 | `bandlimit.patch` | `0559b94be9f55cdbf2bf7c87a600ee66c6b2e761` (0.1.7 source) | Write-mode checkpoint state and a restoration regression at seven input rates |
 
@@ -82,16 +83,17 @@ patches.
 process-restart recovery, memory and old-job refusal. Production dependencies
 remain unchanged; passing library tests alone does not authorize migration.
 
-## Current syom overlay qualification
+## Historical syom overlay qualification
 
-`python3 tools/qualify_vendors.py --crate syom` archives the current exact source
-revision, overlays selected runtime files and runs its matching upstream library
-suite. The 0.9.0 patch is independently reapplicable to that clean revision. Its
+Before 0.16.0, `python3 tools/qualify_vendors.py --crate syom` overlaid the
+selected runtime on matching upstream tests. The runner now tests the selected
+unmodified upstream revision without any source overlay. The 0.9.0 patch remains
+reapplicable to its original `6019908` base, not to the current 0.10.0 source. Its
 additional tests/upstream_checkpoint.rs must be explicitly registered as a test
 target in an isolated checkout, because current upstream disables automatic test
 discovery. Do not modify a sibling checkout to run these tests.
 
-[The current application refresh](../../docs/syom-upgrade.md) records ten complete
+[The historical 0.15.0 application refresh](../../docs/syom-upgrade.md) records ten complete
 PCM comparisons, twenty process-restart comparisons, real prefix equality and
 strict old-job refusal. Earlier prepared-patch results and migration decisions
 above retain their original dates; they do not override the current backend.

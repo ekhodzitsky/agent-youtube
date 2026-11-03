@@ -61,25 +61,18 @@ and the GigaAM v3 e2e_rnnt INT8 models. Historical 2.21.0 measurements retain
 their original version and scope.
 HTTP/TLS and media processing use Rust. Web attestation and player functions run
 in a private subprocess of the same Rust executable; yt-dlp, Node.js, Deno, a browser,
-FFmpeg and FFprobe are not required. The current Web downloader is verified on Linux.
-Earlier Unix process-group checks also covered macOS; the new Web worker has not yet
-been verified there.
+FFmpeg and FFprobe are not required. **syom 0.10.0 source candidate** comes
+from unmodified upstream Git revision `1383825e013f95ee565eb094122f3ec6fa2f7193`;
+**bandlimit 0.1.7** retains a patched snapshot under `vendor/`; **ryf 0.7.3** comes
+from crates.io with only SIMD enabled. Cargo.lock pins all sources. Builds do
+not need sibling checkouts; offline builds require both registry and Git sources
+in the Cargo cache. All three codec runtime dependency tables are empty.
+Provenance and remaining local patches are in [vendor/README.md](../vendor/README.md).
 
-```sh
-cargo install --path . --locked
-```
-
-FFmpeg and FFprobe are not required. Patched snapshots of **syom 0.9.0 source candidate** and
-**bandlimit 0.1.7** are included under `vendor/`; **ryf 0.7.3** comes from
-crates.io with its version and checksum locked and only SIMD enabled. Builds do
-not depend on sibling checkouts; offline builds require registry packages in the
-Cargo cache. All three codec runtime dependency tables are empty. Provenance and
-local patches are in [vendor/README.md](../vendor/README.md).
-The syom candidate is pinned to an exact upstream revision; it is not advertised
-as a published 0.9.0 registry release. From source 0.15.0, its distinct v3 media
-backend refuses older jobs without mutating them. Resume those jobs with their
-original implementation or use a new work directory. Existing transcripts remain
-readable; see the [upgrade qualification](syom-upgrade.md).
+The syom candidate is not a published 0.10.0 registry release. Source 0.16.0 uses
+a distinct v4 media backend and refuses older jobs before mutation. Resume them
+with their original implementation or use a new work directory. Existing
+transcripts remain readable; see the [upstream migration](syom-upstream.md).
 
 ### Managed Linux setup
 

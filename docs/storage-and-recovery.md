@@ -384,9 +384,9 @@ retries and body/segment processing check cancellation. Removing local duration 
 does not remove YouTube access or request-rate limits. This CLI does not import browser
 cookies or bypass account restrictions; its PO tokens authorize the anonymous Web
 streaming protocol. Live verification and remaining constraints are recorded in
-the Web report (local historical record). Source 0.15.0 uses a distinct v3 media
-backend for the pinned syom 0.9.0 candidate and its local checkpoint extensions.
-Jobs from another backend, including v1/v2, are refused before mutation. Resume
+the Web report (local historical record). Source 0.16.0 uses a distinct v4 media
+backend for the pinned unmodified syom 0.10.0 candidate and its upstream checkpoint API.
+Jobs from another backend, including v1/v2/v3, are refused before mutation. Resume
 them with the original implementation or use a new work directory; all their
 media and raw results are preserved. The earlier v1 validation could also accept
 incomplete decoded audio or an incorrectly selected source track.

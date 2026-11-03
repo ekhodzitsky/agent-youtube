@@ -16,7 +16,7 @@ SPEC.loader.exec_module(RELEASE)
 class ReleaseTests(unittest.TestCase):
     def test_archive_is_deterministic_and_contains_nested_forks(self):
         entries = {'Cargo.toml': b'package', 'LICENSE': b'grant',
-                   'vendor/syom/src/lib.rs': b'fork',
+                   'vendor/bandlimit/src/lib.rs': b'fork',
                    'experiments/botguard/vendor/boa_engine/src/lib.rs': b'patched'}
         raw = io.BytesIO()
         with tarfile.open(fileobj=raw, mode='w') as archive:

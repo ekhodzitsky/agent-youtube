@@ -347,7 +347,20 @@ fn decode_inner(
         crate::protocol::event("unbounded presentation requires exact replay");
         return replay(source, chunk_frames, cancelled, source_prefix, event);
     }
-    if !codec.presentation_complete() || samples == 0 || codec.position() != samples {
+    // An open-ended source has no declared end to certify. Preserve indexed
+    // EOF decoding without upgrading it to a bounded presentation guarantee;
+    // the pipeline separately checks the declared recording duration.
+    let indexed_end = codec.remaining_samples() == 0
+        && matches!(
+            codec.presentation_completion(),
+            syom::PresentationCompletion::Unbounded {
+                indexed_end_reached: true
+            }
+        );
+    if !(codec.presentation_complete() || indexed_end)
+        || samples == 0
+        || codec.position() != samples
+    {
         return Err(decode_error(
             source,
             syom::AacError::format("incomplete M4A presentation"),

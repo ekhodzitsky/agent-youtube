@@ -13,6 +13,21 @@ JSON or canonical transcripts. Source is public; crates.io publication stays dis
   completeness limits. Production remains AAC/M4A only; no runtime dependency
   or behavior change.
 
+## 0.16.0 — 2026-11-03
+
+- Replace the syom source fork with unmodified upstream 0.10.0 candidate at
+  `1383825e013f95ee565eb094122f3ec6fa2f7193`, pinned as a Git dependency. This is
+  not a published registry release. Remove `vendor/syom`; preserve the retained
+  test fixture license and historical patch/qualification evidence.
+- Use upstream persistent AAC-LC state and strict M4A completion APIs. Keep
+  indexed EOF for unbounded presentations distinct from declared completeness;
+  partial acquisition still uses its existing verified-prefix contract.
+- Change the media backend to v4. Previous jobs, including v3, require their
+  original implementation to resume or a fresh work directory; refusal preserves
+  state, media and raw ASR. Existing transcript/export formats are unchanged.
+- Keep the bandlimit resampler fork and all other dependency versions/features.
+  Source builds need the pinned syom Git source in addition to registry packages.
+
 ## 0.15.0 — 2026-11-02
 
 - Refresh the syom runtime from clean upstream source candidate 0.9.0 at

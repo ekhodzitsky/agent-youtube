@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test vendored codec runtime against pinned upstream tests in isolated copies.
+"""Test selected upstream syom and vendored codec overlays in isolated copies.
 
 Sibling repositories are read with git archive only; all builds and logs stay in
 this repository's ignored runs/. No source checkout is modified.
@@ -16,7 +16,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 REVISIONS = {
-    "syom": "60199081659c9fe8ee9bdf7bc07f304d5bf3c8b6",
+    "syom": "1383825e013f95ee565eb094122f3ec6fa2f7193",
     "bandlimit": "f9bed39b532ab23e5030ded23c7d60e45d5afa09",
 }
 PREPARED_REVISIONS = {
@@ -25,7 +25,7 @@ PREPARED_REVISIONS = {
 }
 
 # Matching test revisions are pinned independently of historical prepared patches.
-# The runtime overlay is always the selected vendored source.
+# syom uses unmodified upstream; bandlimit requires its runtime overlay.
 
 
 def main():
@@ -55,7 +55,7 @@ def main():
                 command = ["git", "apply", "--directory", str(target.relative_to(ROOT)), str(patch)]
                 subprocess.run(command[:2] + ["--check"] + command[2:], cwd=ROOT, check=True)
                 subprocess.run(command, cwd=ROOT, check=True)
-            else:
+            elif name != "syom":
                 shutil.copytree(ROOT / "vendor" / name / "src", target / "src", dirs_exist_ok=True)
             # Explicit current toolchain; do not install the snapshot's toolchain.
             command = ["cargo", "+stable", "test", "--locked", "--lib"]

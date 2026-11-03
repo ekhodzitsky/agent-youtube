@@ -29,8 +29,10 @@ x25519-dalek, getrandom and zeroize. httpdate parses Retry-After dates and adds 
 transitive dependencies. Rustls is a direct API dependency for the constrained provider;
 it was already in ureq's graph, so this adds no package versions or features. The five Boa crates execute Web scripts, implement existing
 Web APIs and prepare the player through a native AST. libc supplies the child
-Unix resource limit and private-cache checks; it adds no new package version. The three codecs still add no
-transitive runtime crates. The lockfile contains **265 package versions** across platforms. The exact current
+Unix resource limit and private-cache checks; it adds no new package version.
+syom uses unmodified upstream 0.10.0 candidate source at the Git revision pinned
+in Cargo.toml and Cargo.lock; its former vendored copy is removed. The three
+codecs still add no transitive runtime crates. The lockfile contains **265 package versions** across platforms. The exact current
 graph is reported by `cargo metadata --locked`; counts are not a release invariant.
 Its active graph contains no V8, deno_core, QuickJS, ring, aws-lc-sys, openssl-sys,
 cc or cmake. System networking, randomness and resource limits use OS interfaces.

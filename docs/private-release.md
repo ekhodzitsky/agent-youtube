@@ -24,8 +24,10 @@ It records SHA-256 for every artifact in release.json. It performs no network
 upload and adds no runtime/model weights. Existing output is never overwritten.
 
 The source tar.gz uses git archive from that immutable commit and a deterministic
-gzip header. It includes local codec/Boa/provider source, root LICENSE/NOTICE and
-vendored notices; it contains no .git history, task tracker, media or local models.
+gzip header. It includes the retained bandlimit/Boa/provider sources, root
+LICENSE/NOTICE and vendored notices. syom is an external Git dependency pinned
+in Cargo.lock; its source must be cached or fetched when building. The archive
+contains no .git history, task tracker, media or local models.
 The adjacent third-party notice collection covers the exact current locked graph.
 License-text collection does not approve every redistribution scenario. Do not
 upload artifacts without an explicit owner request. The manifest field
