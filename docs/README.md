@@ -53,6 +53,7 @@ current public identity. Original records remain local and are not rewritten.
 
 | Report | Original scope |
 | --- | --- |
+| [WebM/Opus consumer trial](webm-opus-qualification.md) | Local Unlace 0.2.4 and Opura 0.1.66; no production integration |
 | [Release readiness](release-readiness.md) | 0.3.13 private candidate |
 | [Distribution audit](distribution-readiness.md) | 2026-10-29 history/notices snapshot |
 | [TLS reachability](tls-security-review.md) | Pre-0.5.0 provider review |

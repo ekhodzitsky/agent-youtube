@@ -8,6 +8,11 @@ JSON or canonical transcripts. Source is public; crates.io publication stays dis
 
 ## Unreleased
 
+- Document the local Unlace 0.2.4 and Opura 0.1.66 WebM/Opus qualification,
+  complete multi-hour decoding, exact restart replay and remaining timing and
+  completeness limits. Production remains AAC/M4A only; no runtime dependency
+  or behavior change.
+
 ## 0.15.0 — 2026-11-02
 
 - Refresh the syom runtime from clean upstream source candidate 0.9.0 at
