@@ -26,11 +26,11 @@ class RepositoryIgnoreTests(unittest.TestCase):
                  '.venv/bin/python', 'venv/pyvenv.cfg', '.pytest_cache/nodeids',
                  '.mypy_cache/cache', '.ruff_cache/cache', 'coverage/lcov.info',
                  'profile.profraw', 'profile.profdata', 'x/backlog/private.md',
-                 'x/.grok/config.toml', '.env.local']
+                 'x/.grok/config.toml', '.env.local', 'CLAUDE.md', 'x/CLAUDE.md']
         self.assertEqual(self.ignored(paths), set(paths))
 
     def test_source_forks_contracts_and_public_fixtures_remain_visible(self):
-        paths = ['Cargo.lock', 'AGENTS.md', 'CLAUDE.md', 'schemas/contract.schema.json',
+        paths = ['Cargo.lock', 'AGENTS.md', 'schemas/contract.schema.json',
                  'vendor/syom/src/lib.rs', 'vendor/rustls-rustcrypto-current/Cargo.toml',
                  'experiments/botguard/vendor/boa_engine/src/lib.rs',
                  'tests/fixtures/ps48.m4a', 'tests/fixtures/tls/ca.der',

@@ -36,7 +36,7 @@ Portable, sanitized team instructions and shared config may be tracked when
 project policy explicitly identifies them as shared. Unknown content is
 unclassified, not automatically safe: inspect or report a conflict. Do not
 unignore existing directories or untrack shared files automatically.
-`AGENTS.md`, `CLAUDE.md`, `agents/`, product specifications, and accepted
+`AGENTS.md`, `agents/`, product specifications, and accepted
 sanitized decisions are normally shared. Keep private task drafts separate.
 
 Before staging, inspect `git status --short` and `git diff --cached

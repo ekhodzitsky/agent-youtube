@@ -10,7 +10,8 @@ __pycache__/
 tools-local/
 models/
 
-!CLAUDE.md
+# This project uses AGENTS.md for shared agent instructions.
+CLAUDE.md
 
 # Local agent state and private task data
 .grok
