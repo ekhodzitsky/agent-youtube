@@ -1,6 +1,54 @@
-# Unmodified syom upstream migration - source 0.16.0
+# syom upstream integration
 
 [Documentation index](README.md) · [Project overview](../README.md)
+
+## Published syom 0.10.3 - source 0.17.0
+
+Current source selects exactly `syom = "=0.10.3"` from crates.io. Cargo.lock
+records the published archive checksum; no syom Git dependency, local source
+override or vendor copy is used. The registry package records upstream revision
+`2be19a2abbaea2261f82819d5e90bba5b8d28ed9` for qualification provenance.
+
+The release fixes fractional M4A edit durations, including a millisecond movie
+clock at 44.1 kHz, and standard Apple gapless tag interpretation. Fractional
+presentation durations round down to native samples; qualified sub-tick,
+sub-millisecond overhang is capped at available flat-file media after priming.
+Missing packets and larger inconsistencies remain errors. No PCM is padded.
+The upstream changes can intentionally affect presentation lengths or trimming;
+historical cross-version equality measurements below retain their dated scope.
+
+The media backend changes to **v5** because persistent checkpoints are tied to
+the exact syom version. Older jobs, including v4, are refused before mutation.
+Keep their original executable for resume or use a new work directory. Existing
+transcript/export formats remain readable. bandlimit's resampler checkpoint
+extension remains separate, and no runtime dependency is added by syom.
+
+Verified 2026-11-09 on Linux x86_64: seven synthetic stereo AAC inputs at
+8/16/22.05/24/32/44.1/48 kHz retain identical full PCM16 hashes and frame counts
+against the former 0.10.0 candidate. All fourteen same-backend, separate-process
+checkpoint resumes match uninterrupted output. Native PNS state and resampler
+history remain covered by the application's seven-rate tests.
+
+The fractional-duration regression first reproduced the old codec's rejection
+of a 44.1 kHz presentation on a millisecond movie clock. With 0.10.3, both full
+and resumable decode match an independently authored integer-sample reference
+window through indexed EOF. An additional movie tick exceeds the rounding
+allowance and fails while preserving source bytes. These checks do not claim
+universal cross-version equality: Apple tag and fractional-window fixes can
+intentionally change previously incorrect presentation trimming.
+
+The v4/v5 cross-build refusal check preserves every saved job file, after which
+the original executable completes that job. Formatting, strict all-target
+Clippy, 436 Rust tests (24 opt-in tests ignored), 75 Python tests, Rust 1.94
+all-target checking and 31-document link validation pass. The locked license
+collector reports no missing texts. New trials use synthetic fixtures; historical
+real-recording results below were not rerun for this update. Raw local evidence
+is under `runs/syom-0103-upgrade/`.
+
+## Historical 0.10.0 candidate migration - source 0.16.0
+
+The following record describes the qualification performed on 2026-11-03; its
+versions and numerical results do not describe fresh 0.10.3 trials.
 
 The selected codec is unmodified syom **0.10.0 source candidate** at
 `1383825e013f95ee565eb094122f3ec6fa2f7193`, pinned by Git revision in Cargo.toml

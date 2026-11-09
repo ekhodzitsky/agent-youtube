@@ -45,7 +45,7 @@ dependencies = [
 
 [[package]]
 name = "agent-youtube"
-version = "0.16.0"
+version = "0.17.0"
 dependencies = [
  "bandlimit",
  "base64",
@@ -2080,8 +2080,9 @@ dependencies = [
 
 [[package]]
 name = "syom"
-version = "0.10.0"
-source = "git+https://github.com/ekhodzitsky/syom?rev=1383825e013f95ee565eb094122f3ec6fa2f7193#1383825e013f95ee565eb094122f3ec6fa2f7193"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38d60edf8102a376deb2c2d673dafdb5ca0d40a7ffe7ae38958da9ffba3e6d40"
 
 [[package]]
 name = "tag_ptr"

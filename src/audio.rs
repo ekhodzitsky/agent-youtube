@@ -17,7 +17,7 @@ pub(crate) use resume::{DecodeEvent, Resume, SourcePrefix, decode_prefix, full_s
 thread_local! { static FRAME_COUNT: std::cell::Cell<u64> = const { std::cell::Cell::new(0) }; }
 
 pub const SAMPLE_RATE: u32 = 16_000;
-pub const BACKEND: &str = "syom-0.10.0-1383825-bandlimit-0.1.7-ryf-0.7.3-mono-pcm16-v4";
+pub const BACKEND: &str = "syom-0.10.3-bandlimit-0.1.7-ryf-0.7.3-mono-pcm16-v5";
 
 pub(crate) fn check_cancelled(cancelled: &AtomicBool) -> Result<()> {
     if cancelled.load(Ordering::SeqCst) {
@@ -1228,6 +1228,53 @@ mod tests {
         out.extend(moof);
         out.extend_from_slice(&flat[mdat - 4..mdat - 4 + mdat_len]);
         (out, u64::from(count) * 1024 - u64::from(skip))
+    }
+
+    #[test]
+    fn fractional_m4a_movie_duration_preserves_pcm_and_rejects_excess_tail() {
+        let temp = Temp::new();
+        let input = temp.0.join("fractional.m4a");
+        let output = temp.0.join("fractional.wav");
+        let pcm: Vec<_> = (0..44113).map(|i| 0.2 * (i as f32 * 0.19).sin()).collect();
+        let mut bytes = syom::encode_with(&[&pcm], 44100, &syom::EncodeOptions::m4a()).unwrap();
+        let movie = bytes.windows(4).position(|w| w == b"mvhd").unwrap();
+        let edit = bytes.windows(4).position(|w| w == b"elst").unwrap();
+        let sizes = bytes.windows(4).position(|w| w == b"stsz").unwrap();
+        let units = u32::from_be_bytes(bytes[sizes + 12..sizes + 16].try_into().unwrap());
+        let priming = u32::from_be_bytes(bytes[edit + 16..edit + 20].try_into().unwrap());
+        let available = units * 1024 - priming;
+        // Author an exact native-sample reference through indexed EOF.
+        bytes[movie + 16..movie + 20].copy_from_slice(&44100_u32.to_be_bytes());
+        bytes[edit + 12..edit + 16].copy_from_slice(&available.to_be_bytes());
+        fs::write(&input, &bytes).unwrap();
+        decode(&input, &output, &AtomicBool::new(false)).unwrap();
+        let expected = ryf::read_s16(&output).unwrap().1;
+        fs::remove_file(&output).unwrap();
+        bytes[movie + 16..movie + 20].copy_from_slice(&1000_u32.to_be_bytes());
+        let ticks = (u64::from(available) * 1000).div_ceil(44100) as u32;
+        assert_ne!(u64::from(ticks) * 44100 % 1000, 0);
+        // Round only the movie clock up: the sub-millisecond fractional
+        // overhang must be capped at available media without padding PCM.
+        bytes[edit + 12..edit + 16].copy_from_slice(&ticks.to_be_bytes());
+        fs::write(&input, &bytes).unwrap();
+        decode(&input, &output, &AtomicBool::new(false)).unwrap();
+        assert_eq!(ryf::read_s16(&output).unwrap().1, expected);
+        let mut resumed = Vec::new();
+        let frames = decode_resumable(&input, 1600, &AtomicBool::new(false), None, |event| {
+            if let DecodeEvent::Chunk(_, pcm) = event {
+                resumed.extend_from_slice(pcm);
+            }
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(frames, (u64::from(available) * 16000).div_ceil(44100));
+        assert_eq!(resumed, expected);
+        fs::remove_file(&output).unwrap();
+        bytes[edit + 12..edit + 16].copy_from_slice(&(ticks + 1).to_be_bytes());
+        fs::write(&input, &bytes).unwrap();
+        assert!(decode(&input, &output, &AtomicBool::new(false)).is_err());
+        assert_eq!(fs::read(&input).unwrap(), bytes);
+        assert!(decode_resumable(&input, 1600, &AtomicBool::new(false), None, |_| Ok(())).is_err());
     }
 
     #[test]

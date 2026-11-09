@@ -45,7 +45,7 @@ Local codec checkpoint extensions
 
 bandlimit 0.1.7 retains local versioned resampler state save/restore methods.
 Its original codec licenses remain in vendor/bandlimit/. syom uses unmodified
-upstream 0.10.0 candidate source pinned by Cargo.lock, including its upstream
+upstream registry release 0.10.3 pinned by Cargo.lock, including its upstream
 persistent AAC-LC state API. The MIT license for the retained syom test fixture
 is also preserved at vendor/licenses/syom-MIT.txt. No runtime crate is added.
 See docs/syom-upstream.md and docs/storage-and-recovery.md for the state contract.

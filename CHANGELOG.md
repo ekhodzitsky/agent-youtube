@@ -13,6 +13,19 @@ JSON or canonical transcripts. Source is public; crates.io publication stays dis
   completeness limits. Production remains AAC/M4A only; no runtime dependency
   or behavior change.
 
+## 0.17.0 — 2026-11-09
+
+- Select published syom 0.10.3 from crates.io with an exact version and locked
+  archive checksum, replacing the 0.10.0 Git candidate. No syom source is vendored.
+- Adopt upstream fractional M4A movie-duration handling and corrected Apple
+  gapless tags; missing packets and materially inconsistent durations still fail.
+  Add a 44.1 kHz millisecond-clock regression that compares decoded and resumable
+  PCM against an exact integer-sample reference window and rejects excessive duration.
+- Change the media backend to v5 because syom checkpoints are codec-version bound.
+  Older jobs, including v4, require their original executable for resume or a new
+  work directory. Refusal preserves media, checkpoints and raw ASR. Transcript and
+  export formats are unchanged. Other dependencies and features stay pinned.
+
 ## 0.16.0 — 2026-11-03
 
 - Replace the syom source fork with unmodified upstream 0.10.0 candidate at

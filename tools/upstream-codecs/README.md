@@ -1,7 +1,8 @@
 # Prepared codec patches
 
-All syom patches here are historical review artifacts. Source 0.16.0 selects
-unmodified upstream 0.10.0 candidate at `1383825e013f95ee565eb094122f3ec6fa2f7193`;
+All syom patches here are historical review artifacts. Source 0.17.0 selects
+published crates.io syom 0.10.3, whose archive records upstream revision
+`2be19a2abbaea2261f82819d5e90bba5b8d28ed9`;
 see the [consumer migration](../../docs/syom-upstream.md). The local syom fork
 is removed. bandlimit retains its qualified local checkpoint extension. No
 sibling repository is modified by these tools.

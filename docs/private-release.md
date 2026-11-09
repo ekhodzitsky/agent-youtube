@@ -25,8 +25,8 @@ upload and adds no runtime/model weights. Existing output is never overwritten.
 
 The source tar.gz uses git archive from that immutable commit and a deterministic
 gzip header. It includes the retained bandlimit/Boa/provider sources, root
-LICENSE/NOTICE and vendored notices. syom is an external Git dependency pinned
-in Cargo.lock; its source must be cached or fetched when building. The archive
+LICENSE/NOTICE and vendored notices. syom is an external crates.io dependency pinned
+in Cargo.lock; its registry archive must be cached or fetched when building. The archive
 contains no .git history, task tracker, media or local models.
 The adjacent third-party notice collection covers the exact current locked graph.
 License-text collection does not approve every redistribution scenario. Do not

@@ -61,18 +61,18 @@ and the GigaAM v3 e2e_rnnt INT8 models. Historical 2.21.0 measurements retain
 their original version and scope.
 HTTP/TLS and media processing use Rust. Web attestation and player functions run
 in a private subprocess of the same Rust executable; yt-dlp, Node.js, Deno, a browser,
-FFmpeg and FFprobe are not required. **syom 0.10.0 source candidate** comes
-from unmodified upstream Git revision `1383825e013f95ee565eb094122f3ec6fa2f7193`;
-**bandlimit 0.1.7** retains a patched snapshot under `vendor/`; **ryf 0.7.3** comes
-from crates.io with only SIMD enabled. Cargo.lock pins all sources. Builds do
-not need sibling checkouts; offline builds require both registry and Git sources
-in the Cargo cache. All three codec runtime dependency tables are empty.
-Provenance and remaining local patches are in [vendor/README.md](../vendor/README.md).
+FFmpeg and FFprobe are not required. Published **syom 0.10.3** and **ryf 0.7.3**
+come from crates.io with exact versions and archive checksums in Cargo.lock;
+ryf has only SIMD enabled. **bandlimit 0.1.7** retains a patched snapshot under
+`vendor/`. Builds do not need sibling checkouts; offline builds require the
+locked registry packages in Cargo's cache. All three codec runtime dependency
+tables are empty. Provenance and remaining local patches are in
+[vendor/README.md](../vendor/README.md).
 
-The syom candidate is not a published 0.10.0 registry release. Source 0.16.0 uses
-a distinct v4 media backend and refuses older jobs before mutation. Resume them
-with their original implementation or use a new work directory. Existing
-transcripts remain readable; see the [upstream migration](syom-upstream.md).
+Source 0.17.0 uses a distinct v5 media backend because syom checkpoints are bound
+to the codec version. Older jobs are refused before mutation. Resume them with
+their original implementation or use a new work directory. Existing transcripts
+remain readable; see the [upstream integration](syom-upstream.md).
 
 ### Managed Linux setup
 

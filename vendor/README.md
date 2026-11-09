@@ -1,11 +1,11 @@
 # Retained dependency forks and assets
 
-syom is no longer vendored from agent-youtube 0.16.0. Cargo selects unmodified
-upstream 0.10.0 source candidate at `1383825e013f95ee565eb094122f3ec6fa2f7193`.
-Its public persistent-state and completion APIs replace our former local delta.
-This candidate is not a published registry release. See the
-[consumer migration](../docs/syom-upstream.md). The former syom patches remain
-historical review artifacts under `tools/upstream-codecs/`; they are not applied.
+syom is no longer vendored from agent-youtube 0.16.0. Current source selects
+published **syom 0.10.3** from crates.io, with an exact version and archive
+checksum in Cargo.lock. Its public persistent-state and completion APIs replace
+our former local delta. See the [consumer migration](../docs/syom-upstream.md).
+The former syom patches remain historical review artifacts under
+`tools/upstream-codecs/`; they are not applied.
 
 ## bandlimit 0.1.7
 

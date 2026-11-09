@@ -10,6 +10,11 @@ license is now present at the root, CI is dispatch-only and hosted Actions are
 disabled. Crates.io publication stays disabled. Sections below preserve dated
 reviews, including superseded privacy/license findings; see current readiness.
 
+## syom registry update — 0.17.0, 2026-11-09
+
+See the [upstream integration](syom-upstream.md) for published syom 0.10.3,
+fractional-duration regression evidence and the v5 checkpoint boundary.
+
 ## syom upstream migration — 0.16.0, 2026-11-03
 
 See the [upstream migration](syom-upstream.md) for the selected unmodified

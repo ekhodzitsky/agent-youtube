@@ -26,8 +26,8 @@ of Git. See the installation guide for vendored codec provenance.
 
 ## Current release and operation
 
-- [syom upstream migration](syom-upstream.md): unmodified 0.10.0 candidate,
-  persistent-state qualification and v4 backend migration. The
+- [syom upstream integration](syom-upstream.md): published 0.10.3, fractional
+  M4A durations and version-bound v5 backend migration. The
   [0.15.0 refresh](syom-upgrade.md) retains its historical comparison results.
 
 - [Published timestamps without audio](usage.md#published-timestamps-without-audio):
