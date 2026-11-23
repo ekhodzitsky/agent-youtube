@@ -12,6 +12,7 @@ mod recovery;
 mod sabr;
 mod samsung;
 mod sidx;
+mod sitta;
 pub(crate) use sidx::Index as SegmentIndex;
 pub(crate) mod tls;
 mod wire;
@@ -60,6 +61,7 @@ pub struct Downloader {
     http: Http,
     runtime: Arc<Mutex<Option<crate::web::Worker>>>,
     bootstrap: Arc<Mutex<Option<(Instant, Source)>>>,
+    sitta: Option<sitta::Sitta>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 struct Identity {
@@ -135,6 +137,7 @@ impl Downloader {
             http: self.http.clone(),
             runtime: Arc::new(Mutex::new(None)),
             bootstrap: Arc::new(Mutex::new(None)),
+            sitta: self.sitta.clone(),
         }
     }
     pub fn youtube() -> Result<Self> {
@@ -142,6 +145,24 @@ impl Downloader {
             http: Http::new("https://www.youtube.com")?,
             runtime: Arc::new(Mutex::new(None)),
             bootstrap: Arc::new(Mutex::new(None)),
+            sitta: sitta::Sitta::from_env()?,
+        })
+    }
+    pub fn sitta(executable: &Path) -> Result<Self> {
+        Ok(Self {
+            http: Http::new("https://www.youtube.com")?,
+            runtime: Arc::new(Mutex::new(None)),
+            bootstrap: Arc::new(Mutex::new(None)),
+            sitta: Some(sitta::Sitta::new(executable.to_path_buf())?),
+        })
+    }
+    #[cfg(test)]
+    pub(crate) fn sitta_for_test(executable: &Path, mode: &str) -> Result<Self> {
+        Ok(Self {
+            http: Http::new("https://www.youtube.com")?,
+            runtime: Arc::new(Mutex::new(None)),
+            bootstrap: Arc::new(Mutex::new(None)),
+            sitta: Some(sitta::Sitta::for_test(executable.to_path_buf(), mode)?),
         })
     }
     /// An explicit loopback server for embedding/offline HTTP protocol tests.
@@ -154,6 +175,7 @@ impl Downloader {
             http: Http::new(origin)?,
             runtime: Arc::new(Mutex::new(None)),
             bootstrap: Arc::new(Mutex::new(None)),
+            sitta: None,
         })
     }
     fn source(
@@ -656,6 +678,9 @@ impl Downloader {
         })
     }
     fn download_impl(&self, id: &str, prefix: &Path, cancelled: &AtomicBool) -> Result<PathBuf> {
+        if let Some(sitta) = &self.sitta {
+            return sitta.download(id, prefix, cancelled);
+        }
         self.download_inner(id, prefix, cancelled, None)
             .map(|value| value.path)
     }

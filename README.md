@@ -101,6 +101,10 @@ is required. GigaSTT performs recognition and includes native ONNX components.
 Export JSON, Markdown, plain text, SRT or VTT from saved transcripts without
 another download or recognition run.
 
+Full acquisition can optionally use the Go Sitta CLI through the
+[schema-v1 subprocess adapter](docs/sitta-adapter.md). Native acquisition remains
+the default, with no partial adoption or automatic fallback.
+
 ## Install
 
 Linux x86_64 GNU with **glibc 2.39+**. No Rust toolchain is needed for the

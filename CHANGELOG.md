@@ -13,6 +13,18 @@ JSON or canonical transcripts. Source is public; crates.io publication stays dis
   completeness limits. Production remains AAC/M4A only; no runtime dependency
   or behavior change.
 
+## 0.18.0 — 2026-11-23
+
+- Add an opt-in Sitta schema-v1 acquisition backend selected by
+  `AGENT_YOUTUBE_SITTA`, with version/capability negotiation and no native default
+  or fallback behavior change. Each full acquisition owns one bounded subprocess
+  through the existing process lifecycle; range and ASR behavior remain native.
+- Parse versioned results, progress and sanitized errors, then independently verify
+  the completed output identity, byte count and SHA-256. Sitta retains checkpoint
+  ownership; partials are never adopted or mixed with native media.
+- Cover fake-CLI and local real `cli.Run` success, failure, cancellation, timeout
+  and restart offline. Live handoff and production acceptance remain separate gates.
+
 ## 0.17.0 — 2026-11-09
 
 - Select published syom 0.10.3 from crates.io with an exact version and locked

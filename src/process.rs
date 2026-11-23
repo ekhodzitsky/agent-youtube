@@ -24,6 +24,7 @@ pub struct Runner {
     lock: Option<Arc<File>>,
     timeout: Duration,
     memory_bytes: Option<u64>,
+    environment: Vec<(OsString, OsString)>,
 }
 impl Runner {
     pub fn new(cancelled: Arc<AtomicBool>) -> Self {
@@ -32,7 +33,16 @@ impl Runner {
             lock: None,
             timeout: Duration::from_secs(1800),
             memory_bytes: None,
+            environment: Vec::new(),
         }
+    }
+
+    pub fn with_env(&self, name: &std::ffi::OsStr, value: &std::ffi::OsStr) -> Self {
+        let mut runner = self.clone();
+        runner
+            .environment
+            .push((name.to_os_string(), value.to_os_string()));
+        runner
     }
 
     pub fn with_lock(&self, file: File) -> Self {
@@ -41,6 +51,7 @@ impl Runner {
             lock: Some(Arc::new(file)),
             timeout: self.timeout,
             memory_bytes: self.memory_bytes,
+            environment: self.environment.clone(),
         }
     }
 
@@ -142,6 +153,9 @@ impl Runner {
             if name.to_str().is_some_and(|n| n.starts_with("GIGASTT_")) {
                 command.env_remove(name);
             }
+        }
+        for (name, value) in &self.environment {
+            command.env(name, value);
         }
         #[cfg(unix)]
         {
