@@ -54,3 +54,31 @@ Process/evidence accounting:
 - Resumed bytes: unavailable, because no checkpoint was created.
 - Live requests after the stop: 0.
 - Release, publication and hosted CI: not performed.
+
+## Corrected checkpoint-triggered handoff
+
+A fresh run used a new checkpoint-triggered harness after the first harness read
+`PREFIX.resume.json` instead of the actual `PREFIX.m4a.resume.json`. The corrected
+observer waits for an intermediate checkpoint with `0 < bytes < total`, cancels,
+and starts a fresh adapter process for the same output. This is a harness correction,
+not a longer retry of the previous request.
+
+The first process committed 1,048,576 bytes. The second resumed exactly those bytes
+and completed 3,449,447 bytes with SHA-256
+`51aa762a3254bcbad8813d2badff2f301ed0127a61643a0ab16f387c883e6394`.
+A separate explicit MWEB-PO process then selected SABR, attached video-bound PO and
+completed the same bytes/hash. Both outputs passed independent full FFprobe/FFmpeg
+decode. Three acquisition processes ran; no native fallback or unproved partial
+adoption occurred.
+
+## Final recommendation
+
+The adapter is **conditionally ready for opt-in use on Linux amd64**. Direct and
+MWEB-SABR handoff, checkpoint-triggered interruption/restart, independent output
+verification and full decode are demonstrated. Production default enablement,
+release publication and hosted CI remain separate owner decisions.
+
+This recommendation does not imply availability, superiority or mandatory PO.
+The corresponding SABR controls returned 200/200/200 with and without PO, so token
+enforcement was not observed in that selected case. No further live request is needed
+for this review.

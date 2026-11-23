@@ -624,11 +624,11 @@ mod tests {
                 .is_err()
         );
         let checkpoint: Value = serde_json::from_slice(
-            &fs::read(super::super::suffix(&restart_prefix, ".resume.json")).unwrap(),
+            &fs::read(super::super::suffix(&restart_prefix, ".m4a.resume.json")).unwrap(),
         )
         .unwrap();
         let committed = checkpoint["bytes"].as_u64().unwrap();
-        assert!(committed > 0 && super::super::suffix(&restart_prefix, ".partial").exists());
+        assert!(committed > 0 && super::super::suffix(&restart_prefix, ".m4a.partial").exists());
         let resumed = super::super::Downloader::sitta_live_for_test(
             &executable,
             "auto",
@@ -651,6 +651,93 @@ mod tests {
         eprintln!(
             "sitta_live_evidence {}",
             json!({"case":"restart","client":resumed_result["result"]["recording"]["client"],"sabr":resumed_result["result"]["recording"]["selected_audio"]["sabr"],"resumed_bytes":committed,"bytes":3449447,"sha256":storage::digest(&resumed_path).unwrap()})
+        );
+
+        let protected = super::super::Downloader::sitta_live_for_test(
+            &executable,
+            "mweb-po",
+            Duration::from_secs(1800),
+        )
+        .unwrap();
+        let protected_prefix = live_prefix(&root, "protected").unwrap();
+        let protected_path = protected
+            .download("dQw4w9WgXcQ", &protected_prefix, &cancelled)
+            .unwrap();
+        let protected_result = captured_result(&protected_prefix).unwrap();
+        assert_eq!(fs::metadata(&protected_path).unwrap().len(), 3449447);
+        assert_eq!(
+            storage::digest(&protected_path).unwrap(),
+            "51aa762a3254bcbad8813d2badff2f301ed0127a61643a0ab16f387c883e6394"
+        );
+        assert_eq!(protected_result["result"]["botguard_used"], true);
+        assert_eq!(protected_result["result"]["media"]["po"]["attached"], true);
+        eprintln!(
+            "sitta_live_evidence {}",
+            json!({"case":"protected","client":protected_result["result"]["recording"]["client"],"sabr":protected_result["result"]["recording"]["selected_audio"]["sabr"],"bytes":3449447,"sha256":storage::digest(&protected_path).unwrap(),"po_attached":true})
+        );
+    }
+
+    #[test]
+    #[ignore = "explicit owner-authorized checkpoint-triggered live handoff"]
+    fn live_checkpoint_restart_and_token_handoff() {
+        let executable =
+            PathBuf::from(std::env::var_os("AGENT_YOUTUBE_SITTA_LIVE_EXECUTABLE").unwrap());
+        let root = PathBuf::from(std::env::var_os("AGENT_YOUTUBE_SITTA_LIVE_DIRECTORY").unwrap());
+        storage::private_directory(&root, true).unwrap();
+        let cancelled = Arc::new(AtomicBool::new(false));
+        let restart_prefix = live_prefix(&root, "restart").unwrap();
+        let checkpoint_path = super::super::suffix(&restart_prefix, ".m4a.resume.json");
+        let interrupted = super::super::Downloader::sitta_live_for_test(
+            &executable,
+            "auto",
+            Duration::from_secs(1800),
+        )
+        .unwrap();
+        std::thread::scope(|scope| {
+            let download =
+                scope.spawn(|| interrupted.download("dQw4w9WgXcQ", &restart_prefix, &cancelled));
+            while !download.is_finished() {
+                if let Ok(data) = fs::read(&checkpoint_path)
+                    && let Ok(checkpoint) = serde_json::from_slice::<Value>(&data)
+                    && checkpoint["bytes"]
+                        .as_u64()
+                        .is_some_and(|bytes| bytes > 0 && bytes < 3449447)
+                {
+                    cancelled.store(true, Ordering::SeqCst);
+                    break;
+                }
+                thread::sleep(Duration::from_millis(10));
+            }
+            let outcome = download.join().unwrap();
+            assert!(outcome.is_err());
+        });
+        let checkpoint: Value =
+            serde_json::from_slice(&fs::read(&checkpoint_path).unwrap()).unwrap();
+        let committed = checkpoint["bytes"].as_u64().unwrap();
+        assert!(committed > 0 && super::super::suffix(&restart_prefix, ".m4a.partial").exists());
+        cancelled.store(false, Ordering::SeqCst);
+        let resumed = super::super::Downloader::sitta_live_for_test(
+            &executable,
+            "auto",
+            Duration::from_secs(1800),
+        )
+        .unwrap();
+        let resumed_path = resumed
+            .download("dQw4w9WgXcQ", &restart_prefix, &cancelled)
+            .unwrap();
+        let resumed_result = captured_result(&restart_prefix).unwrap();
+        assert_eq!(
+            resumed_result["result"]["media"]["resumed_bytes"].as_u64(),
+            Some(committed)
+        );
+        assert_eq!(fs::metadata(&resumed_path).unwrap().len(), 3449447);
+        assert_eq!(
+            storage::digest(&resumed_path).unwrap(),
+            "51aa762a3254bcbad8813d2badff2f301ed0127a61643a0ab16f387c883e6394"
+        );
+        eprintln!(
+            "sitta_live_evidence {}",
+            json!({"case":"checkpoint_restart","client":resumed_result["result"]["recording"]["client"],"sabr":resumed_result["result"]["recording"]["selected_audio"]["sabr"],"resumed_bytes":committed,"bytes":3449447,"sha256":storage::digest(&resumed_path).unwrap()})
         );
 
         let protected = super::super::Downloader::sitta_live_for_test(

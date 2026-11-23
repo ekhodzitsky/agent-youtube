@@ -28,6 +28,10 @@ JSON or canonical transcripts. Source is public; crates.io publication stays dis
   decode. The intentional two-second restart stopped before checkpoint creation, so
   no resumed or MWEB-PO request followed. Production default is not recommended;
   see the dated handoff review.
+- Correct checkpoint observation to the actual `.m4a.resume.json` path. A fresh
+  process resumed exactly 1,048,576 bytes and completed the known hash; MWEB-PO SABR
+  then attached video-bound PO and passed full decode. The adapter is conditionally
+  ready for opt-in Linux-amd64 use; default, release and hosted CI remain separate.
 
 ## 0.17.0 — 2026-11-09
 
