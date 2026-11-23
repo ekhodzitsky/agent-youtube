@@ -92,4 +92,6 @@ cargo test
 ```
 
 No YouTube request is made by these tests. Real live handoff requires a separate
-owner-authorized bounded qualification.
+owner-authorized bounded qualification. The [2026-11-23 handoff review](sitta-handoff-2026-11-23.md)
+completed one direct case but stopped an intentional restart before checkpoint
+creation, so production default and token-bearing handoff remain unproven.

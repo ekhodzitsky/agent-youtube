@@ -24,6 +24,10 @@ JSON or canonical transcripts. Source is public; crates.io publication stays dis
   ownership; partials are never adopted or mixed with native media.
 - Cover fake-CLI and local real `cli.Run` success, failure, cancellation, timeout
   and restart offline. Live handoff and production acceptance remain separate gates.
+- Complete one live adapter direct case at 858,608 bytes with full independent
+  decode. The intentional two-second restart stopped before checkpoint creation, so
+  no resumed or MWEB-PO request followed. Production default is not recommended;
+  see the dated handoff review.
 
 ## 0.17.0 — 2026-11-09
 

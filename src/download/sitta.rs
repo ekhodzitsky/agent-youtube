@@ -27,6 +27,8 @@ pub(crate) struct Sitta {
     mode: Option<OsString>,
     #[cfg(test)]
     contract: bool,
+    #[cfg(test)]
+    route: Option<OsString>,
 }
 
 #[derive(Deserialize)]
@@ -90,6 +92,8 @@ impl Sitta {
             mode: None,
             #[cfg(test)]
             contract: false,
+            #[cfg(test)]
+            route: None,
         };
         sitta.negotiate()?;
         Ok(sitta)
@@ -103,11 +107,26 @@ impl Sitta {
             outer_timeout: Duration::from_secs(30 * 60 + 15),
             mode: Some(OsString::from(mode)),
             contract: true,
+            route: None,
         };
         if mode == "timeout" {
             sitta.operation_timeout = Duration::from_millis(50);
             sitta.outer_timeout = Duration::from_secs(2);
         }
+        sitta.negotiate()?;
+        Ok(sitta)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn for_live(executable: PathBuf, route: &str, timeout: Duration) -> Result<Self> {
+        let sitta = Self {
+            executable,
+            operation_timeout: timeout,
+            outer_timeout: timeout + Duration::from_secs(15),
+            mode: None,
+            contract: false,
+            route: Some(OsString::from(route)),
+        };
         sitta.negotiate()?;
         Ok(sitta)
     }
@@ -228,6 +247,14 @@ impl Sitta {
             OsString::from(timeout),
             OsString::from(id),
         ];
+        #[cfg(test)]
+        let args = {
+            let mut args = args;
+            if let Some(route) = &self.route {
+                args.splice(1..1, [OsString::from("--route"), route.clone()]);
+            }
+            args
+        };
         let (outcome, stdout, stderr) = self.run(prefix, &args, cancelled, self.outer_timeout);
         if cancelled.load(Ordering::SeqCst) {
             return Err(protocol::failure(
@@ -525,6 +552,128 @@ mod tests {
                     &AtomicBool::new(false)
                 )
                 .is_err()
+        );
+    }
+
+    fn captured_result(prefix: &Path) -> Result<Value> {
+        let parent = prefix.parent().ok_or("capture parent is missing")?;
+        let name = prefix
+            .file_name()
+            .ok_or("capture name is missing")?
+            .to_string_lossy();
+        let mut paths = Vec::new();
+        for entry in fs::read_dir(parent)? {
+            let entry = entry?;
+            let filename = entry.file_name().to_string_lossy().into_owned();
+            if filename.starts_with(name.as_ref()) && filename.ends_with("stdout") {
+                paths.push(entry.path());
+            }
+        }
+        paths.sort();
+        let path = paths.last().ok_or("Sitta result capture is missing")?;
+        Ok(serde_json::from_slice(&fs::read(path)?)?)
+    }
+
+    fn live_prefix(root: &Path, name: &str) -> Result<PathBuf> {
+        let directory = root.join(name);
+        storage::private_directory(&directory, true)?;
+        Ok(directory.join("input"))
+    }
+
+    #[test]
+    #[ignore = "explicit owner-authorized live Sitta adapter handoff"]
+    fn live_adapter_handoff_and_restart() {
+        let executable =
+            PathBuf::from(std::env::var_os("AGENT_YOUTUBE_SITTA_LIVE_EXECUTABLE").unwrap());
+        let root = PathBuf::from(std::env::var_os("AGENT_YOUTUBE_SITTA_LIVE_DIRECTORY").unwrap());
+        storage::private_directory(&root, true).unwrap();
+        let cancelled = AtomicBool::new(false);
+
+        let direct = super::super::Downloader::sitta_live_for_test(
+            &executable,
+            "auto",
+            Duration::from_secs(1800),
+        )
+        .unwrap();
+        let direct_prefix = live_prefix(&root, "direct").unwrap();
+        let direct_path = direct
+            .download("of4B3aw7MXo", &direct_prefix, &cancelled)
+            .unwrap();
+        let direct_result = captured_result(&direct_prefix).unwrap();
+        assert_eq!(fs::metadata(&direct_path).unwrap().len(), 858608);
+        assert_eq!(
+            storage::digest(&direct_path).unwrap(),
+            "283550d73f033f6ef17becc4c9301fad5e100237333e4f3d66d5d10318fdccb5"
+        );
+        assert_eq!(direct_result["result"]["botguard_used"], false);
+        eprintln!(
+            "sitta_live_evidence {}",
+            json!({"case":"direct","client":direct_result["result"]["recording"]["client"],"sabr":direct_result["result"]["recording"]["selected_audio"]["sabr"],"bytes":858608,"sha256":storage::digest(&direct_path).unwrap()})
+        );
+
+        let interrupted = super::super::Downloader::sitta_live_for_test(
+            &executable,
+            "auto",
+            Duration::from_secs(2),
+        )
+        .unwrap();
+        let restart_prefix = live_prefix(&root, "restart").unwrap();
+        assert!(
+            interrupted
+                .download("dQw4w9WgXcQ", &restart_prefix, &cancelled)
+                .is_err()
+        );
+        let checkpoint: Value = serde_json::from_slice(
+            &fs::read(super::super::suffix(&restart_prefix, ".resume.json")).unwrap(),
+        )
+        .unwrap();
+        let committed = checkpoint["bytes"].as_u64().unwrap();
+        assert!(committed > 0 && super::super::suffix(&restart_prefix, ".partial").exists());
+        let resumed = super::super::Downloader::sitta_live_for_test(
+            &executable,
+            "auto",
+            Duration::from_secs(1800),
+        )
+        .unwrap();
+        let resumed_path = resumed
+            .download("dQw4w9WgXcQ", &restart_prefix, &cancelled)
+            .unwrap();
+        let resumed_result = captured_result(&restart_prefix).unwrap();
+        assert_eq!(
+            resumed_result["result"]["media"]["resumed_bytes"].as_u64(),
+            Some(committed)
+        );
+        assert_eq!(fs::metadata(&resumed_path).unwrap().len(), 3449447);
+        assert_eq!(
+            storage::digest(&resumed_path).unwrap(),
+            "51aa762a3254bcbad8813d2badff2f301ed0127a61643a0ab16f387c883e6394"
+        );
+        eprintln!(
+            "sitta_live_evidence {}",
+            json!({"case":"restart","client":resumed_result["result"]["recording"]["client"],"sabr":resumed_result["result"]["recording"]["selected_audio"]["sabr"],"resumed_bytes":committed,"bytes":3449447,"sha256":storage::digest(&resumed_path).unwrap()})
+        );
+
+        let protected = super::super::Downloader::sitta_live_for_test(
+            &executable,
+            "mweb-po",
+            Duration::from_secs(1800),
+        )
+        .unwrap();
+        let protected_prefix = live_prefix(&root, "protected").unwrap();
+        let protected_path = protected
+            .download("dQw4w9WgXcQ", &protected_prefix, &cancelled)
+            .unwrap();
+        let protected_result = captured_result(&protected_prefix).unwrap();
+        assert_eq!(fs::metadata(&protected_path).unwrap().len(), 3449447);
+        assert_eq!(
+            storage::digest(&protected_path).unwrap(),
+            "51aa762a3254bcbad8813d2badff2f301ed0127a61643a0ab16f387c883e6394"
+        );
+        assert_eq!(protected_result["result"]["botguard_used"], true);
+        assert_eq!(protected_result["result"]["media"]["po"]["attached"], true);
+        eprintln!(
+            "sitta_live_evidence {}",
+            json!({"case":"protected","client":protected_result["result"]["recording"]["client"],"sabr":protected_result["result"]["recording"]["selected_audio"]["sabr"],"bytes":3449447,"sha256":storage::digest(&protected_path).unwrap(),"po_attached":true})
         );
     }
 

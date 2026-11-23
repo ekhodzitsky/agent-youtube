@@ -165,6 +165,23 @@ impl Downloader {
             sitta: Some(sitta::Sitta::for_test(executable.to_path_buf(), mode)?),
         })
     }
+    #[cfg(test)]
+    pub(crate) fn sitta_live_for_test(
+        executable: &Path,
+        route: &str,
+        timeout: Duration,
+    ) -> Result<Self> {
+        Ok(Self {
+            http: Http::new("https://www.youtube.com")?,
+            runtime: Arc::new(Mutex::new(None)),
+            bootstrap: Arc::new(Mutex::new(None)),
+            sitta: Some(sitta::Sitta::for_live(
+                executable.to_path_buf(),
+                route,
+                timeout,
+            )?),
+        })
+    }
     /// An explicit loopback server for embedding/offline HTTP protocol tests.
     /// The CLI never accepts a replacement YouTube origin.
     pub fn loopback(origin: &str) -> Result<Self> {
